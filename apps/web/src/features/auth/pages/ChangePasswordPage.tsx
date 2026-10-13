@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ROLE_HOME_PATH } from '@telesales/shared';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
+import { paths } from '@/app/paths';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -29,7 +29,7 @@ export function ChangePasswordPage() {
   const onSubmit = handleSubmit(({ currentPassword, newPassword }) => {
     changePassword.mutate(
       { currentPassword, newPassword },
-      { onSuccess: (updated) => navigate(ROLE_HOME_PATH[updated.role], { replace: true }) },
+      { onSuccess: () => navigate(paths.home, { replace: true }) },
     );
   });
 

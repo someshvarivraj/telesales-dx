@@ -46,13 +46,18 @@ export class InMemoryUserRepository implements UserRepository {
     return [...this.rows.values()].find((user) => user.email === email.toLowerCase()) ?? null;
   }
 
+  async findByEmployeeNo(employeeNo: string): Promise<User | null> {
+    return [...this.rows.values()].find((user) => user.employeeNo === employeeNo) ?? null;
+  }
+
   async create(data: NewUserData): Promise<User> {
     const now = new Date();
     const user = User.restore({
       id: randomUUID(),
       ...data,
       email: data.email.toLowerCase(),
-      isActive: true,
+      status: 'ACTIVE',
+      grants: [],
       failedLoginCount: 0,
       lockedUntil: null,
       lastLoginAt: null,

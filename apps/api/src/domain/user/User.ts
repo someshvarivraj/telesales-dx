@@ -1,13 +1,20 @@
-import type { Role, SessionUser } from '@telesales/shared';
+import {
+  type Permission,
+  type Role,
+  resolvePermissions,
+  type SessionUser,
+  sortRoles,
+} from '@telesales/shared';
+
+export type UserStatus = 'ACTIVE' | 'DISABLED';
 
 export interface UserProps {
   id: string;
+  employeeNo: string | null;
+  name: string;
   email: string;
-  displayName: string;
   passwordHash: string;
-  role: Role;
-  isTeamLead: boolean;
-  isActive: boolean;
+  status: UserStatus;
   mustChangePassword: boolean;
   failedLoginCount: number;
   lockedUntil: Date | null;
@@ -15,39 +22,44 @@ export interface UserProps {
   passwordChangedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Roles in this app (several per user). */
+  roles: Role[];
+  /** Individual permission grants in this app, kept as data. */
+  grants: Permission[];
 }
 
 /**
- * User aggregate. Holds the login-related business rules so services and
+ * User aggregate. Holds the login and permission rules so services and
  * repositories stay free of policy decisions.
  */
 export class User {
-  private constructor(private props: UserProps) {}
+  private readonly permissionSet: ReadonlySet<Permission>;
+
+  private constructor(private props: UserProps) {
+    this.permissionSet = new Set(resolvePermissions(props.roles, props.grants));
+  }
 
   static restore(props: UserProps): User {
-    return new User({ ...props });
+    return new User({ ...props, roles: [...props.roles], grants: [...props.grants] });
   }
 
   get id(): string {
     return this.props.id;
   }
+  get employeeNo(): string | null {
+    return this.props.employeeNo;
+  }
+  get name(): string {
+    return this.props.name;
+  }
   get email(): string {
     return this.props.email;
-  }
-  get displayName(): string {
-    return this.props.displayName;
   }
   get passwordHash(): string {
     return this.props.passwordHash;
   }
-  get role(): Role {
-    return this.props.role;
-  }
-  get isTeamLead(): boolean {
-    return this.props.isTeamLead;
-  }
   get isActive(): boolean {
-    return this.props.isActive;
+    return this.props.status === 'ACTIVE';
   }
   get mustChangePassword(): boolean {
     return this.props.mustChangePassword;
@@ -55,22 +67,26 @@ export class User {
   get failedLoginCount(): number {
     return this.props.failedLoginCount;
   }
-  get lockedUntil(): Date | null {
-    return this.props.lockedUntil;
-  }
   get lastLoginAt(): Date | null {
     return this.props.lastLoginAt;
   }
-  get passwordChangedAt(): Date | null {
-    return this.props.passwordChangedAt;
+  get roles(): readonly Role[] {
+    return sortRoles(this.props.roles);
+  }
+  get permissions(): Permission[] {
+    return [...this.permissionSet];
+  }
+
+  hasRole(role: Role): boolean {
+    return this.props.roles.includes(role);
+  }
+
+  can(permission: Permission): boolean {
+    return this.permissionSet.has(permission);
   }
 
   isLocked(now: Date): boolean {
     return this.props.lockedUntil !== null && this.props.lockedUntil.getTime() > now.getTime();
-  }
-
-  canAttemptLogin(now: Date): boolean {
-    return this.props.isActive && !this.isLocked(now);
   }
 
   /** Records a failed attempt and locks the account once the threshold is reached. */
@@ -102,16 +118,17 @@ export class User {
   toSessionUser(): SessionUser {
     return {
       id: this.props.id,
+      employeeNo: this.props.employeeNo,
       email: this.props.email,
-      displayName: this.props.displayName,
-      role: this.props.role,
-      isTeamLead: this.props.isTeamLead,
+      name: this.props.name,
+      roles: [...this.roles],
+      permissions: this.permissions,
       mustChangePassword: this.props.mustChangePassword,
     };
   }
 
   /** Snapshot for persistence. */
   toProps(): Readonly<UserProps> {
-    return { ...this.props };
+    return { ...this.props, roles: [...this.props.roles], grants: [...this.props.grants] };
   }
 }

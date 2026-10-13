@@ -8,40 +8,128 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Role {
+// =====================================================================
+// Common: users, roles, settings (company-wide; other apps reuse them)
+// =====================================================================
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AppRole {
   TELEMA
+  TELEMA_LEAD
   SALES
+  VIEWER
   ADMIN
 }
 
+/// Fields every app needs. Team/app-specific data lives in separate tables keyed by user id.
 model User {
-  id                 String    @id @default(uuid()) @db.Uuid
-  email              String    @unique @db.VarChar(254)
-  displayName        String    @map("display_name") @db.VarChar(100)
-  passwordHash       String    @map("password_hash")
-  role               Role
-  isTeamLead         Boolean   @default(false) @map("is_team_lead")
-  isActive           Boolean   @default(true) @map("is_active")
-  mustChangePassword Boolean   @default(true) @map("must_change_password")
-  failedLoginCount   Int       @default(0) @map("failed_login_count")
-  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(6)
-  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(6)
-  passwordChangedAt  DateTime? @map("password_changed_at") @db.Timestamptz(6)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                 String     @id @default(uuid()) @db.Uuid
+  employeeNo         String?    @unique @map("employee_no") @db.VarChar(32)
+  name               String     @db.VarChar(100)
+  email              String     @unique @db.VarChar(254)
+  passwordHash       String     @map("password_hash")
+  status             UserStatus @default(ACTIVE)
+  mustChangePassword Boolean    @default(true) @map("must_change_password")
+  failedLoginCount   Int        @default(0) @map("failed_login_count")
+  lockedUntil        DateTime?  @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt        DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  passwordChangedAt  DateTime?  @map("password_changed_at") @db.Timestamptz(6)
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  auditLogs AuditLog[]
+  roles               UserAppRole[]
+  permissionGrants    UserPermissionGrant[]    @relation("GrantUser")
+  grantsGiven         UserPermissionGrant[]    @relation("GrantGivenBy")
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  telemarketer        TelemarketerProfile?
+  callRecords         CallRecord[]
+  companiesCreated    Company[]
+  listImports         ListImport[]
+  appointmentsAsRep   Appointment[]            @relation("AppointmentRep")
+  appointmentsBooked  Appointment[]            @relation("AppointmentBooker")
+  dayBeforeChecks     Appointment[]            @relation("AppointmentDayBeforeChecker")
+  appointmentsCancel  Appointment[]            @relation("AppointmentCanceller")
+  preparations        AppointmentPreparation[]
+  meetingResults      MeetingResult[]
+  comments            Comment[]
+  appointmentChanges  AppointmentChange[]
+  changeRequests      ChangeRequest[]          @relation("ChangeRequester")
+  changeRequestsTaken ChangeRequest[]          @relation("ChangeHandler")
+  plansOwned          SchedulePlan[]           @relation("PlanOwner")
+  plansCreated        SchedulePlan[]           @relation("PlanCreator")
+  planAttendances     PlanAttendee[]
+  timeOff             TimeOff[]                @relation("TimeOffUser")
+  timeOffEntered      TimeOff[]                @relation("TimeOffEnteredBy")
+  slotLocksHeld       SlotLock[]               @relation("SlotLockHolder")
+  slotLocksOnRep      SlotLock[]               @relation("SlotLockRep")
+  areaRulesAsRep      SalesAreaRule[]          @relation("AreaRuleRep")
+  areaRulesAsBackup   SalesAreaRule[]          @relation("AreaRuleBackup")
+  shifts              Shift[]
+  allocations         Allocation[]             @relation("AllocationAssignee")
+  filesUploaded       StoredFile[]
+  emails              OutboundEmail[]
 
-  @@index([role])
   @@map("users")
 }
 
+model App {
+  key             String   @id @db.VarChar(32)
+  name            String   @db.VarChar(100)
+  maintenanceMode Boolean  @default(false) @map("maintenance_mode")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  roles  UserAppRole[]
+  grants UserPermissionGrant[]
+
+  @@map("apps")
+}
+
+/// One row per role. A user can hold several roles in the same app.
+model UserAppRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  appKey    String   @map("app_key") @db.VarChar(32)
+  role      AppRole
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  app  App  @relation(fields: [appKey], references: [key])
+
+  @@unique([userId, appKey, role])
+  @@map("user_app_roles")
+}
+
+/// Individual exceptions kept as data, e.g. the person entrusted with the area table.
+model UserPermissionGrant {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  appKey      String   @map("app_key") @db.VarChar(32)
+  permission  String   @db.VarChar(64)
+  grantedById String?  @map("granted_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User  @relation("GrantUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("GrantGivenBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  app       App   @relation(fields: [appKey], references: [key])
+
+  @@unique([userId, appKey, permission])
+  @@map("user_permission_grants")
+}
+
+/// Who changed what and when, with before/after values (spec §2-9, §11).
 model AuditLog {
   id          BigInt   @id @default(autoincrement())
   actorUserId String?  @map("actor_user_id") @db.Uuid
   action      String   @db.VarChar(64)
   targetType  String?  @map("target_type") @db.VarChar(64)
   targetId    String?  @map("target_id") @db.VarChar(64)
+  before      Json?
+  after       Json?
   ipAddress   String?  @map("ip_address") @db.VarChar(45)
   userAgent   String?  @map("user_agent") @db.VarChar(512)
   metadata    Json?
@@ -50,6 +138,7 @@ model AuditLog {
   actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([actorUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
   @@index([action, createdAt])
   @@map("audit_logs")
 }
@@ -62,4 +151,692 @@ model Session {
 
   @@index([expire], map: "IDX_session_expire")
   @@map("session")
+}
+
+enum HolidayKind {
+  PUBLIC_HOLIDAY
+  COMPANY_HOLIDAY
+}
+
+/// Non-business days. Public holidays are imported yearly; company holidays are entered by admins.
+model CalendarDay {
+  date      DateTime    @id @db.Date
+  name      String      @db.VarChar(100)
+  kind      HolidayKind
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("calendar_days")
+}
+
+/// Admin-managed choices (grades, result details, customer types, plan types, deal status…).
+/// Options are disabled, never deleted.
+model OptionItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  category  String   @db.VarChar(48)
+  code      String   @db.VarChar(48)
+  label     String   @db.VarChar(100)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([category, code])
+  @@index([category, isActive, sortOrder])
+  @@map("option_items")
+}
+
+/// Per-notice settings (N1…N19). Times and day counts are data, not code.
+model NoticeSetting {
+  code       String   @id @db.VarChar(8)
+  name       String   @db.VarChar(100)
+  isEnabled  Boolean  @default(true) @map("is_enabled")
+  sendsEmail Boolean  @default(false) @map("sends_email")
+  /// Local JST time such as "12:00" for scheduled notices.
+  sendTime   String?  @map("send_time") @db.VarChar(5)
+  daysBefore Int[]    @default([]) @map("days_before")
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  recipients NoticeRecipient[]
+
+  @@map("notice_settings")
+}
+
+enum RecipientField {
+  TO
+  CC
+}
+
+enum RecipientKind {
+  /// A fixed address or mailing list
+  EMAIL
+  /// A specific user
+  USER
+  /// Everyone holding a role, e.g. all telemarketers
+  ROLE
+  /// Resolved per event, e.g. ASSIGNED_REP, BOOKER, ATTENDEES, THREAD
+  CONTEXT
+}
+
+model NoticeRecipient {
+  id         String         @id @default(uuid()) @db.Uuid
+  noticeCode String         @map("notice_code") @db.VarChar(8)
+  field      RecipientField @default(TO)
+  kind       RecipientKind
+  value      String         @db.VarChar(254)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  notice NoticeSetting @relation(fields: [noticeCode], references: [code], onDelete: Cascade)
+
+  @@unique([noticeCode, field, kind, value])
+  @@map("notice_recipients")
+}
+
+/// On-screen notices (bell).
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  noticeCode String    @map("notice_code") @db.VarChar(8)
+  title      String    @db.VarChar(200)
+  linkPath   String?   @map("link_path") @db.VarChar(300)
+  readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+enum EmailStatus {
+  DRAFT
+  QUEUED
+  SENT
+  FAILED
+}
+
+/// Every e-mail the system sends. Drafts support "preview then send"; the
+/// dedupe key guarantees an appointment e-mail is sent only once (spec §2-13).
+model OutboundEmail {
+  id            String      @id @default(uuid()) @db.Uuid
+  noticeCode    String      @map("notice_code") @db.VarChar(8)
+  dedupeKey     String?     @unique @map("dedupe_key") @db.VarChar(200)
+  to            String[]
+  cc            String[]
+  subject       String      @db.VarChar(300)
+  body          String
+  attachmentIds String[]    @map("attachment_ids")
+  status        EmailStatus @default(DRAFT)
+  appointmentId String?     @map("appointment_id") @db.Uuid
+  createdById   String?     @map("created_by_id") @db.Uuid
+  sentAt        DateTime?   @map("sent_at") @db.Timestamptz(6)
+  error         String?
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("outbound_emails")
+}
+
+/// Uploaded files (list imports, handover PDFs, preparation materials).
+/// Served only through the authenticated API, never by public URL.
+model StoredFile {
+  id           String   @id @default(uuid()) @db.Uuid
+  storageKey   String   @unique @map("storage_key") @db.VarChar(300)
+  originalName String   @map("original_name") @db.VarChar(255)
+  contentType  String   @map("content_type") @db.VarChar(127)
+  sizeBytes    Int      @map("size_bytes")
+  sha256       String   @db.Char(64)
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  uploadedBy   User?                   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  listImports  ListImport[]
+  appointments Appointment[]
+  attachments  PreparationAttachment[]
+
+  @@index([sha256])
+  @@map("stored_files")
+}
+
+// =====================================================================
+// Sales area table (finding the rep)
+// =====================================================================
+
+model CompanyGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  companies Company[]
+  rules     SalesAreaRule[]
+
+  @@map("company_groups")
+}
+
+/// Area (prefecture/city) + customer-type condition + company group → sales rep.
+model SalesAreaRule {
+  id                    String    @id @default(uuid()) @db.Uuid
+  prefecture            String    @db.VarChar(10)
+  city                  String?   @db.VarChar(50)
+  customerTypeCondition String?   @map("customer_type_condition") @db.VarChar(48)
+  companyGroupId        String?   @map("company_group_id") @db.Uuid
+  salesRepId            String    @map("sales_rep_id") @db.Uuid
+  backupRepId           String?   @map("backup_rep_id") @db.Uuid
+  webOnly               Boolean   @default(false) @map("web_only")
+  validFrom             DateTime  @map("valid_from") @db.Date
+  validTo               DateTime? @map("valid_to") @db.Date
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  companyGroup CompanyGroup? @relation(fields: [companyGroupId], references: [id])
+  salesRep     User          @relation("AreaRuleRep", fields: [salesRepId], references: [id])
+  backupRep    User?         @relation("AreaRuleBackup", fields: [backupRepId], references: [id])
+
+  @@index([prefecture, city])
+  @@map("sales_area_rules")
+}
+
+// =====================================================================
+// ① Call Status Sharing
+// =====================================================================
+
+enum CompanyFlag {
+  NONE
+  /// Same phone number as an existing company — excluded from calling until resolved
+  DUPLICATE
+  /// Same name only — stays callable
+  NEEDS_CHECK
+}
+
+model Company {
+  id             String      @id @default(uuid()) @db.Uuid
+  name           String      @db.VarChar(200)
+  office         String?     @db.VarChar(100)
+  department     String?     @db.VarChar(100)
+  phone          String?     @db.VarChar(32)
+  /// Digits only, used for duplicate checks
+  phoneDigits    String?     @map("phone_digits") @db.VarChar(15)
+  url            String?     @db.VarChar(500)
+  address        String?     @db.VarChar(300)
+  prefecture     String?     @db.VarChar(10)
+  city           String?     @db.VarChar(50)
+  nearestStation String?     @map("nearest_station") @db.VarChar(100)
+  industry       String?     @db.VarChar(100)
+  customerType   String?     @map("customer_type") @db.VarChar(48)
+  clientNo       String?     @map("client_no") @db.VarChar(32)
+  /// Reference only (existing telemarketing system)
+  telemaIdNo     String?     @map("telema_id_no") @db.VarChar(32)
+  listName       String?     @map("list_name") @db.VarChar(200)
+  flag           CompanyFlag @default(NONE)
+  isCallTarget   Boolean     @default(false) @map("is_call_target")
+  /// Extra columns from new lists, matched by header name
+  extra          Json?
+  parentId       String?     @map("parent_id") @db.Uuid
+  companyGroupId String?     @map("company_group_id") @db.Uuid
+  createdById    String?     @map("created_by_id") @db.Uuid
+  listImportId   String?     @map("list_import_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parent       Company?            @relation("CompanyParent", fields: [parentId], references: [id])
+  children     Company[]           @relation("CompanyParent")
+  companyGroup CompanyGroup?       @relation(fields: [companyGroupId], references: [id])
+  createdBy    User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  listImport   ListImport?         @relation(fields: [listImportId], references: [id])
+  formerNames  CompanyFormerName[]
+  callRecords  CallRecord[]
+  appointments Appointment[]
+  allocations  Allocation[]
+
+  @@index([phoneDigits])
+  @@index([name])
+  @@index([isCallTarget, flag])
+  @@map("companies")
+}
+
+model CompanyFormerName {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  name      String   @db.VarChar(200)
+  changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([name])
+  @@map("company_former_names")
+}
+
+enum ListImportPurpose {
+  CALL_REQUEST
+  REGISTER_ONLY
+}
+
+model ListImport {
+  id             String            @id @default(uuid()) @db.Uuid
+  purpose        ListImportPurpose
+  listName       String            @map("list_name") @db.VarChar(200)
+  fileId         String            @map("file_id") @db.Uuid
+  importedById   String            @map("imported_by_id") @db.Uuid
+  rowCount       Int               @map("row_count")
+  createdCount   Int               @map("created_count")
+  duplicateCount Int               @map("duplicate_count")
+  checkCount     Int               @map("check_count")
+  errorCount     Int               @map("error_count")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  file        StoredFile   @relation(fields: [fileId], references: [id])
+  importedBy  User         @relation(fields: [importedById], references: [id])
+  companies   Company[]
+  callRecords CallRecord[]
+
+  @@map("list_imports")
+}
+
+model CallRecord {
+  id             String    @id @default(uuid()) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  telemarketerId String    @map("telemarketer_id") @db.Uuid
+  calledAt       DateTime  @map("called_at") @db.Timestamptz(6)
+  /// Option code in category "call_grade" (A–D by default)
+  grade          String    @db.VarChar(48)
+  resultDetail   String?   @map("result_detail") @db.VarChar(48)
+  contactName    String?   @map("contact_name") @db.VarChar(100)
+  interestLevel  String?   @map("interest_level") @db.VarChar(48)
+  nextCallDate   DateTime? @map("next_call_date") @db.Date
+  notes          String?
+  listImportId   String?   @map("list_import_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  telemarketer User          @relation(fields: [telemarketerId], references: [id])
+  listImport   ListImport?   @relation(fields: [listImportId], references: [id])
+  appointments Appointment[]
+  comments     Comment[]
+
+  @@index([companyId, calledAt])
+  @@index([telemarketerId, calledAt])
+  @@index([nextCallDate])
+  @@map("call_records")
+}
+
+// =====================================================================
+// Appointments — the centre of the data model (spec §5)
+// =====================================================================
+
+enum MeetingFormat {
+  VISIT
+  ONLINE
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum AppointmentSource {
+  /// Booked from ① call status sharing (new lists)
+  CALL_STATUS
+  /// Existing-list appointment imported from CSV / PDF
+  FILE
+  /// Existing-list appointment typed in
+  MANUAL
+  /// Booked by sales themselves
+  SALES_BOOKED
+}
+
+enum DayBeforeResult {
+  CONFIRMED
+  NOT_REACHED
+  CHANGED
+}
+
+model Appointment {
+  id                    String            @id @default(uuid()) @db.Uuid
+  companyId             String            @map("company_id") @db.Uuid
+  sourceCallRecordId    String?           @map("source_call_record_id") @db.Uuid
+  salesRepId            String            @map("sales_rep_id") @db.Uuid
+  startsAt              DateTime          @map("starts_at") @db.Timestamptz(6)
+  endsAt                DateTime          @map("ends_at") @db.Timestamptz(6)
+  format                MeetingFormat
+  visitAddress          String?           @map("visit_address") @db.VarChar(300)
+  contactName           String?           @map("contact_name") @db.VarChar(100)
+  contactDepartment     String?           @map("contact_department") @db.VarChar(100)
+  contactPhone          String?           @map("contact_phone") @db.VarChar(64)
+  contactEmail          String?           @map("contact_email") @db.VarChar(254)
+  handoverNotes         String?           @map("handover_notes")
+  customerType          String?           @map("customer_type") @db.VarChar(48)
+  isNewAppointment      Boolean           @default(false) @map("is_new_appointment")
+  listName              String?           @map("list_name") @db.VarChar(200)
+  bookedById            String            @map("booked_by_id") @db.Uuid
+  bookedAt              DateTime          @default(now()) @map("booked_at") @db.Timestamptz(6)
+  meetingUrl            String?           @map("meeting_url") @db.VarChar(500)
+  salesConfirmedAt      DateTime?         @map("sales_confirmed_at") @db.Timestamptz(6)
+  dayBeforeResult       DayBeforeResult?  @map("day_before_result")
+  dayBeforeCheckedById  String?           @map("day_before_checked_by_id") @db.Uuid
+  dayBeforeCheckedAt    DateTime?         @map("day_before_checked_at") @db.Timestamptz(6)
+  status                AppointmentStatus @default(SCHEDULED)
+  source                AppointmentSource
+  originalAppointmentId String?           @map("original_appointment_id") @db.Uuid
+  sourceFileId          String?           @map("source_file_id") @db.Uuid
+  /// Content hash of the imported file; the same file is never registered twice
+  sourceFileHash        String?           @unique @map("source_file_hash") @db.Char(64)
+  cancelledAt           DateTime?         @map("cancelled_at") @db.Timestamptz(6)
+  cancelledById         String?           @map("cancelled_by_id") @db.Uuid
+  /// Optimistic concurrency for edits from several screens
+  version               Int               @default(1)
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company             Company                  @relation(fields: [companyId], references: [id])
+  sourceCallRecord    CallRecord?              @relation(fields: [sourceCallRecordId], references: [id])
+  salesRep            User                     @relation("AppointmentRep", fields: [salesRepId], references: [id])
+  bookedBy            User                     @relation("AppointmentBooker", fields: [bookedById], references: [id])
+  dayBeforeCheckedBy  User?                    @relation("AppointmentDayBeforeChecker", fields: [dayBeforeCheckedById], references: [id])
+  cancelledBy         User?                    @relation("AppointmentCanceller", fields: [cancelledById], references: [id])
+  originalAppointment Appointment?             @relation("Rebooking", fields: [originalAppointmentId], references: [id])
+  rebookings          Appointment[]            @relation("Rebooking")
+  sourceFile          StoredFile?              @relation(fields: [sourceFileId], references: [id])
+  plan                SchedulePlan?
+  preparations        AppointmentPreparation[]
+  meetingResults      MeetingResult[]
+  comments            Comment[]
+  changes             AppointmentChange[]
+  changeRequests      ChangeRequest[]
+  emails              OutboundEmail[]
+  allocations         Allocation[]
+
+  @@index([salesRepId, startsAt])
+  @@index([startsAt])
+  @@index([bookedById, bookedAt])
+  @@index([companyId])
+  @@map("appointments")
+}
+
+model AppointmentPreparation {
+  id            String   @id @default(uuid()) @db.Uuid
+  appointmentId String   @map("appointment_id") @db.Uuid
+  authorId      String   @map("author_id") @db.Uuid
+  note          String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  appointment Appointment             @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  author      User                    @relation(fields: [authorId], references: [id])
+  attachments PreparationAttachment[]
+
+  @@index([appointmentId, createdAt])
+  @@map("appointment_preparations")
+}
+
+model PreparationAttachment {
+  id            String @id @default(uuid()) @db.Uuid
+  preparationId String @map("preparation_id") @db.Uuid
+  fileId        String @map("file_id") @db.Uuid
+
+  preparation AppointmentPreparation @relation(fields: [preparationId], references: [id], onDelete: Cascade)
+  file        StoredFile             @relation(fields: [fileId], references: [id])
+
+  @@unique([preparationId, fileId])
+  @@map("preparation_attachments")
+}
+
+model MeetingResult {
+  id             String    @id @default(uuid()) @db.Uuid
+  appointmentId  String    @map("appointment_id") @db.Uuid
+  authorId       String    @map("author_id") @db.Uuid
+  visitedOn      DateTime  @map("visited_on") @db.Date
+  attendee       String?   @db.VarChar(100)
+  discussion     String
+  response       String?   @db.VarChar(48)
+  dealStatus     String?   @map("deal_status") @db.VarChar(48)
+  nextAction     String?   @map("next_action")
+  nextActionDate DateTime? @map("next_action_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id])
+
+  @@index([appointmentId, createdAt])
+  @@index([authorId, nextActionDate])
+  @@map("meeting_results")
+}
+
+/// Questions and comments on an appointment or a call record (threaded).
+model Comment {
+  id            String    @id @default(uuid()) @db.Uuid
+  appointmentId String?   @map("appointment_id") @db.Uuid
+  callRecordId  String?   @map("call_record_id") @db.Uuid
+  parentId      String?   @map("parent_id") @db.Uuid
+  authorId      String    @map("author_id") @db.Uuid
+  body          String
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  callRecord  CallRecord?  @relation(fields: [callRecordId], references: [id], onDelete: Cascade)
+  parent      Comment?     @relation("CommentThread", fields: [parentId], references: [id])
+  replies     Comment[]    @relation("CommentThread")
+  author      User         @relation(fields: [authorId], references: [id])
+
+  @@index([appointmentId, createdAt])
+  @@index([callRecordId, createdAt])
+  @@map("comments")
+}
+
+enum ChangeReason {
+  /// モ変 — our side
+  OUR_SIDE
+  /// 先変 — customer side
+  CUSTOMER_SIDE
+}
+
+/// Before/after of each reschedule or rep change. The appointment itself is moved, never recreated.
+model AppointmentChange {
+  id            String        @id @default(uuid()) @db.Uuid
+  appointmentId String        @map("appointment_id") @db.Uuid
+  changedById   String        @map("changed_by_id") @db.Uuid
+  reason        ChangeReason?
+  before        Json
+  after         Json
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  changedBy   User        @relation(fields: [changedById], references: [id])
+
+  @@index([appointmentId, createdAt])
+  @@map("appointment_changes")
+}
+
+enum ChangeRequestStatus {
+  REQUESTED
+  IN_PROGRESS
+  DONE
+  WITHDRAWN
+}
+
+model ChangeRequest {
+  id            String              @id @default(uuid()) @db.Uuid
+  appointmentId String              @map("appointment_id") @db.Uuid
+  requestedById String              @map("requested_by_id") @db.Uuid
+  message       String
+  status        ChangeRequestStatus @default(REQUESTED)
+  handlerId     String?             @map("handler_id") @db.Uuid
+  takenAt       DateTime?           @map("taken_at") @db.Timestamptz(6)
+  doneAt        DateTime?           @map("done_at") @db.Timestamptz(6)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  requestedBy User        @relation("ChangeRequester", fields: [requestedById], references: [id])
+  handler     User?       @relation("ChangeHandler", fields: [handlerId], references: [id])
+
+  @@index([status, createdAt])
+  @@map("change_requests")
+}
+
+// =====================================================================
+// ② Schedule
+// =====================================================================
+
+enum PlanStatus {
+  FIXED
+  TENTATIVE
+}
+
+/// One entry in a person's schedule. An appointment appears as exactly one plan.
+/// Overlap of appointment plans for the same rep is blocked by a DB exclusion constraint.
+model SchedulePlan {
+  id               String     @id @default(uuid()) @db.Uuid
+  ownerId          String     @map("owner_id") @db.Uuid
+  createdById      String     @map("created_by_id") @db.Uuid
+  /// Option code in category "plan_type"; VISIT / ONLINE stay in sync with the appointment format
+  type             String     @db.VarChar(48)
+  startsAt         DateTime   @map("starts_at") @db.Timestamptz(6)
+  endsAt           DateTime   @map("ends_at") @db.Timestamptz(6)
+  allDay           Boolean    @default(false) @map("all_day")
+  title            String     @db.VarChar(200)
+  status           PlanStatus @default(FIXED)
+  candidateGroupId String?    @map("candidate_group_id") @db.Uuid
+  holidayWork      Boolean    @default(false) @map("holiday_work")
+  recurrenceRule   String?    @map("recurrence_rule") @db.VarChar(200)
+  appointmentId    String?    @unique @map("appointment_id") @db.Uuid
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?  @map("deleted_at") @db.Timestamptz(6)
+
+  owner       User           @relation("PlanOwner", fields: [ownerId], references: [id])
+  createdBy   User           @relation("PlanCreator", fields: [createdById], references: [id])
+  appointment Appointment?   @relation(fields: [appointmentId], references: [id])
+  attendees   PlanAttendee[]
+
+  @@index([ownerId, startsAt])
+  @@index([candidateGroupId])
+  @@map("schedule_plans")
+}
+
+model PlanAttendee {
+  planId String @map("plan_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  plan SchedulePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id])
+
+  @@id([planId, userId])
+  @@map("plan_attendees")
+}
+
+enum TimeOffKind {
+  DAY_OFF
+  LATE_START
+  EARLY_LEAVE
+  PARTIAL
+}
+
+/// Time off for sales and telemarketing alike (all day or a time range).
+model TimeOff {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @map("user_id") @db.Uuid
+  enteredById String      @map("entered_by_id") @db.Uuid
+  kind        TimeOffKind
+  startsAt    DateTime    @map("starts_at") @db.Timestamptz(6)
+  endsAt      DateTime    @map("ends_at") @db.Timestamptz(6)
+  allDay      Boolean     @default(false) @map("all_day")
+  note        String?     @db.VarChar(200)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt   DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  user      User @relation("TimeOffUser", fields: [userId], references: [id])
+  enteredBy User @relation("TimeOffEnteredBy", fields: [enteredById], references: [id])
+
+  @@index([userId, startsAt])
+  @@map("time_off")
+}
+
+/// Edit lock on one rep's time slot while someone is booking or editing (spec §7).
+/// Kept alive by heartbeats; expires shortly after the screen closes.
+model SlotLock {
+  id          String   @id @default(uuid()) @db.Uuid
+  salesRepId  String   @map("sales_rep_id") @db.Uuid
+  startsAt    DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt      DateTime @map("ends_at") @db.Timestamptz(6)
+  lockedById  String   @map("locked_by_id") @db.Uuid
+  heartbeatAt DateTime @default(now()) @map("heartbeat_at") @db.Timestamptz(6)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  salesRep User @relation("SlotLockRep", fields: [salesRepId], references: [id])
+  lockedBy User @relation("SlotLockHolder", fields: [lockedById], references: [id])
+
+  @@index([salesRepId, startsAt])
+  @@index([expiresAt])
+  @@map("slot_locks")
+}
+
+// =====================================================================
+// ② Telemarketing (priority 2: shifts and allocation)
+// =====================================================================
+
+model TelemarketerProfile {
+  userId             String   @id @map("user_id") @db.Uuid
+  jobType            String?  @map("job_type") @db.VarChar(48)
+  isAllocationTarget Boolean  @default(true) @map("is_allocation_target")
+  /// Fixed territory prefectures, e.g. 京都・滋賀・奈良
+  territory          String[] @default([])
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("telemarketer_profiles")
+}
+
+model Shift {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  date           DateTime @db.Date
+  kind           String   @db.VarChar(48)
+  startTime      String?  @map("start_time") @db.VarChar(5)
+  endTime        String?  @map("end_time") @db.VarChar(5)
+  breakMinutes   Int      @default(0) @map("break_minutes")
+  workingMinutes Int      @default(0) @map("working_minutes")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@map("shifts")
+}
+
+enum AllocationKind {
+  CALL
+  DAY_BEFORE
+}
+
+enum AllocationStatus {
+  DRAFT
+  CONFIRMED
+}
+
+model Allocation {
+  id            String           @id @default(uuid()) @db.Uuid
+  date          DateTime         @db.Date
+  kind          AllocationKind
+  companyId     String?          @map("company_id") @db.Uuid
+  appointmentId String?          @map("appointment_id") @db.Uuid
+  assigneeId    String           @map("assignee_id") @db.Uuid
+  status        AllocationStatus @default(DRAFT)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company     Company?     @relation(fields: [companyId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  assignee    User         @relation("AllocationAssignee", fields: [assigneeId], references: [id])
+
+  @@index([date, kind, assigneeId])
+  @@map("allocations")
 }

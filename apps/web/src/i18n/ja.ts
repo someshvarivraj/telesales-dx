@@ -10,15 +10,24 @@ export const ja = {
   },
   role: {
     [Role.Telema]: 'テレマ',
+    [Role.TelemaLead]: 'リーダー',
     [Role.Sales]: '営業',
+    [Role.Viewer]: '閲覧',
     [Role.Admin]: '管理者',
-    lead: 'リーダー',
   },
   module: {
     calls: '架電状況共有',
     schedule: 'スケジュール管理',
-    users: 'ユーザー管理',
-    masters: 'マスタ管理',
+    appointments: 'アポ一覧',
+  },
+  admin: {
+    title: '管理',
+    users: 'ユーザー・役割',
+    calendar: '祝日・会社の休日',
+    areaTable: '営業担当表',
+    options: '選択肢',
+    notices: '通知の宛先',
+    locks: '編集中の押さえ',
   },
   auth: {
     loginTitle: 'ログイン',

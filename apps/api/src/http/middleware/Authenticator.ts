@@ -1,4 +1,4 @@
-import type { Role } from '@telesales/shared';
+import type { Permission } from '@telesales/shared';
 import type { Request, RequestHandler } from 'express';
 import type { SessionPolicy } from '../../config/AppConfig.js';
 import type { Clock } from '../../domain/Clock.js';
@@ -40,14 +40,17 @@ export class Authenticator {
     };
   }
 
-  requireRole(...roles: Role[]): RequestHandler {
-    const allowed = new Set<Role>(roles);
+  /**
+   * Requires at least one of the given permissions. Roles are never checked directly:
+   * permissions come from the shared role table plus individual grants.
+   */
+  requireAnyPermission(...permissions: Permission[]): RequestHandler {
     return (req, _res, next) => {
       const user = req.currentUser;
       if (!user) {
         throw new UnauthenticatedError();
       }
-      if (!allowed.has(user.role)) {
+      if (!permissions.some((permission) => user.can(permission))) {
         throw new ForbiddenError();
       }
       next();

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Permission } from './permissions.js';
 import type { Role } from './roles.js';
 
 export const PASSWORD_MIN_LENGTH = 12;
@@ -21,10 +22,13 @@ export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 /** The signed-in user as exposed to the web app. Never contains secrets. */
 export interface SessionUser {
   id: string;
+  employeeNo: string | null;
   email: string;
-  displayName: string;
-  role: Role;
-  isTeamLead: boolean;
+  name: string;
+  /** Roles in this app, most specific first. */
+  roles: Role[];
+  /** Effective permissions (roles + individual grants), resolved by the server. */
+  permissions: Permission[];
   mustChangePassword: boolean;
 }
 

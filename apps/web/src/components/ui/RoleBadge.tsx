@@ -1,34 +1,30 @@
-import { Role } from '@telesales/shared';
+import { Role, sortRoles } from '@telesales/shared';
 import { ja } from '@/i18n/ja';
 import { cn } from './cn';
 
 const roleClass: Record<Role, string> = {
   [Role.Telema]: 'bg-role-telema-soft text-role-telema',
+  [Role.TelemaLead]: 'border border-role-telema/40 text-role-telema',
   [Role.Sales]: 'bg-role-sales-soft text-role-sales',
+  [Role.Viewer]: 'bg-role-viewer-soft text-role-viewer',
   [Role.Admin]: 'bg-role-admin-soft text-role-admin',
 };
 
-interface RoleBadgeProps {
-  role: Role;
-  isTeamLead?: boolean;
-}
-
-export function RoleBadge({ role, isTeamLead = false }: RoleBadgeProps) {
+/** All roles of a user, most specific first (one user can hold several). */
+export function RoleBadges({ roles }: { roles: readonly Role[] }) {
   return (
-    <span className="inline-flex items-center gap-1">
-      <span
-        className={cn(
-          'rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap',
-          roleClass[role],
-        )}
-      >
-        {ja.role[role]}
-      </span>
-      {isTeamLead && (
-        <span className="rounded-full border border-role-telema/40 px-2 py-0.5 text-xs font-bold whitespace-nowrap text-role-telema">
-          {ja.role.lead}
-        </span>
-      )}
-    </span>
+    <ul className="flex flex-wrap items-center gap-1" aria-label="役割">
+      {sortRoles(roles).map((role) => (
+        <li
+          key={role}
+          className={cn(
+            'rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap',
+            roleClass[role],
+          )}
+        >
+          {ja.role[role]}
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -1,3 +1,4 @@
+import { APP_KEY } from '@telesales/shared';
 import type { Logger } from 'pino';
 import type { AppConfig } from './config/AppConfig.js';
 import type { AuditLogger } from './domain/audit/AuditLogger.js';
@@ -41,7 +42,7 @@ export class Container {
     this.logger = createLogger(config);
     this.clock = new SystemClock();
     this.database = new PrismaService(config.databaseUrl);
-    this.users = new PrismaUserRepository(this.database.client);
+    this.users = new PrismaUserRepository(this.database.client, APP_KEY);
     this.hasher = new Argon2PasswordHasher();
     this.audit = new PrismaAuditLogger(this.database.client, this.logger);
     this.authService = new AuthService(

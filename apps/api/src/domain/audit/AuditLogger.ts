@@ -5,6 +5,8 @@ export const AuditAction = {
   Logout: 'auth.logout',
   PasswordChanged: 'auth.password.changed',
   UserCreated: 'user.created',
+  UserUpdated: 'user.updated',
+  RolesChanged: 'user.roles.changed',
 } as const;
 
 export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction];
@@ -20,6 +22,9 @@ export interface AuditEntry {
   actorUserId?: string | null;
   targetType?: string;
   targetId?: string;
+  /** State before and after the change (spec §2-9: who changed what, when, before/after). */
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   context?: RequestContext;
 }

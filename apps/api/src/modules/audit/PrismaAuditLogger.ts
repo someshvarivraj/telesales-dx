@@ -20,6 +20,8 @@ export class PrismaAuditLogger implements AuditLogger {
           actorUserId: entry.actorUserId ?? null,
           targetType: entry.targetType ?? null,
           targetId: entry.targetId ?? null,
+          before: (entry.before ?? undefined) as Prisma.InputJsonValue | undefined,
+          after: (entry.after ?? undefined) as Prisma.InputJsonValue | undefined,
           ipAddress: entry.context?.ipAddress?.slice(0, 45) ?? null,
           userAgent: entry.context?.userAgent?.slice(0, 512) ?? null,
           metadata: (entry.metadata ?? undefined) as Prisma.InputJsonValue | undefined,

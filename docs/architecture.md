@@ -2,17 +2,44 @@
 
 ## Overview
 
-One app, one login, one database. The role stored on the user (`TELEMA`, `SALES`, `ADMIN`, plus the
-`isTeamLead` flag for telemarketing) decides which area of the web app a user can open.
+One app, one login, one database (spec v1 §3). Users are company-wide; roles are granted per app
+(`user_app_roles`, several rows per user). Roles never appear in feature code — everything checks
+**permissions** from `packages/shared/src/permissions.ts`, which mirrors the spec §4 table.
 
-| Area   | Path        | Who                                                 |
-| ------ | ----------- | --------------------------------------------------- |
-| テレマ | `/telema/*` | role `TELEMA` (lead features gated by `isTeamLead`) |
-| 営業   | `/sales/*`  | role `SALES`                                        |
-| 管理者 | `/admin/*`  | role `ADMIN`                                        |
+| Role          | 日本語   | Notes                                                                 |
+| ------------- | -------- | --------------------------------------------------------------------- |
+| `TELEMA`      | テレマ   | makes calls                                                           |
+| `TELEMA_LEAD` | リーダー | everything TELEMA has + list import, duplicate resolution, allocation |
+| `SALES`       | 営業     | meetings, own plans, change requests                                  |
+| `VIEWER`      | 閲覧     | DX team etc.: view + comment only                                     |
+| `ADMIN`       | 管理者   | all permissions                                                       |
 
-The same rule must be enforced on the server: every API router for an area uses
-`authenticator.requireRole(...)`. The web guards are for UX only.
+Exceptions such as "the person entrusted with the area table" are rows in
+`user_permission_grants`, not code. Row-level rules ("own records", "assigned or attending")
+are enforced in each service.
+
+Routes are module-based (`/calls`, `/schedule`, `/appointments`, `/admin/*`). The home screen
+shows the cards the user's permissions allow; the API checks the same permission with
+`authenticator.requireAnyPermission(...)`.
+
+## Data model
+
+The appointment is the centre (spec §5). Preparation, meeting results, comments, change history
+and change requests all hang off `appointments`; each appointment also appears as exactly one
+`schedule_plans` row for the rep. Rescheduling moves the same appointment; only a re-booking after
+cancellation creates a new one (`original_appointment_id`).
+
+Guards that live in the database, not only in code:
+
+- `schedule_plans_no_overlapping_appointments` — a GiST exclusion constraint: two live appointment
+  plans of the same rep can never overlap (spec §2-11, "check again on save").
+- `*_time_order` checks (`ends_at > starts_at`) and `comments_single_target`.
+- `appointments.source_file_hash` is unique, so importing the same file twice cannot double-register.
+- `outbound_emails.dedupe_key` is unique, so the appointment e-mail is sent only once (spec §2-13).
+
+Settings that change over time are data: option lists (`option_items`, disabled never deleted),
+notice settings and recipients per notice code (`notice_settings`, `notice_recipients`),
+holidays (`calendar_days`), the sales area table (`sales_area_rules`).
 
 ## API (`apps/api`)
 
