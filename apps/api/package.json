@@ -1,0 +1,48 @@
+{
+  "name": "@telesales/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "build": "tsup",
+    "start": "node --enable-source-maps dist/main.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "user:create": "tsx --env-file-if-exists=.env src/cli/createUser.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@telesales/shared": "workspace:*",
+    "argon2": "^0.45.1",
+    "connect-pg-simple": "^10.0.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "pg": "^8.16.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/express": "^5.0.3",
+    "@types/express-session": "^1.18.2",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/supertest": "^6.0.3",
+    "dotenv": "^17.0.0",
+    "pino-pretty": "^13.0.0",
+    "prisma": "^7.10.0",
+    "supertest": "^7.3.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
+  }
+}

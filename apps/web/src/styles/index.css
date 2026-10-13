@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Components use these semantic names only — never raw hex.
+ * Palette follows common Japanese business-SaaS conventions (warm greys, one main blue).
+ */
+@theme {
+  --font-sans:
+    'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'BIZ UDPGothic', Meiryo,
+    system-ui, sans-serif;
+
+  /* Brand / action */
+  --color-main: #0077c7;
+  --color-main-hover: #00639f;
+  --color-main-soft: #e8f2fa;
+
+  /* Text */
+  --color-ink: #23221e;
+  --color-ink-sub: #706d65;
+  --color-ink-disabled: #c1bdb7;
+  --color-link: #0071c1;
+
+  /* Surfaces & lines */
+  --color-base: #f8f7f6;
+  --color-surface: #ffffff;
+  --color-column: #f2f1f0;
+  --color-line: #d6d3d0;
+
+  /* Status */
+  --color-danger: #e01e5a;
+  --color-danger-soft: #fdedf2;
+  --color-warning: #ffcc17;
+  --color-warning-soft: #fff8dc;
+  --color-success: #0f7f85;
+  --color-success-soft: #e6f3f3;
+
+  /* Modules — 架電状況共有 / スケジュール管理 */
+  --color-calls: #e0561b;
+  --color-calls-soft: #fdf0e9;
+  --color-schedule: #0077c7;
+  --color-schedule-soft: #e8f2fa;
+
+  /* Roles */
+  --color-role-telema: #0f7f85;
+  --color-role-telema-soft: #e6f3f3;
+  --color-role-sales: #0077c7;
+  --color-role-sales-soft: #e8f2fa;
+  --color-role-admin: #4b4943;
+  --color-role-admin-soft: #edebe8;
+
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --shadow-card: 0 1px 2px rgb(3 3 2 / 0.06), 0 1px 1px rgb(3 3 2 / 0.04);
+  --shadow-raised: 0 4px 12px rgb(3 3 2 / 0.08);
+}
+
+@layer base {
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-base font-sans text-ink antialiased;
+    line-height: 1.5;
+    font-feature-settings: 'palt' 0;
+  }
+  h1,
+  h2,
+  h3 {
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-main);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Packages allowed to run install scripts (native builds / engines).
+allowBuilds:
+  '@prisma/engines': true
+  argon2: true
+  esbuild: true
+  prisma: true
+
+minimumReleaseAgeExclude:
+  - lucide-react@1.54.0
+  - vite@8.3.4

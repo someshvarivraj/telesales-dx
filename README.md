@@ -1,0 +1,72 @@
+# テレマ・営業DX (telesales-dx)
+
+テレマと営業の業務をつなぐ社内Webアプリです。ログイン後、DBに登録された役割（テレマ／営業／管理者）に応じた画面が表示されます。
+
+Internal web app connecting telemarketing and sales. After login, each user sees the screens for the role stored in the database (TELEMA / SALES / ADMIN).
+
+## 構成 / Structure
+
+```
+apps/
+  api/      Express 5 + Prisma 7 (PostgreSQL) — 認証・API
+  web/      React 19 + Vite + Tailwind CSS 4 — 画面
+packages/
+  shared/   API と画面で共有する型・スキーマ・定数
+docs/       設計メモ
+```
+
+詳細は [docs/architecture.md](docs/architecture.md) を参照してください。
+
+## 必要なもの / Requirements
+
+- Node.js 22 LTS 以上（`.nvmrc`）
+- pnpm 11（`corepack enable` で有効化）
+- PostgreSQL 16（ローカル、または `docker compose up -d db`）
+
+## セットアップ / Setup
+
+```bash
+corepack enable
+pnpm install
+
+# API の環境変数
+cp apps/api/.env.example apps/api/.env
+# SESSION_SECRET を変更: openssl rand -base64 48
+
+# DB のマイグレーション
+pnpm db:migrate
+
+# 最初の管理者を作成（仮パスワードが1回だけ表示されます）
+pnpm user:create --email you@example.co.jp --name "山田 太郎" --role ADMIN
+```
+
+## 開発 / Development
+
+```bash
+pnpm dev          # API http://localhost:3000 + 画面 http://localhost:5173
+pnpm test         # 全パッケージのテスト
+pnpm lint         # ESLint
+pnpm typecheck    # TypeScript
+pnpm build        # 本番ビルド
+```
+
+ユーザー作成の例 / Creating users:
+
+```bash
+pnpm user:create --email a@example.co.jp --name "佐藤 花子" --role TELEMA --lead
+pnpm user:create --email b@example.co.jp --name "中村 一郎" --role SALES
+```
+
+初回ログイン時はパスワードの変更が必須です。 / Users must change the temporary password at first login.
+
+## 本番 / Production
+
+```bash
+pnpm build
+pnpm db:deploy
+WEB_DIST_DIR=$(pwd)/apps/web/dist NODE_ENV=production TRUST_PROXY=true pnpm start
+```
+
+API が画面（`apps/web/dist`）も配信するため、1つのオリジンで動きます。HTTPS は ALB などで終端してください。
+
+The API also serves the built web app, so everything runs on one origin. Terminate HTTPS at the load balancer (e.g. AWS ALB).

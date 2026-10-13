@@ -1,0 +1,12 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: ['src/main.ts', 'src/cli/createUser.ts'],
+  format: ['esm'],
+  target: 'node22',
+  platform: 'node',
+  sourcemap: true,
+  clean: true,
+  // Bundle workspace packages so the deployed artifact does not depend on TS sources.
+  noExternal: ['@telesales/shared'],
+});

@@ -1,0 +1,48 @@
+import type { ReactNode } from 'react';
+import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react';
+import { cn } from './cn';
+
+type Tone = 'error' | 'warning' | 'info' | 'success';
+
+const toneStyle: Record<Tone, { box: string; icon: ReactNode }> = {
+  error: {
+    box: 'border-danger/40 bg-danger-soft text-ink',
+    icon: <CircleAlert aria-hidden="true" className="size-5 shrink-0 text-danger" />,
+  },
+  warning: {
+    box: 'border-warning bg-warning-soft text-ink',
+    icon: <TriangleAlert aria-hidden="true" className="size-5 shrink-0 text-ink" />,
+  },
+  info: {
+    box: 'border-main/30 bg-main-soft text-ink',
+    icon: <Info aria-hidden="true" className="size-5 shrink-0 text-main" />,
+  },
+  success: {
+    box: 'border-success/30 bg-success-soft text-ink',
+    icon: <CircleCheck aria-hidden="true" className="size-5 shrink-0 text-success" />,
+  },
+};
+
+interface AlertProps {
+  tone: Tone;
+  children: ReactNode;
+  className?: string;
+}
+
+/** Errors are announced immediately (role=alert); other tones politely (role=status). */
+export function Alert({ tone, children, className }: AlertProps) {
+  const style = toneStyle[tone];
+  return (
+    <div
+      role={tone === 'error' ? 'alert' : 'status'}
+      className={cn(
+        'flex items-start gap-2.5 rounded-(--radius-control) border px-3.5 py-3 text-sm',
+        style.box,
+        className,
+      )}
+    >
+      {style.icon}
+      <div className="min-w-0 pt-px">{children}</div>
+    </div>
+  );
+}

@@ -1,0 +1,65 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  TELEMA
+  SALES
+  ADMIN
+}
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique @db.VarChar(254)
+  displayName        String    @map("display_name") @db.VarChar(100)
+  passwordHash       String    @map("password_hash")
+  role               Role
+  isTeamLead         Boolean   @default(false) @map("is_team_lead")
+  isActive           Boolean   @default(true) @map("is_active")
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  failedLoginCount   Int       @default(0) @map("failed_login_count")
+  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(6)
+  passwordChangedAt  DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  auditLogs AuditLog[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String   @db.VarChar(64)
+  targetType  String?  @map("target_type") @db.VarChar(64)
+  targetId    String?  @map("target_id") @db.VarChar(64)
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.VarChar(512)
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+/// Session store table used by connect-pg-simple. Column names must stay as-is.
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}
