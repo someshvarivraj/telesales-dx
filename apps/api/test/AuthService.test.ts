@@ -31,10 +31,10 @@ describe('AuthService', () => {
     service = new AuthService(users, hasher, audit, clock, policy);
     await users.create({
       email: 'tanaka@example.co.jp',
-      displayName: '田中',
+      employeeNo: '1001',
+      name: '田中',
       passwordHash: await hasher.hash(PASSWORD),
-      role: Role.Telema,
-      isTeamLead: false,
+      roles: [Role.Telema],
       mustChangePassword: false,
     });
   });

@@ -1,4 +1,4 @@
-import { Role } from '@telesales/shared';
+import { type Role } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { PasswordHasher } from '../../domain/security/PasswordHasher.js';
 import type { User } from '../../domain/user/User.js';
@@ -6,10 +6,10 @@ import type { UserRepository } from '../../domain/user/UserRepository.js';
 import type { TemporaryPasswordGenerator } from '../../infrastructure/security/TemporaryPasswordGenerator.js';
 
 export interface CreateUserInput {
+  employeeNo: string | null;
+  name: string;
   email: string;
-  displayName: string;
-  role: Role;
-  isTeamLead: boolean;
+  roles: Role[];
   createdBy?: string | null;
 }
 
@@ -19,10 +19,10 @@ export interface CreatedUser {
   temporaryPassword: string;
 }
 
-export class DuplicateEmailError extends Error {
-  constructor(email: string) {
-    super(`A user with email ${email} already exists`);
-    this.name = 'DuplicateEmailError';
+export class UserValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UserValidationError';
   }
 }
 
@@ -36,20 +36,26 @@ export class UserService {
 
   async createUser(input: CreateUserInput): Promise<CreatedUser> {
     const email = input.email.trim().toLowerCase();
-    if (await this.users.findByEmail(email)) {
-      throw new DuplicateEmailError(email);
+    const employeeNo = input.employeeNo?.trim() || null;
+    const roles = [...new Set(input.roles)];
+
+    if (roles.length === 0) {
+      throw new UserValidationError('At least one role is required');
     }
-    if (input.isTeamLead && input.role !== Role.Telema) {
-      throw new Error('Only telemarketing users can be team leads');
+    if (await this.users.findByEmail(email)) {
+      throw new UserValidationError(`A user with email ${email} already exists`);
+    }
+    if (employeeNo && (await this.users.findByEmployeeNo(employeeNo))) {
+      throw new UserValidationError(`A user with employee no. ${employeeNo} already exists`);
     }
 
     const temporaryPassword = this.passwords.generate();
     const user = await this.users.create({
+      employeeNo,
+      name: input.name.trim(),
       email,
-      displayName: input.displayName.trim(),
       passwordHash: await this.hasher.hash(temporaryPassword),
-      role: input.role,
-      isTeamLead: input.isTeamLead,
+      roles,
       mustChangePassword: true,
     });
 
@@ -58,7 +64,12 @@ export class UserService {
       actorUserId: input.createdBy ?? null,
       targetType: 'user',
       targetId: user.id,
-      metadata: { role: user.role, isTeamLead: user.isTeamLead },
+      after: {
+        email: user.email,
+        employeeNo: user.employeeNo,
+        name: user.name,
+        roles: [...user.roles],
+      },
     });
 
     return { user, temporaryPassword };

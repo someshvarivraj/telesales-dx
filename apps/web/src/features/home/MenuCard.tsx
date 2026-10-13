@@ -6,6 +6,7 @@ import type { MenuItem, MenuTone } from './menus';
 const toneClass: Record<MenuTone, { tile: string; hover: string }> = {
   calls: { tile: 'bg-calls-soft text-calls', hover: 'hover:border-calls/50' },
   schedule: { tile: 'bg-schedule-soft text-schedule', hover: 'hover:border-schedule/50' },
+  appointments: { tile: 'bg-success-soft text-success', hover: 'hover:border-success/50' },
   admin: { tile: 'bg-role-admin-soft text-role-admin', hover: 'hover:border-role-admin/40' },
 };
 

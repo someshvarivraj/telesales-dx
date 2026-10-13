@@ -1,8 +1,8 @@
 # テレマ・営業DX (telesales-dx)
 
-テレマと営業の業務をつなぐ社内Webアプリです。ログイン後、DBに登録された役割（テレマ／営業／管理者）に応じた画面が表示されます。
+テレマと営業の業務をつなぐ社内Webアプリです。ログイン後、DBに登録された役割（テレマ／リーダー／営業／閲覧／管理者。1人に複数可）に応じて、使える機能が変わります。
 
-Internal web app connecting telemarketing and sales. After login, each user sees the screens for the role stored in the database (TELEMA / SALES / ADMIN).
+Internal web app connecting telemarketing and sales. After login, what each user can do depends on the roles stored in the database (TELEMA / TELEMA_LEAD / SALES / VIEWER / ADMIN; one user can hold several).
 
 ## 構成 / Structure
 
@@ -37,7 +37,7 @@ cp apps/api/.env.example apps/api/.env
 pnpm db:migrate
 
 # 最初の管理者を作成（仮パスワードが1回だけ表示されます）
-pnpm user:create --email you@example.co.jp --name "山田 太郎" --role ADMIN
+pnpm user:create --email you@example.co.jp --name "山田 太郎" --roles ADMIN
 ```
 
 ## 開発 / Development
@@ -53,8 +53,9 @@ pnpm build        # 本番ビルド
 ユーザー作成の例 / Creating users:
 
 ```bash
-pnpm user:create --email a@example.co.jp --name "佐藤 花子" --role TELEMA --lead
-pnpm user:create --email b@example.co.jp --name "中村 一郎" --role SALES
+pnpm user:create --email a@example.co.jp --name "佐藤 花子" --employee-no 1234 --roles TELEMA,TELEMA_LEAD
+pnpm user:create --email b@example.co.jp --name "中村 一郎" --roles SALES
+pnpm user:create --email c@example.co.jp --name "DX 太郎" --roles VIEWER
 ```
 
 初回ログイン時はパスワードの変更が必須です。 / Users must change the temporary password at first login.

@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ROLE_HOME_PATH } from '@telesales/shared';
 import { useForm } from 'react-hook-form';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { paths, safeRedirectTarget } from '@/app/paths';
@@ -34,7 +33,7 @@ export function LoginPage() {
     return <FullPageSpinner />;
   }
   if (session.data) {
-    return <Navigate to={ROLE_HOME_PATH[session.data.role]} replace />;
+    return <Navigate to={paths.home} replace />;
   }
 
   const onSubmit = handleSubmit((values) => {
@@ -44,7 +43,7 @@ export function LoginPage() {
           navigate(paths.changePassword, { replace: true });
           return;
         }
-        navigate(redirectTo ?? ROLE_HOME_PATH[user.role], { replace: true });
+        navigate(redirectTo ?? paths.home, { replace: true });
       },
     });
   });

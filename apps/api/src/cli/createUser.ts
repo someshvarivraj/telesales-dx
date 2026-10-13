@@ -1,43 +1,44 @@
 /**
  * Creates a user and prints a one-time temporary password.
  *
- *   pnpm user:create --email a@example.co.jp --name "山田 太郎" --role ADMIN
- *   pnpm user:create --email b@example.co.jp --name "佐藤 花子" --role TELEMA --lead
+ *   pnpm user:create --email a@example.co.jp --name "山田 太郎" --roles ADMIN
+ *   pnpm user:create --email b@example.co.jp --name "佐藤 花子" --employee-no 1234 --roles TELEMA,TELEMA_LEAD
  */
 import { parseArgs } from 'node:util';
-import { isRole } from '@telesales/shared';
+import { ALL_ROLES, isRole, type Role } from '@telesales/shared';
 import { AppConfig } from '../config/AppConfig.js';
 import { Container } from '../container.js';
+
+const USAGE = `Usage: --email <email> --name <name> --roles <${ALL_ROLES.join('|')}>[,...] [--employee-no <no>]`;
 
 async function run(): Promise<void> {
   const { values } = parseArgs({
     options: {
       email: { type: 'string' },
       name: { type: 'string' },
-      role: { type: 'string' },
-      lead: { type: 'boolean', default: false },
+      roles: { type: 'string' },
+      'employee-no': { type: 'string' },
     },
   });
 
-  if (!values.email || !values.name || !isRole(values.role)) {
-    throw new Error(
-      'Usage: --email <email> --name <display name> --role <TELEMA|SALES|ADMIN> [--lead]',
-    );
+  const roles = (values.roles ?? '').split(',').map((role) => role.trim().toUpperCase());
+  if (!values.email || !values.name || roles.length === 0 || !roles.every(isRole)) {
+    throw new Error(USAGE);
   }
 
   const container = new Container(AppConfig.fromEnv());
   try {
     const { user, temporaryPassword } = await container.userService.createUser({
       email: values.email,
-      displayName: values.name,
-      role: values.role,
-      isTeamLead: values.lead,
+      name: values.name,
+      employeeNo: values['employee-no'] ?? null,
+      roles: roles as Role[],
     });
     process.stdout.write(
       [
         'User created.',
         `  email: ${user.email}`,
-        `  role:  ${user.role}${user.isTeamLead ? ' (lead)' : ''}`,
+        `  roles: ${user.roles.join(', ')}`,
         `  temporary password: ${temporaryPassword}`,
         'Share the password through a secure channel. It must be changed at first login.',
         '',

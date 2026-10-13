@@ -1,4 +1,4 @@
-import { CSRF_HEADER, CSRF_HEADER_VALUE, ErrorCode, Role } from '@telesales/shared';
+import { CSRF_HEADER, CSRF_HEADER_VALUE, ErrorCode, Permission, Role } from '@telesales/shared';
 import session from 'express-session';
 import { pino } from 'pino';
 import request from 'supertest';
@@ -27,10 +27,10 @@ async function buildApp() {
   const clock = new FixedClock(new Date());
   await users.create({
     email: 'sato@example.co.jp',
-    displayName: '佐藤',
+    employeeNo: '2001',
+    name: '佐藤',
     passwordHash: await hasher.hash('initial-password-123'),
-    role: Role.Sales,
-    isTeamLead: false,
+    roles: [Role.Sales, Role.Viewer],
     mustChangePassword: true,
   });
   const authService = new AuthService(
@@ -90,7 +90,12 @@ describe('HTTP app', () => {
       .set(CSRF_HEADER, CSRF_HEADER_VALUE)
       .send({ email: 'SATO@example.co.jp', password: 'initial-password-123' });
     expect(login.status).toBe(200);
-    expect(login.body.user).toMatchObject({ role: Role.Sales, mustChangePassword: true });
+    expect(login.body.user).toMatchObject({
+      roles: [Role.Sales, Role.Viewer],
+      mustChangePassword: true,
+    });
+    expect(login.body.user.permissions).toContain(Permission.SendChangeRequests);
+    expect(login.body.user.permissions).not.toContain(Permission.ManageTelemaAppointments);
     expect(login.body.user.passwordHash).toBeUndefined();
 
     const me = await agent.get('/api/auth/me');
