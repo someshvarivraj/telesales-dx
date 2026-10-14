@@ -1,0 +1,174 @@
+import { z } from 'zod';
+import type { HolidayKind, RecipientField, RecipientKind } from '../enums.js';
+import { ALL_PERMISSIONS, type Permission } from '../permissions.js';
+import { ALL_ROLES, type Role } from '../roles.js';
+import { dateString, optionalText, requiredText, type UserRef } from './common.js';
+
+export type UserStatusValue = 'ACTIVE' | 'DISABLED';
+
+const roleEnum = z.enum(ALL_ROLES as [Role, ...Role[]]);
+const permissionEnum = z.enum(ALL_PERMISSIONS as [Permission, ...Permission[]]);
+
+export const createUserRequestSchema = z.object({
+  employeeNo: optionalText(32),
+  name: requiredText(100),
+  email: z.string().trim().toLowerCase().max(254).pipe(z.email()),
+  roles: z.array(roleEnum).min(1),
+});
+export type CreateUserRequest = z.input<typeof createUserRequestSchema>;
+
+export const updateUserRequestSchema = createUserRequestSchema.extend({
+  status: z.enum(['ACTIVE', 'DISABLED']),
+  grants: z.array(permissionEnum).default([]),
+  telemarketer: z
+    .object({
+      isAllocationTarget: z.boolean(),
+      territory: z.array(z.string().trim().min(1).max(10)).max(47),
+    })
+    .nullish(),
+});
+export type UpdateUserRequest = z.input<typeof updateUserRequestSchema>;
+
+export interface AdminUserDto {
+  id: string;
+  employeeNo: string | null;
+  name: string;
+  email: string;
+  status: UserStatusValue;
+  roles: Role[];
+  grants: Permission[];
+  lastLoginAt: string | null;
+  isLocked: boolean;
+  mustChangePassword: boolean;
+  telemarketer: { isAllocationTarget: boolean; territory: string[] } | null;
+}
+
+export interface TemporaryPasswordResponse {
+  user: AdminUserDto;
+  /** Shown once. */
+  temporaryPassword: string;
+}
+
+export const optionRequestSchema = z.object({
+  category: requiredText(48),
+  code: z
+    .string()
+    .trim()
+    .min(1)
+    .max(48)
+    .regex(/^[A-Z0-9_]+$/),
+  label: requiredText(100),
+});
+export const updateOptionRequestSchema = z.object({
+  label: requiredText(100),
+  isActive: z.boolean(),
+  sortOrder: z.number().int().min(0).max(9999),
+});
+
+export const companyHolidayRequestSchema = z.object({
+  date: dateString,
+  name: requiredText(100),
+});
+export const calendarYearQuerySchema = z.object({
+  year: z.coerce.number().int().min(2000).max(2100),
+});
+
+export interface CalendarDayAdminDto {
+  date: string;
+  name: string;
+  kind: HolidayKind;
+}
+
+export interface NoticeSettingDto {
+  code: string;
+  name: string;
+  isEnabled: boolean;
+  sendsEmail: boolean;
+  sendTime: string | null;
+  daysBefore: number[];
+  recipients: NoticeRecipientDto[];
+}
+
+export interface NoticeRecipientDto {
+  id: string;
+  field: RecipientField;
+  kind: RecipientKind;
+  value: string;
+  /** Display label: user name, role name, address or context label. */
+  label: string;
+}
+
+export const updateNoticeRequestSchema = z.object({
+  isEnabled: z.boolean(),
+  sendsEmail: z.boolean(),
+  sendTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .nullish(),
+  daysBefore: z.array(z.number().int().min(0).max(30)).max(5).default([]),
+});
+
+export const noticeRecipientRequestSchema = z.object({
+  field: z.enum(['TO', 'CC']),
+  kind: z.enum(['EMAIL', 'USER', 'ROLE', 'CONTEXT']),
+  value: requiredText(254),
+});
+
+export const areaRuleRequestSchema = z.object({
+  prefecture: requiredText(10),
+  city: optionalText(50),
+  /** null = any; 'CURRENT' = current clients only; 'NOT_CURRENT' = everyone else. */
+  customerTypeCondition: z.enum(['CURRENT', 'NOT_CURRENT']).nullish(),
+  companyGroupId: z.uuid().nullish(),
+  salesRepId: z.uuid(),
+  backupRepId: z.uuid().nullish(),
+  webOnly: z.boolean().default(false),
+  validFrom: dateString,
+  validTo: dateString.nullish(),
+});
+export type AreaRuleRequest = z.input<typeof areaRuleRequestSchema>;
+
+export interface AreaRuleDto {
+  id: string;
+  prefecture: string;
+  city: string | null;
+  customerTypeCondition: 'CURRENT' | 'NOT_CURRENT' | null;
+  companyGroup: { id: string; name: string } | null;
+  salesRep: UserRef;
+  backupRep: UserRef | null;
+  webOnly: boolean;
+  validFrom: string;
+  validTo: string | null;
+}
+
+export const companyGroupRequestSchema = z.object({
+  name: requiredText(100),
+  isActive: z.boolean().default(true),
+});
+
+export interface CompanyGroupDto {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface AuditLogDto {
+  id: string;
+  actor: UserRef | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  before: unknown;
+  after: unknown;
+  createdAt: string;
+}
+
+export interface AppSettingsDto {
+  travelBufferMinutes: number;
+  travelBufferMode: 'WARN' | 'BLOCK';
+}
+
+export const appSettingsRequestSchema = z.object({
+  travelBufferMinutes: z.number().int().min(0).max(240),
+  travelBufferMode: z.enum(['WARN', 'BLOCK']),
+});

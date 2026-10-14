@@ -1,5 +1,5 @@
 import path from 'node:path';
-import express, { type Express, type RequestHandler } from 'express';
+import express, { type Express, type RequestHandler, type Router } from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
@@ -19,6 +19,8 @@ export interface AppDependencies {
   sessionMiddleware: RequestHandler;
   authenticator: Authenticator;
   authController: AuthController;
+  /** Feature routers. Mounted under /api behind authentication. */
+  apiRouters?: Router[];
 }
 
 export function createApp(deps: AppDependencies): Express {
@@ -52,10 +54,14 @@ export function createApp(deps: AppDependencies): Express {
   app.use('/health', createHealthRouter(deps.database));
 
   const api = express.Router();
-  api.use(express.json({ limit: '100kb' }));
+  api.use(express.json({ limit: '1mb' }));
   api.use(deps.sessionMiddleware);
   api.use(csrfGuard);
   api.use('/auth', createAuthRouter(deps.authController, deps.authenticator));
+  api.use(deps.authenticator.requireAuth());
+  for (const router of deps.apiRouters ?? []) {
+    api.use(router);
+  }
   api.use(notFoundHandler);
   app.use('/api', api);
 

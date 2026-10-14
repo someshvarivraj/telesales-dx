@@ -168,6 +168,15 @@ model CalendarDay {
   @@map("calendar_days")
 }
 
+/// Small system-wide settings edited by admins (e.g. travel-time buffer).
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("app_settings")
+}
+
 /// Admin-managed choices (grades, result details, customer types, plan types, deal status…).
 /// Options are disabled, never deleted.
 model OptionItem {
@@ -237,6 +246,7 @@ model Notification {
   userId     String    @map("user_id") @db.Uuid
   noticeCode String    @map("notice_code") @db.VarChar(8)
   title      String    @db.VarChar(200)
+  body       String?   @db.VarChar(500)
   linkPath   String?   @map("link_path") @db.VarChar(300)
   readAt     DateTime? @map("read_at") @db.Timestamptz(6)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -354,6 +364,8 @@ enum CompanyFlag {
 model Company {
   id             String      @id @default(uuid()) @db.Uuid
   name           String      @db.VarChar(200)
+  /// Normalised name for duplicate checks and search (legal-form words and spaces removed)
+  nameKey        String      @default("") @map("name_key") @db.VarChar(200)
   office         String?     @db.VarChar(100)
   department     String?     @db.VarChar(100)
   phone          String?     @db.VarChar(32)
@@ -370,7 +382,11 @@ model Company {
   /// Reference only (existing telemarketing system)
   telemaIdNo     String?     @map("telema_id_no") @db.VarChar(32)
   listName       String?     @map("list_name") @db.VarChar(200)
+  /// e.g. 上場 — split from the end of the address on the handover PDF
+  listingStatus  String?     @map("listing_status") @db.VarChar(20)
   flag           CompanyFlag @default(NONE)
+  /// The existing company this one was flagged against on import
+  flagMatchId    String?     @map("flag_match_id") @db.Uuid
   isCallTarget   Boolean     @default(false) @map("is_call_target")
   /// Extra columns from new lists, matched by header name
   extra          Json?
@@ -382,6 +398,8 @@ model Company {
   updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   parent       Company?            @relation("CompanyParent", fields: [parentId], references: [id])
+  flagMatch    Company?            @relation("CompanyFlagMatch", fields: [flagMatchId], references: [id], onDelete: SetNull)
+  flaggedBy    Company[]           @relation("CompanyFlagMatch")
   children     Company[]           @relation("CompanyParent")
   companyGroup CompanyGroup?       @relation(fields: [companyGroupId], references: [id])
   createdBy    User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
@@ -393,6 +411,7 @@ model Company {
 
   @@index([phoneDigits])
   @@index([name])
+  @@index([nameKey])
   @@index([isCallTarget, flag])
   @@map("companies")
 }
@@ -401,11 +420,13 @@ model CompanyFormerName {
   id        String   @id @default(uuid()) @db.Uuid
   companyId String   @map("company_id") @db.Uuid
   name      String   @db.VarChar(200)
+  nameKey   String   @default("") @map("name_key") @db.VarChar(200)
   changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([name])
+  @@index([nameKey])
   @@map("company_former_names")
 }
 
@@ -442,7 +463,7 @@ model CallRecord {
   calledAt       DateTime  @map("called_at") @db.Timestamptz(6)
   /// Option code in category "call_grade" (A–D by default)
   grade          String    @db.VarChar(48)
-  resultDetail   String?   @map("result_detail") @db.VarChar(48)
+  resultDetail   String?   @map("result_detail")
   contactName    String?   @map("contact_name") @db.VarChar(100)
   interestLevel  String?   @map("interest_level") @db.VarChar(48)
   nextCallDate   DateTime? @map("next_call_date") @db.Date
@@ -706,6 +727,9 @@ model SchedulePlan {
   candidateGroupId String?    @map("candidate_group_id") @db.Uuid
   holidayWork      Boolean    @default(false) @map("holiday_work")
   recurrenceRule   String?    @map("recurrence_rule") @db.VarChar(200)
+  /// Plans created together by "repeat" share a series id
+  seriesId         String?    @map("series_id") @db.Uuid
+  note             String?
   appointmentId    String?    @unique @map("appointment_id") @db.Uuid
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -718,6 +742,7 @@ model SchedulePlan {
 
   @@index([ownerId, startsAt])
   @@index([candidateGroupId])
+  @@index([seriesId])
   @@map("schedule_plans")
 }
 

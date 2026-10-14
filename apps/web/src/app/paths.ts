@@ -4,8 +4,19 @@ export const paths = {
   changePassword: '/password',
   home: '/home',
   calls: '/calls',
+  callsImport: '/calls/import',
+  callsImports: '/calls/imports',
+  callsDuplicates: '/calls/duplicates',
+  company: (id: string) => `/calls/companies/${id}`,
   schedule: '/schedule',
+  book: '/schedule/book',
   appointments: '/appointments',
+  appointment: (id: string) => `/appointments/${id}`,
+  appointmentMail: (id: string, kind: 'booking' | 'cancellation' | 'dayBefore') =>
+    `/appointments/${id}/mail/${kind}`,
+  dayBefore: '/appointments/day-before',
+  changeRequests: '/appointments/change-requests',
+  dashboard: '/dashboard',
   admin: {
     root: '/admin',
     users: '/admin/users',
@@ -14,6 +25,8 @@ export const paths = {
     options: '/admin/options',
     notices: '/admin/notices',
     locks: '/admin/locks',
+    settings: '/admin/settings',
+    audit: '/admin/audit',
   },
 } as const;
 

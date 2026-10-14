@@ -21,7 +21,7 @@
   --color-link: #0071c1;
 
   /* Surfaces & lines */
-  --color-base: #f8f7f6;
+  --color-canvas: #f8f7f6;
   --color-surface: #ffffff;
   --color-column: #f2f1f0;
   --color-line: #d6d3d0;
@@ -62,7 +62,7 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-base font-sans text-ink antialiased;
+    @apply bg-canvas font-sans text-ink antialiased;
     line-height: 1.5;
     font-feature-settings: 'palt' 0;
   }

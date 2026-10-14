@@ -6,6 +6,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: ErrorCode | 'NETWORK_ERROR' | 'UNKNOWN',
     readonly fields: Record<string, string[]> = {},
+    /** Extra context from the server, e.g. who holds a lock or why a slot is unavailable. */
+    readonly details?: unknown,
   ) {
     super(`API request failed: ${status} ${code}`);
     this.name = 'ApiError';
