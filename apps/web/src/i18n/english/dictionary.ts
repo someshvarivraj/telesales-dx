@@ -1105,6 +1105,8 @@ export const EXACT: Readonly<Record<string, string>> = {
   翌日のアポ: "Tomorrow's appointments",
   日程変更: 'Rescheduled',
   打ち合わせ結果: 'Meeting result',
+  前のタブを表示: 'Show previous tabs',
+  次のタブを表示: 'Show next tabs',
 };
 
 /** Text with values in it. `{n}` matches anything; the matched parts are translated too. */
