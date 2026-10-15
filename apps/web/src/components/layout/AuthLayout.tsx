@@ -21,21 +21,23 @@ const STEPS = [
 ];
 
 /**
- * Signed-out screens: the form card, and on wide screens the app's flow beside it.
- * Phones and tablets get the card alone so the form is the first thing on screen.
+ * Signed-out screens, in the classic split layout: the app's flow on the grid at the
+ * left, and a plain white form panel at the right (full height, no floating card).
+ * Phones and tablets get the form panel alone so the form is the first thing on screen.
  */
 export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-12">
+    <div className="flex min-h-dvh">
       <GridBackdrop />
-      <div className="flex w-full max-w-5xl items-center justify-center gap-14">
-        <section className="max-w-md flex-1 max-lg:hidden">
+
+      <section className="flex flex-1 flex-col justify-center px-14 py-12 max-lg:hidden">
+        <div className="mx-auto w-full max-w-lg">
           <FlowScene />
-          <p className="mt-6 text-2xl leading-snug font-bold text-ink">
+          <p className="mt-8 text-[28px] leading-snug font-bold text-ink">
             架電からアポ、打ち合わせの結果まで。
           </p>
-          <p className="mt-1 text-sm text-ink-sub">テレマと営業が、同じ情報で動けます。</p>
-          <ol className="mt-6 flex flex-col gap-3">
+          <p className="mt-2 text-base text-ink-sub">テレマと営業が、同じ情報で動けます。</p>
+          <ol className="mt-8 flex flex-col gap-4">
             {STEPS.map((step, index) => (
               <li key={step.title} className="flex items-start gap-3">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-full! bg-main text-xs font-bold text-white">
@@ -48,26 +50,33 @@ export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLa
               </li>
             ))}
           </ol>
-        </section>
+        </div>
+      </section>
 
-        <div className="w-full max-w-md">
-          <div className="mb-4 flex justify-end">
-            <LanguageSwitch className="w-36" />
-          </div>
-          <div className="mb-6 flex items-center justify-center gap-3">
-            <MoraBot mood={mood} size={76} />
-            <div>
-              <p className="text-lg leading-tight font-bold text-ink">{ja.app.name}</p>
-              <p className="text-xs text-ink-sub">{ja.app.company}</p>
+      <div className="flex w-full shrink-0 flex-col border-l border-line bg-surface shadow-(--shadow-raised) lg:w-[480px]">
+        <div className="flex items-center justify-between gap-3 px-8 pt-6 max-sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <MoraBot mood={mood} size={40} title="" />
+            <div className="min-w-0">
+              <p className="truncate text-[15px] leading-tight font-bold text-ink">{ja.app.name}</p>
+              <p className="truncate text-[11px] leading-tight text-ink-sub">{ja.app.company}</p>
             </div>
           </div>
-          <main className="border border-line bg-surface px-7 py-8 shadow-(--shadow-card) max-sm:px-5 max-sm:py-6">
-            <h1 className="mb-6 text-xl font-bold">{title}</h1>
-            {children}
-          </main>
-          {footer && <div className="mt-5 text-center text-sm text-ink-sub">{footer}</div>}
-          <p className="mt-5 text-center text-xs text-ink-sub">{ja.app.notice}</p>
+          <LanguageSwitch className="w-32 shrink-0" />
         </div>
+
+        <main className="flex flex-1 flex-col justify-center px-12 py-10 max-sm:px-5">
+          <div className="mx-auto w-full max-w-sm">
+            <h1 className="text-2xl font-bold text-ink">{title}</h1>
+            <div className="mt-2 mb-8 h-[3px] w-10 bg-main" aria-hidden="true" />
+            {children}
+            {footer && <p className="mt-6 text-sm text-ink-sub">{footer}</p>}
+          </div>
+        </main>
+
+        <p className="border-t border-line px-8 py-4 text-xs text-ink-sub max-sm:px-5">
+          {ja.app.notice}
+        </p>
       </div>
     </div>
   );
