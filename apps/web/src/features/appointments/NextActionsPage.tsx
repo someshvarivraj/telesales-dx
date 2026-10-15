@@ -78,7 +78,7 @@ export function NextActionsPage() {
                             overdue
                               ? 'font-bold text-danger'
                               : dueToday
-                                ? 'font-bold text-main'
+                                ? 'font-bold text-ink'
                                 : 'text-ink-sub',
                           )}
                         >

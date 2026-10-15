@@ -33,7 +33,7 @@ export function FileDrop({ accept, multiple = false, hint, onFiles, disabled }: 
         disabled && 'cursor-not-allowed opacity-60',
       )}
     >
-      <Upload aria-hidden="true" className="size-6 text-main" />
+      <Upload aria-hidden="true" className="size-6 text-ink-sub" />
       <span className="font-bold text-ink">ファイルを選択、またはここにドロップ</span>
       <span className="text-ink-sub">{hint}</span>
       <input

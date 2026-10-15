@@ -133,7 +133,7 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
               {
                 label: '状態',
                 value: (
-                  <Badge tone={plan.status === 'TENTATIVE' ? 'outline' : 'main'}>
+                  <Badge tone={plan.status === 'TENTATIVE' ? 'outline' : 'info'}>
                     {ja.planStatus[plan.status]}
                   </Badge>
                 ),

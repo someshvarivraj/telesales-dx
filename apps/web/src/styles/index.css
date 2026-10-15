@@ -7,7 +7,9 @@
  * like one family: a quiet white workspace on a very light grey page, one
  * orange accent, square corners everywhere, and lighter type.
  *
- *   orange   #C2410C  primary buttons, the current menu item, links
+ *   orange   #C2410C  fills and lines only (primary buttons, the current-item bar,
+ *                     focus ring) — never text: orange text reads like a warning
+ *   blue     #24588F  links
  *   greys    #F7F8FA page, #E3E6EA rules, #1E2530 text
  *   red      #B42318  必須 and destructive actions only
  *
@@ -33,7 +35,7 @@
   --color-ink: #1e2530;
   --color-ink-sub: #5b6573;
   --color-ink-disabled: #a3abb5;
-  --color-link: #c2410c;
+  --color-link: #24588f;
 
   /* Surfaces & lines */
   --color-canvas: #f7f8fa;

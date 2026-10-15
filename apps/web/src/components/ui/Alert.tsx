@@ -15,7 +15,7 @@ const toneStyle: Record<Tone, { box: string; icon: ReactNode }> = {
   },
   info: {
     box: 'border-main-line border-l-3 border-l-main-focus bg-main-soft text-ink',
-    icon: <Info aria-hidden="true" className="size-5 shrink-0 text-main" />,
+    icon: <Info aria-hidden="true" className="size-5 shrink-0 text-schedule" />,
   },
   success: {
     box: 'border-success/30 bg-success-soft text-ink',

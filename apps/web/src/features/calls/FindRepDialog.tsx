@@ -110,7 +110,7 @@ export function FindRepDialog({ open, onClose, companyId, onChoose }: FindRepDia
               <span className="flex flex-wrap items-center gap-2">
                 営業担当表では <b>{suggestion.rep.name}</b> さんです（{suggestion.matchedBy}）。
                 {suggestion.backup && <span>代わりの人：{suggestion.backup.name}</span>}
-                {suggestion.webOnly && <Badge tone="main">Webのみのエリア</Badge>}
+                {suggestion.webOnly && <Badge tone="info">Webのみのエリア</Badge>}
               </span>
             ) : (
               '営業担当表に合う行がありません。担当営業を選んでください。'

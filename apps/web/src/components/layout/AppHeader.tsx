@@ -32,7 +32,7 @@ export function AppHeader() {
             onClick={handleLogout}
             disabled={logout.isPending}
             aria-label={ja.auth.logout}
-            className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:text-main"
+            className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:text-ink"
           >
             <LogOut aria-hidden="true" className="size-5" />
           </button>

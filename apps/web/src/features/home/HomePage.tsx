@@ -58,7 +58,7 @@ function TaskTile({ task }: { task: Task }) {
         aria-hidden="true"
         className={cn(
           'size-6 shrink-0',
-          task.urgent && task.count > 0 ? 'text-danger' : 'text-main',
+          task.urgent && task.count > 0 ? 'text-danger' : 'text-ink-sub',
         )}
       />
       <span className="min-w-0 flex-1 text-sm font-medium">{task.label}</span>

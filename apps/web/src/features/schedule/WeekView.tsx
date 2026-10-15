@@ -35,7 +35,7 @@ export function WeekView({ start, people, events, holidays, onEvent, onDay }: We
                   className={cn(
                     'border-b border-l border-line px-2 py-2 text-left text-xs font-bold',
                     off ? 'bg-danger-soft text-danger' : 'bg-column text-ink-sub',
-                    date === today && 'text-main',
+                    date === today && 'text-ink',
                   )}
                 >
                   <button

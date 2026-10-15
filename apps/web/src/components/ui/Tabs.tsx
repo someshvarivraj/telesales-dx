@@ -23,7 +23,7 @@ export function Tabs({ items }: { items: readonly TabItem[] }) {
                 cn(
                   '-mb-px flex h-11 items-center gap-2 border-b-2 px-3 text-sm font-bold transition-colors',
                   isActive
-                    ? 'border-main text-main'
+                    ? 'border-main text-ink'
                     : 'border-transparent text-ink-sub hover:text-ink',
                 )
               }

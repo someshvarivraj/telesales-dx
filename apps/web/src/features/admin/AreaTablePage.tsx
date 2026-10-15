@@ -273,9 +273,9 @@ export function AreaTablePage() {
                               </Badge>
                             )}
                             {rule.companyGroup && (
-                              <Badge tone="main">{rule.companyGroup.name}</Badge>
+                              <Badge tone="info">{rule.companyGroup.name}</Badge>
                             )}
-                            {rule.webOnly && <Badge tone="main">Webのみ</Badge>}
+                            {rule.webOnly && <Badge tone="info">Webのみ</Badge>}
                           </div>
                         </Td>
                         <Td className="font-bold">{rule.salesRep.name}</Td>
@@ -317,7 +317,7 @@ export function AreaTablePage() {
                 className="cursor-pointer"
                 title={group.isActive ? 'クリックで無効にする' : 'クリックで有効にする'}
               >
-                <Badge tone={group.isActive ? 'main' : 'neutral'}>
+                <Badge tone={group.isActive ? 'info' : 'neutral'}>
                   {group.name}
                   {group.isActive ? '' : '（無効）'}
                 </Badge>

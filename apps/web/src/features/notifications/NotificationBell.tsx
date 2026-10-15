@@ -51,7 +51,7 @@ export function NotificationBell({ variant = 'icon' }: NotificationBellProps) {
           variant === 'icon'
             ? 'size-10 justify-center'
             : 'nav-link h-10 w-full gap-3 px-3 text-sm font-medium',
-          open && 'bg-main-soft text-main',
+          open && 'bg-main-soft text-ink',
         )}
       >
         <Bell aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} />

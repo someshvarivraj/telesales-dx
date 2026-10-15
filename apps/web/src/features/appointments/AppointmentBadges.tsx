@@ -8,7 +8,7 @@ import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { ja } from '@/i18n/ja';
 
 const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
-  [AppointmentStatus.Scheduled]: 'main',
+  [AppointmentStatus.Scheduled]: 'info',
   [AppointmentStatus.Completed]: 'success',
   [AppointmentStatus.Cancelled]: 'neutral',
 };
@@ -19,7 +19,7 @@ export function AppointmentStatusBadge({ status }: { status: AppointmentStatus }
 
 export function FormatBadge({ format }: { format: MeetingFormat }) {
   return (
-    <Badge tone={format === MeetingFormat.Online ? 'main' : 'outline'}>{ja.format[format]}</Badge>
+    <Badge tone={format === MeetingFormat.Online ? 'info' : 'outline'}>{ja.format[format]}</Badge>
   );
 }
 

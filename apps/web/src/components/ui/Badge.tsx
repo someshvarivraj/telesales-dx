@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { cn } from './cn';
 
-export type BadgeTone = 'neutral' | 'main' | 'success' | 'warning' | 'danger' | 'calls' | 'outline';
+export type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'calls' | 'outline';
 
 const toneClass: Record<BadgeTone, string> = {
   neutral: 'bg-column text-ink-sub',
-  main: 'bg-main-soft text-main',
+  // Blue, not the orange accent: orange text reads like a warning.
+  info: 'bg-schedule-soft text-schedule',
   success: 'bg-success-soft text-success',
   warning: 'bg-warning-soft text-warning-ink',
   danger: 'bg-danger-soft text-danger',

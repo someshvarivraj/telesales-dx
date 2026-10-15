@@ -25,7 +25,7 @@ export function MobileNav() {
                 cn(
                   'flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium',
                   isActive
-                    ? 'bg-main-soft text-main shadow-[inset_0_2px_0_var(--color-main)]'
+                    ? 'bg-main-soft text-ink shadow-[inset_0_2px_0_var(--color-main)]'
                     : 'text-ink-sub',
                 )
               }

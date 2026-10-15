@@ -115,7 +115,7 @@ export function DayBeforePage() {
                           {item.dayBeforeResult && afterNoon && (
                             <Link
                               to={paths.appointmentMail(item.id, 'dayBefore')}
-                              className="inline-flex h-10 items-center rounded-(--radius-control) border border-main px-4 text-sm font-bold text-main hover:bg-main-soft"
+                              className="inline-flex h-10 items-center rounded-(--radius-control) border border-line-strong bg-surface px-4 text-sm font-medium text-ink hover:bg-hover"
                             >
                               営業へ送る
                             </Link>

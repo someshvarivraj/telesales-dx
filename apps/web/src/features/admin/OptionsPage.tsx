@@ -131,7 +131,7 @@ export function OptionsPage() {
                       className={cn(
                         'w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm font-bold',
                         category === value
-                          ? 'bg-main-soft text-main'
+                          ? 'bg-main-soft text-ink'
                           : 'text-ink-sub hover:bg-column',
                       )}
                     >

@@ -107,7 +107,7 @@ export function ShiftsPage() {
                             className={cn(
                               'min-w-14 border-b border-r border-line px-1 py-1 text-center font-medium',
                               !day.businessDay && 'bg-column text-ink-sub',
-                              day.date === today && 'bg-main-soft text-main',
+                              day.date === today && 'bg-main-soft text-ink',
                             )}
                           >
                             <span className="block tabular-nums">{Number(day.date.slice(8))}</span>

@@ -19,7 +19,7 @@ export function StatusPage({ title, description, mood = 'trouble' }: StatusPageP
       {description && <p className="mt-2 text-ink-sub">{description}</p>}
       <Link
         to={paths.root}
-        className="mt-8 border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-main-line hover:bg-main-soft hover:text-main"
+        className="mt-8 border border-line-strong bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-main-line hover:bg-main-soft hover:text-ink"
       >
         {ja.common.backToHome}
       </Link>

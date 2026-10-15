@@ -93,7 +93,7 @@ export function AppSidebar() {
               cn(
                 'nav-link flex h-10 items-center gap-3 px-3 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-main-soft text-main shadow-[inset_3px_0_0_var(--color-main)]'
+                  ? 'bg-main-soft text-ink shadow-[inset_3px_0_0_var(--color-main)]'
                   : 'text-ink-sub hover:bg-hover hover:text-ink',
               )
             }
@@ -118,7 +118,7 @@ export function AppSidebar() {
             type="button"
             onClick={handleLogout}
             disabled={logout.isPending}
-            className="mt-3 flex cursor-pointer items-center gap-1.5 text-sm font-medium text-ink-sub hover:text-main disabled:opacity-45"
+            className="mt-3 flex cursor-pointer items-center gap-1.5 text-sm font-medium text-ink-sub hover:text-ink disabled:opacity-45"
           >
             <LogOut aria-hidden="true" className="size-4" />
             {ja.auth.logout}
@@ -130,7 +130,7 @@ export function AppSidebar() {
           disabled={logout.isPending}
           aria-label={ja.auth.logout}
           title={ja.auth.logout}
-          className="sidebar-compact size-9 w-full cursor-pointer items-center justify-center text-ink-sub hover:bg-hover hover:text-main"
+          className="sidebar-compact size-9 w-full cursor-pointer items-center justify-center text-ink-sub hover:bg-hover hover:text-ink"
         >
           <LogOut aria-hidden="true" className="size-4.5" />
         </button>

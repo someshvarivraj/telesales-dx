@@ -34,7 +34,7 @@ export function PasswordInput({ className, ...rest }: Omit<TextInputProps, 'type
         onClick={() => setVisible((value) => !value)}
         aria-label={visible ? ja.auth.hidePassword : ja.auth.showPassword}
         aria-pressed={visible}
-        className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-ink-sub transition-colors hover:text-main"
+        className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-ink-sub transition-colors hover:text-ink"
       >
         {visible ? (
           <EyeOff aria-hidden="true" className="size-5" />
