@@ -50,8 +50,8 @@ function initialsOf(name: string): string {
 
 /**
  * The left menu on tablets and wider. Brand at the top, the screens grouped by
- * section, and the signed-in person at the foot. The fold button at the bottom
- * shrinks it to icons; the choice is remembered in this browser.
+ * section, and the signed-in person at the foot. The fold button next to the name
+ * (under the logo when folded) shrinks it to icons; the choice is remembered in this browser.
  */
 export function AppSidebar() {
   const user = useCurrentUser();
@@ -85,21 +85,45 @@ export function AppSidebar() {
 
   return (
     <aside className="sidebar fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line bg-column max-md:hidden">
-      <Link
-        to={paths.home}
-        title={folded ? ja.app.name : undefined}
-        className="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4 hover:bg-line/60"
+      <div
+        className={cn(
+          'flex shrink-0 border-b border-line',
+          folded ? 'flex-col items-center gap-1 py-3' : 'h-16 items-center gap-1 pr-2',
+        )}
       >
-        <BrandMark size={32} />
-        <span className="sidebar-full min-w-0">
-          <span className="block truncate text-[15px] leading-tight font-bold whitespace-nowrap text-ink">
-            {ja.app.name}
+        <Link
+          to={paths.home}
+          title={folded ? ja.app.name : undefined}
+          className={cn(
+            'flex min-w-0 items-center gap-3 hover:bg-line/60',
+            folded ? 'p-1' : 'h-full flex-1 pl-4',
+          )}
+        >
+          <BrandMark size={32} />
+          <span className="sidebar-full min-w-0">
+            <span className="block truncate text-[15px] leading-tight font-bold whitespace-nowrap text-ink">
+              {ja.app.name}
+            </span>
+            <span className="block truncate text-[11px] leading-tight text-ink-sub">
+              {ja.app.company}
+            </span>
           </span>
-          <span className="block truncate text-[11px] leading-tight text-ink-sub">
-            {ja.app.company}
-          </span>
-        </span>
-      </Link>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setFolded((value) => !value)}
+          aria-label={folded ? 'メニューを開く' : 'メニューをたたむ'}
+          title={folded ? 'メニューを開く' : 'メニューをたたむ'}
+          aria-expanded={!folded}
+          className="flex size-8 shrink-0 cursor-pointer items-center justify-center text-ink-sub hover:bg-line/60 hover:text-ink"
+        >
+          {folded ? (
+            <PanelLeftOpen aria-hidden="true" className="size-4.5" />
+          ) : (
+            <PanelLeftClose aria-hidden="true" className="size-4.5" />
+          )}
+        </button>
+      </div>
 
       <nav aria-label="メインメニュー" className="flex flex-1 flex-col overflow-y-auto px-2.5 py-3">
         {sections.map((section) => (
@@ -161,21 +185,6 @@ export function AppSidebar() {
           className="sidebar-compact mt-1 h-9 w-full cursor-pointer items-center justify-center text-ink-sub hover:bg-line/60 hover:text-danger"
         >
           <LogOut aria-hidden="true" className="size-4.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setFolded((value) => !value)}
-          aria-label={folded ? 'メニューを開く' : 'メニューをたたむ'}
-          title={folded ? 'メニューを開く' : undefined}
-          aria-expanded={!folded}
-          className="nav-link mt-1.5 flex h-9 w-full cursor-pointer items-center gap-3 px-3 text-xs font-medium text-ink-sub hover:bg-line/60 hover:text-ink"
-        >
-          {folded ? (
-            <PanelLeftOpen aria-hidden="true" className="size-4.5 shrink-0" />
-          ) : (
-            <PanelLeftClose aria-hidden="true" className="size-4.5 shrink-0" />
-          )}
-          <span className="nav-label">メニューをたたむ</span>
         </button>
       </div>
     </aside>
