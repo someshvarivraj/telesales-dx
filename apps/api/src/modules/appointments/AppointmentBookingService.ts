@@ -14,6 +14,7 @@ import {
   phoneDigitsOf,
   type RescheduleRequest,
   Role,
+  SourceFileType,
 } from '@telesales/shared';
 import type { z } from 'zod';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
@@ -43,7 +44,10 @@ function isExclusionViolation(error: unknown): boolean {
   return text.includes('schedule_plans_no_overlapping_appointments') || text.includes('23P01');
 }
 
-/** Combined content hash of the imported files: the same file(s) never register twice (spec §9-2). */
+/**
+ * Fingerprint of an imported record: the content hashes of its file(s) plus the CSV row.
+ * The same record never registers twice (spec §9-2), while other rows of the same CSV still can.
+ */
 export function sourceHashOf(fileHashes: string[], rowKey: string | null): string | null {
   if (fileHashes.length === 0) {
     return null;
@@ -52,6 +56,21 @@ export function sourceHashOf(fileHashes: string[], rowKey: string | null): strin
     .update([...fileHashes].sort().join(':'))
     .update(rowKey ?? '')
     .digest('hex');
+}
+
+/** "row:3" (0-based data row) → 5 (row number in the file, header = 1). */
+export function csvRowNumberOf(rowKey: string | null | undefined): number | null {
+  const match = rowKey ? /^row:(\d+)$/.exec(rowKey) : null;
+  return match?.[1] ? Number(match[1]) + 2 : null;
+}
+
+function sourceTypeOf(file: { contentType: string; originalName: string }): SourceFileType {
+  if (file.contentType === 'application/pdf' || file.originalName.toLowerCase().endsWith('.pdf')) {
+    return SourceFileType.HandoverPdf;
+  }
+  return /\.(csv|txt|tsv|xlsx?)$/i.test(file.originalName)
+    ? SourceFileType.ExistingListCsv
+    : SourceFileType.Other;
 }
 
 /** Plain JSON for the change history (before/after). */
@@ -106,13 +125,14 @@ export class AppointmentBookingService {
     if (files.length !== command.sourceFileIds.length) {
       throw new NotFoundError();
     }
-    const sourceFileHash = sourceHashOf(
+    const sourceFingerprint = sourceHashOf(
       files.map((file) => file.sha256),
       command.sourceRowKey ?? null,
     );
-    if (sourceFileHash) {
+    const csvRowNumber = csvRowNumberOf(command.sourceRowKey);
+    if (sourceFingerprint) {
       const existing = await this.prisma.appointment.findUnique({
-        where: { sourceFileHash },
+        where: { sourceFingerprint },
         select: { id: true },
       });
       if (existing) {
@@ -165,8 +185,17 @@ export class AppointmentBookingService {
               : new Date(),
             source: command.source,
             originalAppointmentId: original?.id ?? null,
-            sourceFileId: files[0]?.id ?? null,
-            sourceFileHash,
+            sourceFingerprint,
+            sourceFiles: {
+              create: files.map((file) => {
+                const sourceType = sourceTypeOf(file);
+                return {
+                  fileId: file.id,
+                  sourceType,
+                  rowNumber: sourceType === SourceFileType.ExistingListCsv ? csvRowNumber : null,
+                };
+              }),
+            },
           },
         });
         await tx.schedulePlan.create({

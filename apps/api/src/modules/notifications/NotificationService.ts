@@ -13,6 +13,8 @@ export interface NoticeEvent {
   linkPath?: string;
   /** The person who caused the event does not need to be told about it. */
   actorId?: string | null;
+  /** Scheduled reminders: each person gets a notice with the same key only once. */
+  dedupeKey?: string;
   /** Sent only when the notice is configured to also send e-mail. */
   email?: { subject: string; text: string; dedupeKey: string; appointmentId?: string | null };
 }
@@ -38,13 +40,8 @@ export class NotificationService {
       const userIds = resolved.userIds.filter((id) => id !== event.actorId);
       if (userIds.length > 0) {
         await this.prisma.notification.createMany({
-          data: userIds.map((userId) => ({
-            userId,
-            noticeCode: event.code,
-            title: event.title.slice(0, 200),
-            body: event.body?.slice(0, 500) ?? null,
-            linkPath: event.linkPath ?? null,
-          })),
+          data: userIds.map((userId) => this.row(userId, event)),
+          skipDuplicates: true,
         });
       }
       if (resolved.sendsEmail && event.email) {
@@ -67,7 +64,7 @@ export class NotificationService {
   /** On-screen notice to specific people, regardless of the configured recipients. */
   async notifyUsers(
     userIds: readonly string[],
-    event: Pick<NoticeEvent, 'code' | 'title' | 'body' | 'linkPath' | 'actorId'>,
+    event: Pick<NoticeEvent, 'code' | 'title' | 'body' | 'linkPath' | 'actorId' | 'dedupeKey'>,
   ): Promise<void> {
     const targets = [...new Set(userIds)].filter((id) => id && id !== event.actorId);
     if (targets.length === 0) {
@@ -79,17 +76,26 @@ export class NotificationService {
         return;
       }
       await this.prisma.notification.createMany({
-        data: targets.map((userId) => ({
-          userId,
-          noticeCode: event.code,
-          title: event.title.slice(0, 200),
-          body: event.body?.slice(0, 500) ?? null,
-          linkPath: event.linkPath ?? null,
-        })),
+        data: targets.map((userId) => this.row(userId, event)),
+        skipDuplicates: true,
       });
     } catch (error) {
       this.logger.error({ err: error, code: event.code }, 'failed to deliver notice');
     }
+  }
+
+  private row(
+    userId: string,
+    event: Pick<NoticeEvent, 'code' | 'title' | 'body' | 'linkPath' | 'dedupeKey'>,
+  ) {
+    return {
+      userId,
+      noticeCode: event.code,
+      title: event.title.slice(0, 200),
+      body: event.body?.slice(0, 500) ?? null,
+      linkPath: event.linkPath ?? null,
+      dedupeKey: event.dedupeKey ?? null,
+    };
   }
 
   async listFor(userId: string, limit = 50): Promise<NotificationListResponse> {

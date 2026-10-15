@@ -5,6 +5,7 @@ export * from './contracts/common.js';
 export * from './contracts/companies.js';
 export * from './contracts/misc.js';
 export * from './contracts/schedule.js';
+export * from './contracts/telema.js';
 export * from './enums.js';
 export * from './errors.js';
 export * from './permissions.js';

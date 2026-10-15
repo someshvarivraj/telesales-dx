@@ -49,7 +49,9 @@ export function CallTargetsPage() {
   );
   const [match, setMatch] = useState<'AND' | 'OR'>('AND');
   const [onlyTargets, setOnlyTargets] = useState(true);
-  const [applied, setApplied] = useState({ rows, match, onlyTargets });
+  // Today's confirmed allocation (priority 2); the home tile links here with ?mine=1.
+  const [onlyMine, setOnlyMine] = useState(params.get('mine') === '1');
+  const [applied, setApplied] = useState({ rows, match, onlyTargets, onlyMine });
   const [page, setPage] = useState(1);
   const grades = useOptionList(OptionCategory.CallGrade);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
@@ -64,6 +66,7 @@ export function CallTargetsPage() {
     conditions,
     match: applied.match,
     callTargetsOnly: applied.onlyTargets,
+    assignedToMe: applied.onlyMine,
     page,
     pageSize: 50,
   });
@@ -71,7 +74,7 @@ export function CallTargetsPage() {
   const update = (key: number, patch: Partial<Row>) =>
     setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   const apply = () => {
-    setApplied({ rows, match, onlyTargets });
+    setApplied({ rows, match, onlyTargets, onlyMine });
     setPage(1);
   };
 
@@ -194,6 +197,11 @@ export function CallTargetsPage() {
               checked={onlyTargets}
               onChange={(e) => setOnlyTargets(e.target.checked)}
             />
+            <Checkbox
+              label="今日の自分の担当だけ"
+              checked={onlyMine}
+              onChange={(e) => setOnlyMine(e.target.checked)}
+            />
             <Button
               className="sm:ml-auto"
               icon={<Search className="size-4" aria-hidden="true" />}
@@ -209,7 +217,7 @@ export function CallTargetsPage() {
         <QueryState query={query}>
           {(data) =>
             data.items.length === 0 ? (
-              <EmptyState>条件に合う企業はありません。</EmptyState>
+              <EmptyState mood="think">条件に合う企業はありません。</EmptyState>
             ) : (
               <>
                 <Table>

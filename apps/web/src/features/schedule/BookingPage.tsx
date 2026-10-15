@@ -60,6 +60,11 @@ function emptyToNull<T extends object>(values: T): { [K in keyof T]: T[K] | null
 /**
  * Booking (spec §6): find the rep → check free/busy → hold the slot → fill in the details
  * (auto from ①, from the CSV/PDF, or by hand) → confirmation → register → N1 preview.
+ *
+ * The rep and the time always come from the held slot. For an existing list the rep is
+ * decided from the sales area table and the slot is held while the call is still going;
+ * the telemarketing system's CSV only exists after the result has been entered there and
+ * has no rep column, so the files are read last and only fill in the details.
  */
 export function BookingPage() {
   const [params] = useSearchParams();
@@ -199,16 +204,6 @@ function BookingForm(props: BookingFormProps) {
             bookedById: data.bookedBy?.id ?? current.bookedById,
             bookedOn: data.bookedOn ?? current.bookedOn,
           }));
-          // Use the file's time and rep as the starting point, unless a slot is already held.
-          if (lock.state.status !== 'held' && (data.salesRep || data.startsAt)) {
-            const startsAt = data.startsAt ? new Date(data.startsAt) : null;
-            setSlot((current) => ({
-              repId: data.salesRep?.id ?? current.repId,
-              date: startsAt ? jstDate(startsAt) : current.date,
-              start: startsAt ? jstTime(startsAt) : current.start,
-              end: startsAt ? defaultEndTime(jstTime(startsAt)) : current.end,
-            }));
-          }
         },
       },
     );
@@ -282,13 +277,6 @@ function BookingForm(props: BookingFormProps) {
       <PageHeader
         eyebrow={ja.module.schedule}
         title={rebookOf ? '再アポの登録' : salesBooked ? '自分で取ったアポの登録' : 'アポの登録'}
-        actions={
-          !salesBooked && !companyId && !rebookOf ? (
-            <Button variant="secondary" onClick={() => setFindRep(true)}>
-              エリアと取引区分から担当営業を判定
-            </Button>
-          ) : undefined
-        }
       />
       <div className="flex flex-col gap-5">
         {original && (
@@ -304,7 +292,21 @@ function BookingForm(props: BookingFormProps) {
           </Alert>
         )}
 
-        <Card title="1. 日時と担当営業">
+        <Card
+          title="1. 日時と担当営業"
+          actions={
+            !salesBooked && !companyId && !rebookOf && !held ? (
+              <Button variant="secondary" onClick={() => setFindRep(true)}>
+                エリアと取引区分から担当営業を判定
+              </Button>
+            ) : undefined
+          }
+        >
+          {!salesBooked && !companyId && !rebookOf && !held && (
+            <p className="mb-4 text-sm text-ink-sub">
+              既存リストは、架電の前に営業担当表（エリア＋取引区分）で担当営業を決め、話している間にこの枠を押さえます。
+            </p>
+          )}
           <SlotPicker
             slot={slot}
             onChange={setSlot}
@@ -337,12 +339,18 @@ function BookingForm(props: BookingFormProps) {
               </div>
               {source === AppointmentSource.File && (
                 <>
+                  {!held && (
+                    <Alert tone="info">
+                      アポが決まったら、テレマシステムに結果を入れてCSVを出し、ここで読み込みます。先に「1.
+                      日時と担当営業」で枠を押さえてください。
+                    </Alert>
+                  )}
                   <FileDrop
                     accept=".csv,.pdf,text/csv,application/pdf"
                     multiple
-                    hint="テレマシステムのCSV（Shift-JIS）と「営業さんへの伝達事項」のPDF。どちらか一方でも、両方でも。"
+                    hint="テレマシステムのCSV（Shift-JIS）と「営業さんへの伝達事項」のPDF。どちらか一方でも、両方でも。日時と担当営業は押さえた枠のまま変わりません。"
                     onFiles={(selected) => readFiles(selected)}
-                    disabled={prefill.isPending}
+                    disabled={!held || prefill.isPending}
                   />
                   {files.length > 0 && (
                     <ul className="flex flex-wrap gap-2 text-sm">

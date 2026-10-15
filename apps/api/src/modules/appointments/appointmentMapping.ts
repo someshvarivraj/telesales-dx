@@ -44,7 +44,7 @@ export const appointmentDetailInclude = {
   bookedBy: userRefSelect,
   dayBeforeCheckedBy: userRefSelect,
   cancelledBy: userRefSelect,
-  sourceFile: true,
+  sourceFiles: { orderBy: { createdAt: 'asc' }, include: { file: true } },
   rebookings: { select: { id: true } },
   plan: { select: { id: true, attendees: { include: { user: userRefSelect } } } },
   preparations: {
@@ -143,7 +143,11 @@ export function toDetail(
     sourceCallRecordId: row.sourceCallRecordId,
     originalAppointmentId: row.originalAppointmentId,
     rebookingIds: row.rebookings.map((rebooking) => rebooking.id),
-    sourceFile: row.sourceFile ? toFileDto(row.sourceFile) : null,
+    sourceFiles: row.sourceFiles.map((source) => ({
+      file: toFileDto(source.file),
+      sourceType: source.sourceType,
+      rowNumber: source.rowNumber,
+    })),
     attendees: row.plan?.attendees.map((attendee) => userRef(attendee.user)) ?? [],
     preparations: row.preparations.map((preparation) => ({
       id: preparation.id,
@@ -162,6 +166,7 @@ export function toDetail(
       dealStatus: result.dealStatus,
       nextAction: result.nextAction,
       nextActionDate: dateOnly(result.nextActionDate),
+      nextActionDoneAt: iso(result.nextActionDoneAt),
       createdAt: iso(result.createdAt),
     })),
     changes: row.changes.map((change) => ({

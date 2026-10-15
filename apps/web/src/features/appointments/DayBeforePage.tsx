@@ -1,13 +1,15 @@
 import { DayBeforeResult, jstMinutesOfDay, Permission } from '@telesales/shared';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryState } from '@/components/ui/QueryState';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { TextInput } from '@/components/ui/TextInput';
+import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatRange, todayJst } from '@/lib/format';
@@ -20,7 +22,11 @@ import { DayBeforeBadge, FormatBadge } from './AppointmentBadges';
  * Checks done after 12:00 are sent to the rep one by one (N14).
  */
 export function DayBeforePage() {
+  const [params] = useSearchParams();
   const [date, setDate] = useState(todayJst());
+  // Confirmed allocation (priority 2); the home tile links here with ?mine=1.
+  const [onlyMine, setOnlyMine] = useState(params.get('mine') === '1');
+  const { id: userId } = useCurrentUser();
   const list = useDayBeforeList(date);
   const check = useDayBeforeCheck();
   const canCheck = usePermission(Permission.WriteDayBeforeChecks);
@@ -43,6 +49,14 @@ export function DayBeforePage() {
             対象：{list.data.dates.map(formatDate).join('・')} のアポ（テレマが取ったアポのみ）
           </p>
         )}
+        {list.data?.allocated && (
+          <Checkbox
+            className="pb-2 sm:ml-auto"
+            label="自分の担当だけ"
+            checked={onlyMine}
+            onChange={(e) => setOnlyMine(e.target.checked)}
+          />
+        )}
       </div>
       {afterNoon && (
         <Alert tone="info">
@@ -51,14 +65,17 @@ export function DayBeforePage() {
       )}
       {check.isError && <Alert tone="error">{errorMessageOf(check.error)}</Alert>}
       <QueryState query={list}>
-        {(data) =>
-          data.items.length === 0 ? (
+        {(data) => {
+          const items = data.items.filter(
+            (item) => !onlyMine || !data.allocated || item.assignee?.id === userId,
+          );
+          return items.length === 0 ? (
             <Card>
-              <EmptyState>確認するアポはありません。</EmptyState>
+              <EmptyState mood="approved">確認するアポはありません。</EmptyState>
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">
-              {data.items.map((item) => (
+              {items.map((item) => (
                 <li key={item.id}>
                   <Card>
                     <div className="flex flex-wrap items-center gap-3">
@@ -76,6 +93,7 @@ export function DayBeforePage() {
                         <p className="mt-1 text-sm text-ink-sub">
                           {formatRange(item.startsAt, item.endsAt)}・担当 {item.salesRep.name}・取得{' '}
                           {item.bookedBy.name}
+                          {item.assignee && `・確認する人 ${item.assignee.name}`}
                         </p>
                       </div>
                       {canCheck && (
@@ -109,8 +127,8 @@ export function DayBeforePage() {
                 </li>
               ))}
             </ul>
-          )
-        }
+          );
+        }}
       </QueryState>
     </div>
   );

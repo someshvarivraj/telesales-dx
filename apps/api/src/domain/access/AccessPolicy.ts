@@ -133,4 +133,23 @@ export class AccessPolicy {
       actor.can(Permission.WriteShifts)
     );
   }
+
+  /** Leads and admins run the team: everyone's shifts, allocation and telemarketer info. */
+  managesTelema(actor: Actor): boolean {
+    return this.isAdmin(actor) || actor.can(Permission.ConfirmAllocation);
+  }
+
+  /**
+   * Shifts (spec §4): a telemarketer edits their own month, and someone else's from today
+   * on when that person calls in (late, early leave, absence). Leads and admins edit any.
+   */
+  canEditShift(actor: Actor, ownerId: string, date: string, today: string): boolean {
+    if (this.managesTelema(actor)) {
+      return true;
+    }
+    if (!actor.can(Permission.WriteShifts)) {
+      return false;
+    }
+    return ownerId === actor.id || date >= today;
+  }
 }

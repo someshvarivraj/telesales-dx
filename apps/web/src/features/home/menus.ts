@@ -12,7 +12,9 @@ import {
   Bell,
   ListChecks,
   PhoneCall,
+  Power,
   Users,
+  UsersRound,
 } from 'lucide-react';
 import { paths } from '@/app/paths';
 import { ja } from '@/i18n/ja';
@@ -62,6 +64,14 @@ export const mainMenu: readonly MenuItem[] = [
     icon: BarChart3,
     tone: 'appointments',
     anyOf: [Permission.ViewData],
+  },
+  {
+    key: 'telema',
+    title: ja.module.telema,
+    path: paths.telema,
+    icon: UsersRound,
+    tone: 'calls',
+    anyOf: [Permission.WriteShifts, Permission.ConfirmAllocation, Permission.Administer],
   },
 ];
 
@@ -120,6 +130,14 @@ export const adminMenu: readonly MenuItem[] = [
     title: ja.admin.settings,
     path: paths.admin.settings,
     icon: SlidersHorizontal,
+    tone: 'admin',
+    anyOf: [Permission.Administer],
+  },
+  {
+    key: 'apps',
+    title: ja.admin.apps,
+    path: paths.admin.apps,
+    icon: Power,
     tone: 'admin',
     anyOf: [Permission.Administer],
   },

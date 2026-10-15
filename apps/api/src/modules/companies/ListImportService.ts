@@ -1,9 +1,13 @@
+import { randomUUID } from 'node:crypto';
 import {
   CompanyFlag,
   type CommitListImportRequest,
   type ListImportDto,
   type ListImportPreview,
   ListImportPurpose,
+  type ListImportRowDto,
+  type ListImportRowsQuery,
+  ListImportRowStatus,
   NoticeCode,
   OptionCategory,
   PHONE_DIGITS_PATTERN,
@@ -14,7 +18,11 @@ import type { Actor } from '../../domain/access/AccessPolicy.js';
 import { splitJapaneseAddress } from '../../domain/area/japaneseAddress.js';
 import { normalizeCompanyName } from '../../domain/companies/duplicates.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
-import { DuplicateFileError, FileUnreadableError } from '../../http/errors/AppError.js';
+import {
+  DuplicateFileError,
+  FileUnreadableError,
+  NotFoundError,
+} from '../../http/errors/AppError.js';
 import { iso, userRef, userRefSelect } from '../../http/mappers.js';
 import type { FileService, UploadedFile } from '../files/FileService.js';
 import type { NotificationService } from '../notifications/NotificationService.js';
@@ -29,6 +37,8 @@ import { readTableFile, type Table } from './TableFileReader.js';
 
 interface AnalyzedRow {
   row: number;
+  /** Non-empty values as read, by header. */
+  raw: Record<string, string>;
   /** Validated: always present. */
   name: string;
   fields: Partial<Record<ListField, string>>;
@@ -40,12 +50,25 @@ interface AnalyzedRow {
   matchedName: string | null;
 }
 
+interface InvalidRow {
+  row: number;
+  raw: Record<string, string>;
+  messages: string[];
+}
+
 interface Analysis {
   columns: { header: string; field: string | null }[];
   valid: AnalyzedRow[];
+  invalid: InvalidRow[];
   errors: { row: number; message: string }[];
   rowCount: number;
 }
+
+const ROW_STATUS_OF: Record<CompanyFlag, ListImportRowStatus> = {
+  [CompanyFlag.None]: ListImportRowStatus.Imported,
+  [CompanyFlag.Duplicate]: ListImportRowStatus.Duplicate,
+  [CompanyFlag.NeedsCheck]: ListImportRowStatus.NeedsCheck,
+};
 
 const MAX_ERRORS_SHOWN = 300;
 const SAMPLE_SIZE = 20;
@@ -54,6 +77,8 @@ const SAMPLE_SIZE = 20;
  * New call lists (spec §9-1): read → show the person what was read (row errors,
  * duplicates) → they choose the purpose and register. Duplicates follow the spec §7 proposal:
  * same phone = duplicate (not called until resolved), same name only = check flag.
+ * Every row of the file is kept in list_import_rows with how it was judged, so a company
+ * keeps its history across lists and past imports can be checked row by row.
  */
 export class ListImportService {
   constructor(
@@ -112,14 +137,32 @@ export class ListImportService {
             createdCount: analysis.valid.length,
             duplicateCount: analysis.valid.filter((r) => r.flag === CompanyFlag.Duplicate).length,
             checkCount: analysis.valid.filter((r) => r.flag === CompanyFlag.NeedsCheck).length,
-            errorCount: new Set(analysis.errors.map((e) => e.row)).size,
+            errorCount: analysis.invalid.length,
           },
           include: { importedBy: userRefSelect, file: true },
         });
-        await tx.company.createMany({
-          data: analysis.valid.map((row) =>
-            this.toCompanyData(row, listImport.id, input, actor.id, customerTypes, callRequest),
-          ),
+        const companies = analysis.valid.map((row) => ({
+          row,
+          data: this.toCompanyData(row, input, actor.id, customerTypes, callRequest),
+        }));
+        await tx.company.createMany({ data: companies.map((company) => company.data) });
+        await tx.listImportRow.createMany({
+          data: [
+            ...companies.map(({ row, data }) => ({
+              listImportId: listImport.id,
+              companyId: data.id,
+              rowNumber: row.row,
+              rawData: row.raw,
+              status: ROW_STATUS_OF[row.flag],
+            })),
+            ...analysis.invalid.map((row) => ({
+              listImportId: listImport.id,
+              rowNumber: row.row,
+              rawData: row.raw,
+              status: ListImportRowStatus.Invalid,
+              errorMessage: row.messages.join('／'),
+            })),
+          ],
         });
         return listImport;
       },
@@ -162,6 +205,27 @@ export class ListImportService {
     return rows.map((row) => this.toDto(row));
   }
 
+  /** The rows of one import as they were read and judged. */
+  async rows(listImportId: string, query: ListImportRowsQuery): Promise<ListImportRowDto[]> {
+    const exists = await this.prisma.listImport.count({ where: { id: listImportId } });
+    if (!exists) {
+      throw new NotFoundError();
+    }
+    const rows = await this.prisma.listImportRow.findMany({
+      where: { listImportId, ...(query.status ? { status: query.status } : {}) },
+      orderBy: { rowNumber: 'asc' },
+      include: { company: { select: { id: true, name: true } } },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      rowNumber: row.rowNumber,
+      status: row.status,
+      errorMessage: row.errorMessage,
+      company: row.company,
+      rawData: row.rawData as Record<string, string>,
+    }));
+  }
+
   private toDto(
     row: Prisma.ListImportGetPayload<{ include: { importedBy: typeof userRefSelect; file: true } }>,
   ): ListImportDto {
@@ -183,18 +247,19 @@ export class ListImportService {
 
   private toCompanyData(
     row: AnalyzedRow,
-    listImportId: string,
     input: CommitListImportRequest,
     actorId: string,
     customerTypes: Map<string, string>,
     callRequest: boolean,
-  ): Prisma.CompanyCreateManyInput {
+  ): Prisma.CompanyCreateManyInput & { id: string } {
     const address = row.fields.address ?? null;
     const parts = splitJapaneseAddress(address);
     const customerType = row.fields.customerType
       ? (customerTypes.get(row.fields.customerType) ?? null)
       : null;
     return {
+      // Generated here so the import rows can point at the companies created in the same batch.
+      id: randomUUID(),
       name: row.name,
       nameKey: row.nameKey,
       office: row.fields.office ?? null,
@@ -216,7 +281,6 @@ export class ListImportService {
       isCallTarget: callRequest && row.flag !== CompanyFlag.Duplicate,
       extra: Object.keys(row.extra).length > 0 ? row.extra : undefined,
       createdById: actorId,
-      listImportId,
     };
   }
 
@@ -257,12 +321,17 @@ export class ListImportService {
     }
 
     const errors: { row: number; message: string }[] = [];
+    const invalid: InvalidRow[] = [];
     const candidates: AnalyzedRow[] = [];
     for (const { row, values } of table.rows) {
       const fields: Partial<Record<ListField, string>> = {};
       const extra: Record<string, string> = {};
+      const raw: Record<string, string> = {};
       for (const column of columns) {
         const value = values[column.header] ?? '';
+        if (value) {
+          raw[column.header] = value;
+        }
         if (column.field) {
           if (value) {
             fields[column.field as ListField] = value;
@@ -275,10 +344,12 @@ export class ListImportService {
       const phoneDigits = phoneDigitsOf(fields.phone);
       if (rowErrors.length > 0 || !fields.name || !phoneDigits) {
         rowErrors.forEach((message) => errors.push({ row, message: `${row}行目：${message}` }));
+        invalid.push({ row, raw, messages: rowErrors });
         continue;
       }
       candidates.push({
         row,
+        raw,
         name: fields.name,
         fields,
         extra,
@@ -291,7 +362,7 @@ export class ListImportService {
     }
 
     await this.flagDuplicates(candidates);
-    return { columns, valid: candidates, errors, rowCount: table.rows.length };
+    return { columns, valid: candidates, invalid, errors, rowCount: table.rows.length };
   }
 
   private async flagDuplicates(rows: AnalyzedRow[]): Promise<void> {
@@ -301,20 +372,30 @@ export class ListImportService {
       this.prisma.company.findMany({
         where: { phoneDigits: { in: phones } },
         select: { id: true, name: true, phoneDigits: true },
+        // Match the original company, not an unresolved copy flagged against it.
+        orderBy: [{ flag: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.company.findMany({
         where: { nameKey: { in: names } },
         select: { id: true, name: true, nameKey: true },
+        orderBy: [{ flag: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.companyFormerName.findMany({
         where: { nameKey: { in: names } },
         select: { nameKey: true, company: { select: { id: true, name: true } } },
       }),
     ]);
-    const phoneMatch = new Map(byPhone.map((company) => [company.phoneDigits, company]));
+    const phoneMatch = new Map<string | null, { id: string; name: string }>();
+    byPhone.forEach((company) => {
+      if (!phoneMatch.has(company.phoneDigits)) phoneMatch.set(company.phoneDigits, company);
+    });
     const nameMatch = new Map<string, { id: string; name: string }>();
-    byName.forEach((company) => nameMatch.set(company.nameKey, company));
-    byFormerName.forEach((former) => nameMatch.set(former.nameKey, former.company));
+    byName.forEach((company) => {
+      if (!nameMatch.has(company.nameKey)) nameMatch.set(company.nameKey, company);
+    });
+    byFormerName.forEach((former) => {
+      if (!nameMatch.has(former.nameKey)) nameMatch.set(former.nameKey, former.company);
+    });
 
     const seenPhones = new Map<string, AnalyzedRow>();
     const seenNames = new Map<string, AnalyzedRow>();

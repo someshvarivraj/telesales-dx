@@ -1,9 +1,10 @@
 import { CompanyFlag, type ListImportPreview, ListImportPurpose } from '@telesales/shared';
-import { CircleCheck, FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
+import { MoraBot, MoraBotProgress } from '@/components/brand/MoraBot';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -70,7 +71,7 @@ export function ListImportPage() {
     return (
       <Card>
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <CircleCheck className="size-10 text-success" aria-hidden="true" />
+          <MoraBot mood="approved" size={96} title="" />
           <p className="text-lg font-bold">「{done.listName}」を取り込みました。</p>
           <p className="text-sm text-ink-sub">
             登録 {done.createdCount}件（重複 {done.duplicateCount}件・要確認 {done.checkCount}件）／
@@ -111,7 +112,11 @@ export function ListImportPage() {
           onFiles={onFiles}
           disabled={preview.isPending}
         />
-        {preview.isPending && <p className="mt-3 text-sm text-ink-sub">読み込み中…</p>}
+        {preview.isPending && (
+          <div className="mt-4">
+            <MoraBotProgress label="ファイルを読み込んでいます…" />
+          </div>
+        )}
         {preview.isError && (
           <Alert tone="error" className="mt-3">
             {importErrorMessage(preview.error)}

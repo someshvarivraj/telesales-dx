@@ -57,4 +57,11 @@ export interface HomeSummaryResponse {
   dayBeforeDate: string;
   newCallLists: number;
   duplicatesToResolve: number;
+  /** Today's confirmed allocation for this person (telemarketing). */
+  myCalls: number;
+  myDayBefore: number;
+  /** Today's allocation is still a draft (leads). */
+  allocationToConfirm: boolean;
+  /** Own open next actions due today or earlier (sales). */
+  nextActionsDue: number;
 }

@@ -124,8 +124,8 @@ export class AppointmentWorkService {
     const attachment = await this.prisma.preparationAttachment.findFirst({
       where: { fileId, preparation: { appointmentId: id } },
     });
-    const sourceFile = await this.prisma.appointment.findFirst({
-      where: { id, sourceFileId: fileId },
+    const sourceFile = await this.prisma.appointmentSourceFile.findFirst({
+      where: { appointmentId: id, fileId },
       select: { id: true },
     });
     if (!attachment && !sourceFile) {

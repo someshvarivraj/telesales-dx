@@ -1,10 +1,11 @@
 import {
   AppointmentSource,
   type CallRecordDto,
+  jstDate,
   OptionCategory,
   Permission,
 } from '@telesales/shared';
-import { CalendarPlus, MessageSquare, Pencil, TriangleAlert } from 'lucide-react';
+import { CalendarPlus, MessageSquare, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
@@ -262,7 +263,29 @@ export function CompanyPage() {
                     { label: '業種', value: data.industry },
                     { label: '取引区分', value: customerTypes.labelOf(data.customerType) },
                     { label: 'クライアントNo', value: data.clientNo },
-                    { label: 'リスト名', value: data.listName, wide: true },
+                    {
+                      label:
+                        data.imports.length > 1 ? `リスト（${data.imports.length}件）` : 'リスト名',
+                      value:
+                        data.imports.length > 0 ? (
+                          <ul className="flex flex-col gap-0.5">
+                            {data.imports.map((entry) => (
+                              <li key={`${entry.listImportId}:${entry.rowNumber}`}>
+                                {entry.listName}
+                                <span className="ml-2 text-xs text-ink-sub">
+                                  {formatDate(jstDate(new Date(entry.importedAt)))}・
+                                  {entry.rowNumber}行目
+                                  {entry.status !== 'IMPORTED' &&
+                                    `・${ja.importRowStatus[entry.status]}`}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          data.listName
+                        ),
+                      wide: true,
+                    },
                     { label: '旧社名', value: data.formerNames.join('、'), wide: true },
                     ...Object.entries(data.extra ?? {}).map(([label, value]) => ({
                       label,
@@ -274,9 +297,7 @@ export function CompanyPage() {
               </Card>
               <Card title="この会社のアポ">
                 {companyAppointments.length === 0 ? (
-                  <EmptyState icon={<TriangleAlert className="size-5" aria-hidden="true" />}>
-                    まだアポはありません。
-                  </EmptyState>
+                  <EmptyState>まだアポはありません。</EmptyState>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {companyAppointments.map((item) => (

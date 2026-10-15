@@ -152,7 +152,7 @@ export function AppointmentListPage() {
         <QueryState query={query}>
           {(data) =>
             data.items.length === 0 ? (
-              <EmptyState>条件に合うアポはありません。</EmptyState>
+              <EmptyState mood="think">条件に合うアポはありません。</EmptyState>
             ) : (
               <>
                 <Table>

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { HolidayKind, RecipientField, RecipientKind } from '../enums.js';
 import { ALL_PERMISSIONS, type Permission } from '../permissions.js';
 import { ALL_ROLES, type Role } from '../roles.js';
-import { dateString, optionalText, requiredText, type UserRef } from './common.js';
+import { dateString, optionalText, requiredText, timeString, type UserRef } from './common.js';
 
 export type UserStatusValue = 'ACTIVE' | 'DISABLED';
 
@@ -166,9 +166,48 @@ export interface AuditLogDto {
 export interface AppSettingsDto {
   travelBufferMinutes: number;
   travelBufferMode: 'WARN' | 'BLOCK';
+  /** JST time of the morning allocation run on business days. */
+  allocationRunTime: string;
+  /** N13: remind telemarketing when nobody has taken a change request for this long. */
+  changeRequestReminderMinutes: number;
 }
 
 export const appSettingsRequestSchema = z.object({
   travelBufferMinutes: z.number().int().min(0).max(240),
   travelBufferMode: z.enum(['WARN', 'BLOCK']),
+  allocationRunTime: timeString,
+  changeRequestReminderMinutes: z
+    .number()
+    .int()
+    .min(15)
+    .max(24 * 60),
 });
+
+/** Apps sharing the company-wide accounts (spec §6 app management). */
+export interface AppDto {
+  key: string;
+  name: string;
+  /** While on, only admins can use the app. */
+  maintenanceMode: boolean;
+  /** This app (the one serving the request). */
+  current: boolean;
+}
+
+export const createAppRequestSchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .regex(/^[a-z][a-z0-9_-]{1,31}$/),
+  name: requiredText(100),
+});
+export type CreateAppRequest = z.input<typeof createAppRequestSchema>;
+
+export const updateAppRequestSchema = z.object({
+  name: requiredText(100),
+  maintenanceMode: z.boolean(),
+});
+export type UpdateAppRequest = z.input<typeof updateAppRequestSchema>;
+
+export interface SystemStatusResponse {
+  maintenance: boolean;
+}

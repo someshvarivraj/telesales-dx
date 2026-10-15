@@ -361,23 +361,32 @@ export function AppointmentPage() {
                     </Link>
                   )}
                 </Card>
-                {appointment.sourceFile && (
+                {appointment.sourceFiles.length > 0 && (
                   <Card title="元のファイル">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        appointment.sourceFile &&
-                        void downloadAppointmentFile(
-                          appointment.id,
-                          appointment.sourceFile.id,
-                          appointment.sourceFile.originalName,
-                        )
-                      }
-                      className="flex cursor-pointer items-center gap-1.5 text-sm text-link hover:underline"
-                    >
-                      <FileText className="size-4" aria-hidden="true" />
-                      {appointment.sourceFile.originalName}
-                    </button>
+                    <ul className="flex flex-col gap-2">
+                      {appointment.sourceFiles.map((source) => (
+                        <li key={source.file.id} className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void downloadAppointmentFile(
+                                appointment.id,
+                                source.file.id,
+                                source.file.originalName,
+                              )
+                            }
+                            className="flex cursor-pointer items-center gap-1.5 text-sm text-link hover:underline"
+                          >
+                            <FileText className="size-4" aria-hidden="true" />
+                            {source.file.originalName}
+                          </button>
+                          <span className="text-xs text-ink-sub">
+                            {ja.sourceFileType[source.sourceType]}
+                            {source.rowNumber !== null && `・${source.rowNumber}行目`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </Card>
                 )}
                 <TimelineSection appointment={appointment} />

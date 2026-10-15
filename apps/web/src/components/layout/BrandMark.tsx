@@ -1,12 +1,10 @@
-import { Phone } from 'lucide-react';
+import { MoraBot } from '@/components/brand/MoraBot';
 
-export function BrandMark() {
+/** The logo mark: MoraBot's head, as on the skill sheet system. */
+export function BrandMark({ size = 28 }: { size?: number }) {
   return (
-    <span
-      aria-hidden="true"
-      className="flex size-8 items-center justify-center rounded-lg bg-main text-white"
-    >
-      <Phone className="size-4" strokeWidth={2.5} />
+    <span aria-hidden="true" className="flex shrink-0 items-center justify-center">
+      <MoraBot headOnly size={size} title="" />
     </span>
   );
 }

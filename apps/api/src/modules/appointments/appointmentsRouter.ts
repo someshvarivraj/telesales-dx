@@ -7,6 +7,8 @@ import {
   dateString,
   meetingResultRequestSchema,
   meetingUrlRequestSchema,
+  nextActionDoneRequestSchema,
+  nextActionsQuerySchema,
   Permission,
   reportQuerySchema,
   rescheduleRequestSchema,
@@ -26,6 +28,7 @@ import type { AppointmentMailKind, AppointmentMailService } from './AppointmentM
 import type { AppointmentQueryService } from './AppointmentQueryService.js';
 import type { AppointmentReportService } from './AppointmentReportService.js';
 import type { AppointmentWorkService } from './AppointmentWorkService.js';
+import type { NextActionService } from './NextActionService.js';
 
 export interface AppointmentsDeps {
   authenticator: Authenticator;
@@ -35,6 +38,7 @@ export interface AppointmentsDeps {
   mail: AppointmentMailService;
   imports: AppointmentImportService;
   reports: AppointmentReportService;
+  nextActions: NextActionService;
 }
 
 const mailKind = z.enum(['booking', 'cancellation', 'dayBefore']);
@@ -79,6 +83,15 @@ export function createAppointmentsRouter(deps: AppointmentsDeps): Router {
       },
       report.content,
     );
+  });
+  router.get('/next-actions', view, async (req, res) => {
+    const { includeDone } = parseQuery(nextActionsQuerySchema, req);
+    res.json(await deps.nextActions.listMine(currentUserOf(req), includeDone === 'true'));
+  });
+  router.put('/meeting-results/:id/next-action', view, async (req, res) => {
+    const { done } = parseWith(nextActionDoneRequestSchema, req.body);
+    await deps.nextActions.setDone(currentUserOf(req), idParam(req), done);
+    res.status(204).end();
   });
   router.get('/appointments/day-before', view, async (req, res) => {
     res.json(await deps.queries.dayBeforeList(parseQuery(dayBeforeQuery, req).date));

@@ -81,6 +81,36 @@ export const ListImportPurpose = {
 export type ListImportPurpose = (typeof ListImportPurpose)[keyof typeof ListImportPurpose];
 export const LIST_IMPORT_PURPOSES = valuesOf(ListImportPurpose);
 
+/** How one row of an imported list was handled. */
+export const ListImportRowStatus = {
+  Imported: 'IMPORTED',
+  Duplicate: 'DUPLICATE',
+  NeedsCheck: 'NEEDS_CHECK',
+  Invalid: 'INVALID',
+} as const;
+export type ListImportRowStatus = (typeof ListImportRowStatus)[keyof typeof ListImportRowStatus];
+export const LIST_IMPORT_ROW_STATUSES = valuesOf(ListImportRowStatus);
+
+/** A telemarketer's day in the monthly shift (spec §7: time off is entered in the shift). */
+export const ShiftKind = { Work: 'WORK', Off: 'OFF' } as const;
+export type ShiftKind = (typeof ShiftKind)[keyof typeof ShiftKind];
+export const SHIFT_KINDS = valuesOf(ShiftKind);
+
+/** Auto allocation (spec §7): call lists and day-before checks are allocated separately. */
+export const AllocationKind = { Call: 'CALL', DayBefore: 'DAY_BEFORE' } as const;
+export type AllocationKind = (typeof AllocationKind)[keyof typeof AllocationKind];
+
+export const AllocationStatus = { Draft: 'DRAFT', Confirmed: 'CONFIRMED' } as const;
+export type AllocationStatus = (typeof AllocationStatus)[keyof typeof AllocationStatus];
+
+/** What kind of file an existing-list appointment was read from. */
+export const SourceFileType = {
+  ExistingListCsv: 'EXISTING_LIST_CSV',
+  HandoverPdf: 'HANDOVER_PDF',
+  Other: 'OTHER',
+} as const;
+export type SourceFileType = (typeof SourceFileType)[keyof typeof SourceFileType];
+
 export const HolidayKind = {
   PublicHoliday: 'PUBLIC_HOLIDAY',
   CompanyHoliday: 'COMPANY_HOLIDAY',

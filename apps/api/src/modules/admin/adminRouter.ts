@@ -4,11 +4,13 @@ import {
   calendarYearQuerySchema,
   companyGroupRequestSchema,
   companyHolidayRequestSchema,
+  createAppRequestSchema,
   createUserRequestSchema,
   dateString,
   noticeRecipientRequestSchema,
   optionRequestSchema,
   Permission,
+  updateAppRequestSchema,
   updateNoticeRequestSchema,
   updateOptionRequestSchema,
   updateUserRequestSchema,
@@ -21,6 +23,7 @@ import { NotFoundError } from '../../http/errors/AppError.js';
 import type { Authenticator } from '../../http/middleware/Authenticator.js';
 import { uploadSingleFile } from '../../http/upload.js';
 import { idParam, parseQuery, parseWith } from '../../http/validate.js';
+import type { AppService } from '../apps/AppService.js';
 import type { AreaTableService } from '../area/AreaTableService.js';
 import type { CalendarService } from '../calendar/CalendarService.js';
 import type { OptionService } from '../options/OptionService.js';
@@ -38,6 +41,7 @@ export interface AdminDeps {
   area: AreaTableService;
   guard: SlotGuard;
   settings: SettingsService;
+  apps: AppService;
   audit: AuditLogger;
 }
 
@@ -49,6 +53,8 @@ const auditQuery = z.object({
 const noticeCodeParam = z.string().regex(/^N\d{1,2}$/);
 
 /** Admin screens (spec §6). The area table is also open to the person entrusted with it. */
+const appKeyParam = z.string().regex(/^[a-z][a-z0-9_-]{1,31}$/);
+
 export function createAdminRouter(deps: AdminDeps): Router {
   const router = Router();
   const auth = deps.authenticator;
@@ -228,6 +234,23 @@ export function createAdminRouter(deps: AdminDeps): Router {
   router.put('/settings', admin, async (req, res) => {
     res.json(
       await deps.settings.update(currentUserOf(req), parseWith(appSettingsRequestSchema, req.body)),
+    );
+  });
+
+  router.get('/apps', admin, async (_req, res) => {
+    res.json(await deps.apps.list());
+  });
+  router.post('/apps', admin, async (req, res) => {
+    res
+      .status(201)
+      .json(
+        await deps.apps.create(currentUserOf(req), parseWith(createAppRequestSchema, req.body)),
+      );
+  });
+  router.put('/apps/:key', admin, async (req, res) => {
+    const key = parseWith(appKeyParam, req.params.key);
+    res.json(
+      await deps.apps.update(currentUserOf(req), key, parseWith(updateAppRequestSchema, req.body)),
     );
   });
 

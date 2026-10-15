@@ -10,11 +10,11 @@ const toneStyle: Record<Tone, { box: string; icon: ReactNode }> = {
     icon: <CircleAlert aria-hidden="true" className="size-5 shrink-0 text-danger" />,
   },
   warning: {
-    box: 'border-warning bg-warning-soft text-ink',
-    icon: <TriangleAlert aria-hidden="true" className="size-5 shrink-0 text-ink" />,
+    box: 'border-warning/50 bg-warning-soft text-ink',
+    icon: <TriangleAlert aria-hidden="true" className="size-5 shrink-0 text-warning-ink" />,
   },
   info: {
-    box: 'border-main/30 bg-main-soft text-ink',
+    box: 'border-main-line border-l-3 border-l-main-focus bg-main-soft text-ink',
     icon: <Info aria-hidden="true" className="size-5 shrink-0 text-main" />,
   },
   success: {
@@ -35,11 +35,7 @@ export function Alert({ tone, children, className }: AlertProps) {
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={cn(
-        'flex items-start gap-2.5 rounded-(--radius-control) border px-3.5 py-3 text-sm',
-        style.box,
-        className,
-      )}
+      className={cn('flex items-start gap-2.5 border px-3.5 py-2.5 text-sm', style.box, className)}
     >
       {style.icon}
       <div className="min-w-0 pt-px">{children}</div>

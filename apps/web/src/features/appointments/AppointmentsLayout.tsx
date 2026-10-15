@@ -25,6 +25,15 @@ export function AppointmentsLayout() {
         ? summary.data?.openChangeRequests
         : undefined,
     },
+    ...(permissions.includes(Permission.WorkOnAppointments)
+      ? [
+          {
+            to: paths.nextActions,
+            label: '次回アクション',
+            count: summary.data?.nextActionsDue || undefined,
+          },
+        ]
+      : []),
   ];
   return (
     <>

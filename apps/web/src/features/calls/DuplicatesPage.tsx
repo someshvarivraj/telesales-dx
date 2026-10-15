@@ -1,4 +1,5 @@
-import { CompanyFlag } from '@telesales/shared';
+import { CompanyFlag, type ResolveFlagRequest } from '@telesales/shared';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -17,14 +18,14 @@ export function DuplicatesPage() {
   return (
     <div className="flex flex-col gap-4">
       <Alert tone="info">
-        電話番号が同じ「重複」は、扱いを決めるまで架電対象から外れています。会社名だけ同じ「要確認」は架電対象に残っています。
+        電話番号が同じ「重複」は、扱いを決めるまで架電対象から外れています。会社名だけ同じ「要確認」は架電対象に残っています。「同じ会社としてまとめる」と、取り込みの履歴と記録が一致した企業に移り、この行は消えます。
       </Alert>
       {resolve.isError && <Alert tone="error">{errorMessageOf(resolve.error)}</Alert>}
       <QueryState query={query}>
         {(items) =>
           items.length === 0 ? (
             <Card>
-              <EmptyState>扱いを決める企業はありません。</EmptyState>
+              <EmptyState mood="approved">扱いを決める企業はありません。</EmptyState>
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">
@@ -59,33 +60,30 @@ export function DuplicatesPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="secondary"
-                          loading={
-                            resolve.isPending &&
-                            resolve.variables.id === company.id &&
-                            resolve.variables.request.action === 'EXCLUDE'
-                          }
-                          onClick={() =>
-                            resolve.mutate({ id: company.id, request: { action: 'EXCLUDE' } })
-                          }
-                        >
-                          同じ会社なので架電しない
-                        </Button>
-                        <Button
-                          loading={
-                            resolve.isPending &&
-                            resolve.variables.id === company.id &&
-                            resolve.variables.request.action === 'KEEP'
-                          }
-                          onClick={() =>
-                            resolve.mutate({ id: company.id, request: { action: 'KEEP' } })
-                          }
-                        >
+                        {company.flagMatches.length > 0 ? (
+                          <ResolveButton
+                            company={company.id}
+                            action="MERGE"
+                            resolve={resolve}
+                            variant="secondary"
+                          >
+                            同じ会社としてまとめる
+                          </ResolveButton>
+                        ) : (
+                          <ResolveButton
+                            company={company.id}
+                            action="EXCLUDE"
+                            resolve={resolve}
+                            variant="secondary"
+                          >
+                            同じ会社なので架電しない
+                          </ResolveButton>
+                        )}
+                        <ResolveButton company={company.id} action="KEEP" resolve={resolve}>
                           {company.flag === CompanyFlag.Duplicate
                             ? '別の会社として架電対象にする'
                             : '問題なし（このまま）'}
-                        </Button>
+                        </ResolveButton>
                       </div>
                     </div>
                   </Card>
@@ -96,5 +94,34 @@ export function DuplicatesPage() {
         }
       </QueryState>
     </div>
+  );
+}
+
+function ResolveButton({
+  company,
+  action,
+  resolve,
+  variant,
+  children,
+}: {
+  company: string;
+  action: ResolveFlagRequest['action'];
+  resolve: ReturnType<typeof useResolveFlag>;
+  variant?: 'secondary';
+  children: ReactNode;
+}) {
+  return (
+    <Button
+      variant={variant}
+      disabled={resolve.isPending}
+      loading={
+        resolve.isPending &&
+        resolve.variables.id === company &&
+        resolve.variables.request.action === action
+      }
+      onClick={() => resolve.mutate({ id: company, request: { action } })}
+    >
+      {children}
+    </Button>
   );
 }

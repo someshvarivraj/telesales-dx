@@ -64,7 +64,11 @@ export class CallRecordService {
   ): Promise<CallRecordDto> {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
-      select: { id: true, listImportId: true },
+      select: {
+        id: true,
+        // The call belongs to the newest list this company came in on.
+        importRows: { orderBy: { createdAt: 'desc' }, take: 1, select: { listImportId: true } },
+      },
     });
     if (!company) {
       throw new NotFoundError();
@@ -80,7 +84,7 @@ export class CallRecordService {
         interestLevel: input.interestLevel ?? null,
         nextCallDate: input.nextCallDate ? toDbDate(input.nextCallDate) : null,
         notes: input.notes ?? null,
-        listImportId: company.listImportId,
+        listImportId: company.importRows[0]?.listImportId ?? null,
       },
       include: recordInclude,
     });

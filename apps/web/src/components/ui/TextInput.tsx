@@ -8,9 +8,9 @@ interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const inputClass = cn(
-  'h-11 w-full rounded-(--radius-control) border border-line bg-surface px-3 text-base text-ink',
+  'h-11 w-full border border-line-strong bg-surface px-3 text-base text-ink',
   'placeholder:text-ink-disabled transition-colors duration-150',
-  'focus:border-main focus:outline-none focus:ring-2 focus:ring-main/25',
+  'hover:border-main-line focus:border-main-focus focus:outline-none focus:ring-3 focus:ring-main-focus/20',
   'aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/25',
   'disabled:bg-column disabled:text-ink-disabled',
 );
@@ -34,7 +34,7 @@ export function PasswordInput({ className, ...rest }: Omit<TextInputProps, 'type
         onClick={() => setVisible((value) => !value)}
         aria-label={visible ? ja.auth.hidePassword : ja.auth.showPassword}
         aria-pressed={visible}
-        className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center rounded-r-(--radius-control) text-ink-sub transition-colors hover:text-ink"
+        className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-ink-sub transition-colors hover:text-main"
       >
         {visible ? (
           <EyeOff aria-hidden="true" className="size-5" />

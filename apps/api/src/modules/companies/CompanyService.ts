@@ -5,6 +5,7 @@ import {
   type CompanyFilterCondition,
   type CompanyListItem,
   type CompanySearchRequest,
+  jstDate,
   type Page,
   phoneDigitsOf,
   type ResolveFlagRequest,
@@ -12,6 +13,7 @@ import {
 } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
+import type { Clock } from '../../domain/Clock.js';
 import { splitJapaneseAddress } from '../../domain/area/japaneseAddress.js';
 import { isSimilarNumber, normalizeCompanyName } from '../../domain/companies/duplicates.js';
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
@@ -81,14 +83,28 @@ export class CompanyService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly audit: AuditLogger,
+    private readonly clock: Clock,
   ) {}
 
-  async search(request: CompanySearchRequest): Promise<Page<CompanyListItem>> {
+  /** `viewerId` is needed for "assigned to me today" (confirmed allocation). */
+  async search(request: CompanySearchRequest, viewerId?: string): Promise<Page<CompanyListItem>> {
     const conditions = await Promise.all(request.conditions.map((c) => this.conditionToWhere(c)));
     const filters = conditions.filter((where): where is Prisma.CompanyWhereInput => where !== null);
     const where: Prisma.CompanyWhereInput = {
       AND: [
         request.callTargetsOnly ? { isCallTarget: true, flag: { not: CompanyFlag.Duplicate } } : {},
+        request.assignedToMe && viewerId
+          ? {
+              allocations: {
+                some: {
+                  date: toDbDate(jstDate(this.clock.now())),
+                  kind: 'CALL',
+                  assigneeId: viewerId,
+                  status: 'CONFIRMED',
+                },
+              },
+            }
+          : {},
         filters.length === 0 ? {} : request.match === 'AND' ? { AND: filters } : { OR: filters },
       ],
     };
@@ -117,6 +133,10 @@ export class CompanyService {
         ...listInclude,
         formerNames: { orderBy: { changedAt: 'desc' } },
         flagMatch: { select: { id: true, name: true, phone: true } },
+        importRows: {
+          orderBy: { createdAt: 'desc' },
+          include: { listImport: { select: { id: true, listName: true, purpose: true } } },
+        },
       },
     });
     if (!company) {
@@ -145,6 +165,14 @@ export class CompanyService {
         .filter((other) => isSimilarNumber(other.phoneDigits, company.phoneDigits))
         .map(({ id: otherId, name, phone }) => ({ id: otherId, name, phone })),
       flagMatches: company.flagMatch ? [company.flagMatch] : [],
+      imports: company.importRows.map((row) => ({
+        listImportId: row.listImport.id,
+        listName: row.listImport.listName,
+        purpose: row.listImport.purpose,
+        rowNumber: row.rowNumber,
+        status: row.status,
+        importedAt: iso(row.createdAt),
+      })),
       updatedAt: iso(company.updatedAt),
     };
   }
@@ -188,11 +216,21 @@ export class CompanyService {
     return Promise.all(rows.map((row) => this.get(row.id)));
   }
 
-  /** A lead decides how a duplicate / check flag is handled (spec §4). */
+  /**
+   * A lead decides how a duplicate / check flag is handled (spec §4). MERGE treats the row as the
+   * company it matched: the list history and any records move there and the flagged copy goes away,
+   * so one company keeps its history across lists. Returns the company that remains.
+   */
   async resolveFlag(actor: Actor, id: string, input: ResolveFlagRequest): Promise<CompanyDetail> {
     const company = await this.prisma.company.findUnique({
       where: { id },
-      include: { listImport: { select: { purpose: true } } },
+      include: {
+        importRows: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { listImport: { select: { purpose: true } } },
+        },
+      },
     });
     if (!company) {
       throw new NotFoundError();
@@ -200,7 +238,11 @@ export class CompanyService {
     if (company.flag === CompanyFlag.None) {
       throw new InvalidStateError({ reason: 'not_flagged' });
     }
-    const callable = input.action === 'KEEP' && company.listImport?.purpose === 'CALL_REQUEST';
+    if (input.action === 'MERGE') {
+      return this.mergeInto(actor, company);
+    }
+    const callable =
+      input.action === 'KEEP' && company.importRows[0]?.listImport.purpose === 'CALL_REQUEST';
     await this.prisma.company.update({
       where: { id },
       data: {
@@ -217,6 +259,46 @@ export class CompanyService {
       after: { flag: CompanyFlag.None, action: input.action },
     });
     return this.get(id);
+  }
+
+  private async mergeInto(
+    actor: Actor,
+    company: { id: string; name: string; flag: CompanyFlag; flagMatchId: string | null },
+  ): Promise<CompanyDetail> {
+    const targetId = company.flagMatchId;
+    if (!targetId) {
+      throw new InvalidStateError({ reason: 'no_match' });
+    }
+    const moved = await this.prisma.$transaction(async (tx) => {
+      const from = { companyId: company.id };
+      const to = { companyId: targetId };
+      const counts = {
+        importRows: (await tx.listImportRow.updateMany({ where: from, data: to })).count,
+        callRecords: (await tx.callRecord.updateMany({ where: from, data: to })).count,
+        appointments: (await tx.appointment.updateMany({ where: from, data: to })).count,
+        allocations: (await tx.allocation.updateMany({ where: from, data: to })).count,
+        formerNames: (await tx.companyFormerName.updateMany({ where: from, data: to })).count,
+      };
+      await tx.company.updateMany({
+        where: { parentId: company.id },
+        data: { parentId: targetId },
+      });
+      await tx.company.updateMany({
+        where: { flagMatchId: company.id },
+        data: { flagMatchId: targetId },
+      });
+      await tx.company.delete({ where: { id: company.id } });
+      return counts;
+    });
+    await this.audit.record({
+      action: AuditAction.CompanyMerged,
+      actorUserId: actor.id,
+      targetType: 'company',
+      targetId,
+      before: { mergedCompanyId: company.id, name: company.name, flag: company.flag },
+      after: { companyId: targetId, moved },
+    });
+    return this.get(targetId);
   }
 
   async listNames(): Promise<string[]> {
@@ -278,7 +360,19 @@ export class CompanyService {
       case 'industry':
         return value ? { industry: { contains: value, mode: 'insensitive' } } : null;
       case 'listName':
-        return value ? { listName: { contains: value, mode: 'insensitive' } } : null;
+        // A company can be on several lists; its own listName is the first one.
+        return value
+          ? {
+              OR: [
+                { listName: { contains: value, mode: 'insensitive' } },
+                {
+                  importRows: {
+                    some: { listImport: { listName: { contains: value, mode: 'insensitive' } } },
+                  },
+                },
+              ],
+            }
+          : null;
       case 'customerType':
         return value ? { customerType: value } : null;
       case 'flag':

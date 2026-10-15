@@ -7,12 +7,15 @@ import {
   fromJst,
   type HomeSummaryResponse,
   jstDate,
+  Permission,
 } from '@telesales/shared';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
 import type { CalendarRepository } from '../../domain/calendar/CalendarRepository.js';
 import type { Clock } from '../../domain/Clock.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { ValidationError } from '../../http/errors/AppError.js';
+import type { NextActionService } from '../appointments/NextActionService.js';
+import type { AllocationService } from '../telema/AllocationService.js';
 
 type Query = Required<Pick<DashboardQuery, 'from' | 'to'>> & Omit<DashboardQuery, 'from' | 'to'>;
 
@@ -24,6 +27,8 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly calendar: CalendarRepository,
+    private readonly allocations: AllocationService,
+    private readonly nextActions: NextActionService,
     private readonly clock: Clock,
   ) {}
 
@@ -198,6 +203,9 @@ export class DashboardService {
       dayBeforePending,
       newCallLists,
       duplicates,
+      mine,
+      allocationToConfirm,
+      nextActionsDue,
     ] = await Promise.all([
       this.prisma.schedulePlan.count({
         where: {
@@ -231,6 +239,13 @@ export class DashboardService {
         where: { purpose: 'CALL_REQUEST', createdAt: { gte: fromJst(addDays(today, -7)) } },
       }),
       this.prisma.company.count({ where: { flag: { not: 'NONE' } } }),
+      this.allocations.mine(actor.id, today),
+      actor.can(Permission.ConfirmAllocation) || actor.can(Permission.Administer)
+        ? this.allocations.needsConfirmation(today)
+        : Promise.resolve(false),
+      actor.can(Permission.WorkOnAppointments)
+        ? this.nextActions.dueCount(actor.id)
+        : Promise.resolve(0),
     ]);
     return {
       todayPlans,
@@ -241,6 +256,10 @@ export class DashboardService {
       dayBeforeDate: window.first,
       newCallLists,
       duplicatesToResolve: duplicates,
+      myCalls: mine.calls,
+      myDayBefore: mine.dayBefore,
+      allocationToConfirm,
+      nextActionsDue,
     };
   }
 

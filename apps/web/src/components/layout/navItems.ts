@@ -7,6 +7,7 @@ import {
   type LucideIcon,
   PhoneCall,
   Settings,
+  UsersRound,
 } from 'lucide-react';
 import { paths } from '@/app/paths';
 import { ja } from '@/i18n/ja';
@@ -30,6 +31,12 @@ export const navItems: readonly NavItem[] = [
     anyOf: [Permission.ViewData],
   },
   { to: paths.dashboard, label: ja.nav.dashboard, icon: BarChart3, anyOf: [Permission.ViewData] },
+  {
+    to: paths.telema,
+    label: ja.nav.telema,
+    icon: UsersRound,
+    anyOf: [Permission.WriteShifts, Permission.ConfirmAllocation, Permission.Administer],
+  },
   {
     to: paths.admin.root,
     label: ja.nav.admin,

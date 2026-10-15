@@ -2,6 +2,9 @@ import { Permission } from '@telesales/shared';
 import {
   type LucideIcon,
   CalendarCheck,
+  CheckCheck,
+  ListTodo,
+  PhoneOutgoing,
   ClipboardCheck,
   CopyCheck,
   FileWarning,
@@ -12,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
+import { MoraBot } from '@/components/brand/MoraBot';
 import { cn } from '@/components/ui/cn';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useHomeSummary } from '@/features/dashboard/api';
@@ -46,7 +50,7 @@ function TaskTile({ task }: { task: Task }) {
     <Link
       to={task.to}
       className={cn(
-        'flex items-center gap-3 rounded-(--radius-card) border bg-surface p-4 shadow-(--shadow-card) transition-colors hover:border-main/50',
+        'flex items-center gap-3 border bg-surface p-4 shadow-(--shadow-card) transition-colors hover:border-main-line hover:bg-main-soft/40',
         task.urgent && task.count > 0 ? 'border-danger/40' : 'border-line',
       )}
     >
@@ -57,7 +61,7 @@ function TaskTile({ task }: { task: Task }) {
           task.urgent && task.count > 0 ? 'text-danger' : 'text-main',
         )}
       />
-      <span className="min-w-0 flex-1 text-sm font-bold">{task.label}</span>
+      <span className="min-w-0 flex-1 text-sm font-medium">{task.label}</span>
       <span
         className={cn('text-2xl font-bold tabular-nums', task.count === 0 && 'text-ink-disabled')}
       >
@@ -69,7 +73,7 @@ function TaskTile({ task }: { task: Task }) {
 
 /** Home: what needs this person's attention, then the modules (decided by permissions). */
 export function HomePage() {
-  const { permissions } = useCurrentUser();
+  const { permissions, name } = useCurrentUser();
   const summary = useHomeSummary();
   const main = visibleItems(mainMenu, permissions);
   const admin = visibleItems(adminMenu, permissions);
@@ -102,6 +106,44 @@ export function HomePage() {
                 to: paths.appointments,
                 icon: FileWarning,
                 urgent: true,
+              },
+              {
+                key: 'nextActions',
+                label: '期限が来た次回アクション',
+                count: data.nextActionsDue,
+                to: paths.nextActions,
+                icon: ListTodo,
+                urgent: true,
+              },
+            ]
+          : []),
+        ...(can(Permission.ConfirmAllocation) && data.allocationToConfirm
+          ? [
+              {
+                key: 'allocation',
+                label: '今日の割り振りの確定',
+                count: 1,
+                to: paths.telemaAllocation,
+                icon: CheckCheck,
+                urgent: true,
+              },
+            ]
+          : []),
+        ...(can(Permission.WriteShifts) && data.myCalls + data.myDayBefore > 0
+          ? [
+              {
+                key: 'myCalls',
+                label: '今日の担当（架電）',
+                count: data.myCalls,
+                to: `${paths.calls}?mine=1`,
+                icon: PhoneOutgoing,
+              },
+              {
+                key: 'myDayBefore',
+                label: '今日の担当（前日確認）',
+                count: data.myDayBefore,
+                to: `${paths.dayBefore}?mine=1`,
+                icon: ClipboardCheck,
               },
             ]
           : []),
@@ -154,11 +196,26 @@ export function HomePage() {
       ]
     : [];
 
+  const open = tasks.reduce((sum, task) => sum + task.count, 0);
+
   return (
     <div className="flex flex-col gap-10">
+      <div className="flex items-center gap-4">
+        <MoraBot mood={data && open === 0 ? 'approved' : 'checking'} size={64} title="" />
+        <div className="min-w-0">
+          <p className="text-lg font-bold">{name}さん、おつかれさまです。</p>
+          <p className="text-sm text-ink-sub">
+            {!data
+              ? ja.common.loading
+              : open === 0
+                ? '今日やることは、いまはありません。'
+                : `今日やることが ${open} 件あります。`}
+          </p>
+        </div>
+      </div>
       {tasks.length > 0 && (
         <section aria-labelledby="tasks-title">
-          <h1 id="tasks-title" className="mb-4 text-2xl font-bold">
+          <h1 id="tasks-title" className="mb-3 text-lg font-bold">
             今日やること
           </h1>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

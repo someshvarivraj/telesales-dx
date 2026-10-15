@@ -24,6 +24,8 @@ export const ErrorCode = {
   /** The request conflicts with the current state (e.g. already cancelled, already sent). */
   InvalidState: 'INVALID_STATE',
   Conflict: 'CONFLICT',
+  /** The app is in maintenance; only admins can use it. */
+  Maintenance: 'MAINTENANCE',
   Internal: 'INTERNAL_ERROR',
 } as const;
 

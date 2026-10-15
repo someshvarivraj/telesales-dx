@@ -17,10 +17,7 @@ export function RoleBadges({ roles }: { roles: readonly Role[] }) {
       {sortRoles(roles).map((role) => (
         <li
           key={role}
-          className={cn(
-            'rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap',
-            roleClass[role],
-          )}
+          className={cn('px-2 py-px text-xs font-medium whitespace-nowrap', roleClass[role])}
         >
           {ja.role[role]}
         </li>

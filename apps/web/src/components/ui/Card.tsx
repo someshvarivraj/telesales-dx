@@ -12,14 +12,9 @@ interface CardProps {
 
 export function Card({ title, actions, children, className, flush = false }: CardProps) {
   return (
-    <section
-      className={cn(
-        'rounded-(--radius-card) border border-line bg-surface shadow-(--shadow-card)',
-        className,
-      )}
-    >
+    <section className={cn('border border-line bg-surface shadow-(--shadow-card)', className)}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3.5">
+        <header className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
           {title && <h2 className="text-base font-bold">{title}</h2>}
           {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
         </header>

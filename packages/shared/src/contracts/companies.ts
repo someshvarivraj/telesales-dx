@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import type { CompanyFlag, ListImportPurpose } from '../enums.js';
+import {
+  type CompanyFlag,
+  LIST_IMPORT_ROW_STATUSES,
+  type ListImportPurpose,
+  type ListImportRowStatus,
+} from '../enums.js';
 import { dateString, optionalText, requiredText, type UserRef } from './common.js';
 
 /** Phone = 10–11 digits once hyphens and spaces are removed (spec §9-1). */
@@ -38,8 +43,12 @@ export const updateCompanyRequestSchema = companyFieldsSchema.extend({
 export type UpdateCompanyRequest = z.infer<typeof updateCompanyRequestSchema>;
 
 export const resolveFlagRequestSchema = z.object({
-  /** KEEP = a separate company (callable); EXCLUDE = the same company as the match (not called). */
-  action: z.enum(['KEEP', 'EXCLUDE']),
+  /**
+   * KEEP = a separate company (callable).
+   * MERGE = the same company as the match: its import history and records move to the match.
+   * EXCLUDE = the same company, but there is no registered match to merge into (not called).
+   */
+  action: z.enum(['KEEP', 'MERGE', 'EXCLUDE']),
 });
 export type ResolveFlagRequest = z.infer<typeof resolveFlagRequestSchema>;
 
@@ -65,6 +74,8 @@ export const companySearchRequestSchema = z.object({
   conditions: z.array(companyFilterConditionSchema).max(10).default([]),
   match: z.enum(['AND', 'OR']).default('AND'),
   callTargetsOnly: z.boolean().default(true),
+  /** Only companies allocated to me today (confirmed allocation). */
+  assignedToMe: z.boolean().default(false),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(200).default(50),
 });
@@ -101,7 +112,18 @@ export interface CompanyDetail extends CompanyListItem {
   similarNumbers: { id: string; name: string; phone: string | null }[];
   /** Companies this one was flagged against on import. */
   flagMatches: { id: string; name: string; phone: string | null }[];
+  /** Every list this company came in on, newest first. */
+  imports: CompanyImportDto[];
   updatedAt: string;
+}
+
+export interface CompanyImportDto {
+  listImportId: string;
+  listName: string;
+  purpose: ListImportPurpose;
+  rowNumber: number;
+  status: ListImportRowStatus;
+  importedAt: string;
 }
 
 export const createCallRecordRequestSchema = z.object({
@@ -174,6 +196,21 @@ export interface ListImportDto {
   checkCount: number;
   errorCount: number;
   createdAt: string;
+}
+
+export const listImportRowsQuerySchema = z.object({
+  status: z.enum(LIST_IMPORT_ROW_STATUSES).optional(),
+});
+export type ListImportRowsQuery = z.infer<typeof listImportRowsQuerySchema>;
+
+/** One row of an imported file as it was read and judged. */
+export interface ListImportRowDto {
+  id: string;
+  rowNumber: number;
+  status: ListImportRowStatus;
+  errorMessage: string | null;
+  company: { id: string; name: string } | null;
+  rawData: Record<string, string>;
 }
 
 /** Rep suggestion from the sales area table (spec §7). */

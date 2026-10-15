@@ -29,6 +29,9 @@ import { AppointmentQueryService } from './modules/appointments/AppointmentQuery
 import { AppointmentReportService } from './modules/appointments/AppointmentReportService.js';
 import { createAppointmentsRouter } from './modules/appointments/appointmentsRouter.js';
 import { AppointmentWorkService } from './modules/appointments/AppointmentWorkService.js';
+import { NextActionService } from './modules/appointments/NextActionService.js';
+import { AppService } from './modules/apps/AppService.js';
+import { createSystemRouter } from './modules/apps/systemRouter.js';
 import { AreaTableService } from './modules/area/AreaTableService.js';
 import { PrismaAuditLogger } from './modules/audit/PrismaAuditLogger.js';
 import { AuthController } from './modules/auth/AuthController.js';
@@ -54,6 +57,9 @@ import { ScheduleService } from './modules/schedule/ScheduleService.js';
 import { SlotGuard } from './modules/schedule/SlotGuard.js';
 import { SettingsService } from './modules/settings/SettingsService.js';
 import { PrismaUserRepository } from './modules/users/PrismaUserRepository.js';
+import { AllocationService } from './modules/telema/AllocationService.js';
+import { TelemaService } from './modules/telema/TelemaService.js';
+import { createTelemaRouter } from './modules/telema/telemaRouter.js';
 import { UserService } from './modules/users/UserService.js';
 
 /**
@@ -131,7 +137,7 @@ export class Container {
     );
 
     // ① Calls
-    const companies = new CompanyService(prisma, this.audit);
+    const companies = new CompanyService(prisma, this.audit, this.clock);
     const listImports = new ListImportService(prisma, files, options, notifications, this.audit);
     const callRecords = new CallRecordService(prisma, policy, this.audit, this.clock);
     const comments = new CommentService(prisma, notifications);
@@ -175,7 +181,34 @@ export class Container {
     );
     const appointmentImports = new AppointmentImportService(prisma, files);
     const reports = new AppointmentReportService(prisma, options, this.clock);
-    const dashboard = new DashboardService(prisma, calendarRepository, this.clock);
+    const nextActions = new NextActionService(prisma, policy, this.audit, this.clock);
+
+    // ② Telemarketing (priority 2)
+    const team = new TelemaService(
+      prisma,
+      policy,
+      calendarRepository,
+      notifications,
+      this.audit,
+      this.clock,
+    );
+    const allocations = new AllocationService(
+      prisma,
+      policy,
+      team,
+      calendarRepository,
+      notifications,
+      this.audit,
+      this.clock,
+    );
+    const dashboard = new DashboardService(
+      prisma,
+      calendarRepository,
+      allocations,
+      nextActions,
+      this.clock,
+    );
+    const apps = new AppService(prisma, this.audit, this.clock);
 
     this.jobs = new ScheduledJobs(
       prisma,
@@ -186,6 +219,8 @@ export class Container {
       reports,
       files,
       options,
+      settings,
+      allocations,
       this.clock,
       config.appBaseUrl,
       this.logger,
@@ -193,6 +228,7 @@ export class Container {
 
     const authenticator = this.authenticator;
     this.apiRouters = [
+      createSystemRouter(apps),
       createReferenceRouter({ authenticator, options, users: adminUsers, calendar, settings }),
       createCompaniesRouter({
         authenticator,
@@ -212,7 +248,9 @@ export class Container {
         mail,
         imports: appointmentImports,
         reports,
+        nextActions,
       }),
+      createTelemaRouter({ authenticator, team, allocations }),
       createNotificationsRouter({ authenticator, notifications, dashboard }),
     ];
     const adminRouter = createAdminRouter({
@@ -224,6 +262,7 @@ export class Container {
       area,
       guard,
       settings,
+      apps,
       audit: this.audit,
     });
     this.apiRouters.push(mountAt('/admin', adminRouter));

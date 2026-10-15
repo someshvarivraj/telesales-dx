@@ -8,6 +8,8 @@ import type {
   ChangeRequestListItem,
   CreateAppointmentRequest,
   DayBeforeCheckRequest,
+  DayBeforeListResponse,
+  NextActionDto,
   EmailDraftDto,
   MeetingResultRequest,
   Page,
@@ -49,10 +51,7 @@ export function useDayBeforeList(date?: string) {
   return useQuery({
     queryKey: appointmentKeys.dayBefore(date),
     queryFn: ({ signal }) =>
-      apiClient.get<{ checkDate: string; dates: string[]; items: AppointmentListItem[] }>(
-        `/appointments/day-before${toQuery({ date })}`,
-        signal,
-      ),
+      apiClient.get<DayBeforeListResponse>(`/appointments/day-before${toQuery({ date })}`, signal),
   });
 }
 
@@ -210,4 +209,28 @@ export async function downloadAppointmentFile(
   name: string,
 ): Promise<void> {
   saveFile(await apiClient.download(`/appointments/${appointmentId}/files/${fileId}`, name));
+}
+
+export function useNextActions(includeDone: boolean) {
+  return useQuery({
+    queryKey: ['next-actions', includeDone] as const,
+    queryFn: ({ signal }) =>
+      apiClient.get<NextActionDto[]>(
+        `/next-actions${toQuery({ includeDone: String(includeDone) })}`,
+        signal,
+      ),
+  });
+}
+
+export function useSetNextActionDone() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ resultId, done }: { resultId: string; done: boolean }) =>
+      apiClient.put<undefined>(`/meeting-results/${resultId}/next-action`, { done }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['next-actions'] });
+      void client.invalidateQueries({ queryKey: ['home'] });
+      void client.invalidateQueries({ queryKey: ['appointments'] });
+    },
+  });
 }

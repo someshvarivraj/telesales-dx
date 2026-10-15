@@ -58,7 +58,7 @@ export function ChangeRequestsPage() {
         {(items) =>
           items.length === 0 ? (
             <Card>
-              <EmptyState>変更依頼はありません。</EmptyState>
+              <EmptyState mood="approved">変更依頼はありません。</EmptyState>
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">

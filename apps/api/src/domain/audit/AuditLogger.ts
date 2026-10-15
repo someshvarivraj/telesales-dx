@@ -11,6 +11,7 @@ export const AuditAction = {
   CompanyCreated: 'company.created',
   CompanyUpdated: 'company.updated',
   CompanyFlagResolved: 'company.flag.resolved',
+  CompanyMerged: 'company.merged',
   ListImported: 'list.imported',
   CallRecordCreated: 'call_record.created',
   CallRecordUpdated: 'call_record.updated',
@@ -31,6 +32,16 @@ export const AuditAction = {
   TimeOffDeleted: 'time_off.deleted',
   LockReleased: 'slot_lock.released',
   SettingsChanged: 'settings.changed',
+  TelemarketerUpdated: 'telemarketer.updated',
+  ShiftSaved: 'shift.saved',
+  ShiftDeleted: 'shift.deleted',
+  ShiftsFilled: 'shift.filled',
+  AllocationCalculated: 'allocation.calculated',
+  AllocationMoved: 'allocation.moved',
+  AllocationConfirmed: 'allocation.confirmed',
+  NextActionUpdated: 'appointment.next_action.updated',
+  AppCreated: 'app.created',
+  AppUpdated: 'app.updated',
 } as const;
 
 export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction];

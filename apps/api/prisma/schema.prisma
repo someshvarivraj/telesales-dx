@@ -69,8 +69,10 @@ model User {
   slotLocksOnRep      SlotLock[]               @relation("SlotLockRep")
   areaRulesAsRep      SalesAreaRule[]          @relation("AreaRuleRep")
   areaRulesAsBackup   SalesAreaRule[]          @relation("AreaRuleBackup")
-  shifts              Shift[]
+  shifts              Shift[]                  @relation("ShiftOwner")
+  shiftsEntered       Shift[]                  @relation("ShiftEnteredBy")
   allocations         Allocation[]             @relation("AllocationAssignee")
+  allocationsConfirmed Allocation[]            @relation("AllocationConfirmer")
   filesUploaded       StoredFile[]
   emails              OutboundEmail[]
 
@@ -249,10 +251,13 @@ model Notification {
   body       String?   @db.VarChar(500)
   linkPath   String?   @map("link_path") @db.VarChar(300)
   readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+  /// Scheduled reminders set this so a person gets the same reminder only once.
+  dedupeKey  String?   @map("dedupe_key") @db.VarChar(120)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
   @@map("notifications")
 }
@@ -303,7 +308,7 @@ model StoredFile {
 
   uploadedBy   User?                   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   listImports  ListImport[]
-  appointments Appointment[]
+  appointments AppointmentSourceFile[]
   attachments  PreparationAttachment[]
 
   @@index([sha256])
@@ -393,7 +398,6 @@ model Company {
   parentId       String?     @map("parent_id") @db.Uuid
   companyGroupId String?     @map("company_group_id") @db.Uuid
   createdById    String?     @map("created_by_id") @db.Uuid
-  listImportId   String?     @map("list_import_id") @db.Uuid
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -403,7 +407,8 @@ model Company {
   children     Company[]           @relation("CompanyParent")
   companyGroup CompanyGroup?       @relation(fields: [companyGroupId], references: [id])
   createdBy    User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  listImport   ListImport?         @relation(fields: [listImportId], references: [id])
+  /// Every list this company came in on (one company, many imports)
+  importRows   ListImportRow[]
   formerNames  CompanyFormerName[]
   callRecords  CallRecord[]
   appointments Appointment[]
@@ -413,6 +418,8 @@ model Company {
   @@index([name])
   @@index([nameKey])
   @@index([isCallTarget, flag])
+  @@index([prefecture, city])
+  @@index([customerType])
   @@map("companies")
 }
 
@@ -448,12 +455,46 @@ model ListImport {
   errorCount     Int               @map("error_count")
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  file        StoredFile   @relation(fields: [fileId], references: [id])
-  importedBy  User         @relation(fields: [importedById], references: [id])
-  companies   Company[]
+  file        StoredFile      @relation(fields: [fileId], references: [id])
+  importedBy  User            @relation(fields: [importedById], references: [id])
+  rows        ListImportRow[]
   callRecords CallRecord[]
 
   @@map("list_imports")
+}
+
+enum ListImportRowStatus {
+  /// Registered as a new company
+  IMPORTED
+  /// Same phone number as an existing company
+  DUPLICATE
+  /// Same company name only
+  NEEDS_CHECK
+  /// Not registered: required values missing or invalid
+  INVALID
+}
+
+/// One row of an imported file: what was read, how it was judged, and which company it became.
+/// The bridge between imports and companies, so one company keeps its history across lists.
+model ListImportRow {
+  id           String              @id @default(uuid()) @db.Uuid
+  listImportId String              @map("list_import_id") @db.Uuid
+  /// The company this row created or was merged into; null for invalid rows
+  companyId    String?             @map("company_id") @db.Uuid
+  /// Row number in the file (header = 1)
+  rowNumber    Int                 @map("row_number")
+  /// The row as read, by header name
+  rawData      Json                @map("raw_data")
+  status       ListImportRowStatus
+  errorMessage String?             @map("error_message")
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  listImport ListImport @relation(fields: [listImportId], references: [id], onDelete: Cascade)
+  company    Company?   @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@unique([listImportId, rowNumber])
+  @@index([companyId])
+  @@map("list_import_rows")
 }
 
 model CallRecord {
@@ -543,9 +584,8 @@ model Appointment {
   status                AppointmentStatus @default(SCHEDULED)
   source                AppointmentSource
   originalAppointmentId String?           @map("original_appointment_id") @db.Uuid
-  sourceFileId          String?           @map("source_file_id") @db.Uuid
-  /// Content hash of the imported file; the same file is never registered twice
-  sourceFileHash        String?           @unique @map("source_file_hash") @db.Char(64)
+  /// Fingerprint of the imported record (file hashes + CSV row); the same record is never registered twice
+  sourceFingerprint     String?           @unique @map("source_fingerprint") @db.Char(64)
   cancelledAt           DateTime?         @map("cancelled_at") @db.Timestamptz(6)
   cancelledById         String?           @map("cancelled_by_id") @db.Uuid
   /// Optimistic concurrency for edits from several screens
@@ -561,7 +601,7 @@ model Appointment {
   cancelledBy         User?                    @relation("AppointmentCanceller", fields: [cancelledById], references: [id])
   originalAppointment Appointment?             @relation("Rebooking", fields: [originalAppointmentId], references: [id])
   rebookings          Appointment[]            @relation("Rebooking")
-  sourceFile          StoredFile?              @relation(fields: [sourceFileId], references: [id])
+  sourceFiles         AppointmentSourceFile[]
   plan                SchedulePlan?
   preparations        AppointmentPreparation[]
   meetingResults      MeetingResult[]
@@ -575,7 +615,34 @@ model Appointment {
   @@index([startsAt])
   @@index([bookedById, bookedAt])
   @@index([companyId])
+  @@index([status, startsAt])
   @@map("appointments")
+}
+
+enum SourceFileType {
+  /// Telemarketing system CSV (existing lists)
+  EXISTING_LIST_CSV
+  /// 営業さんへの伝達事項 PDF
+  HANDOVER_PDF
+  OTHER
+}
+
+/// The file(s) an existing-list appointment was read from: CSV, PDF, or both.
+model AppointmentSourceFile {
+  id            String         @id @default(uuid()) @db.Uuid
+  appointmentId String         @map("appointment_id") @db.Uuid
+  fileId        String         @map("file_id") @db.Uuid
+  sourceType    SourceFileType @map("source_type")
+  /// CSV row the appointment came from (header = 1); null for PDFs and one-row CSVs
+  rowNumber     Int?           @map("row_number")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  file        StoredFile  @relation(fields: [fileId], references: [id])
+
+  @@unique([appointmentId, fileId])
+  @@index([fileId])
+  @@map("appointment_source_files")
 }
 
 model AppointmentPreparation {
@@ -595,9 +662,10 @@ model AppointmentPreparation {
 }
 
 model PreparationAttachment {
-  id            String @id @default(uuid()) @db.Uuid
-  preparationId String @map("preparation_id") @db.Uuid
-  fileId        String @map("file_id") @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
+  preparationId String   @map("preparation_id") @db.Uuid
+  fileId        String   @map("file_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   preparation AppointmentPreparation @relation(fields: [preparationId], references: [id], onDelete: Cascade)
   file        StoredFile             @relation(fields: [fileId], references: [id])
@@ -617,6 +685,8 @@ model MeetingResult {
   dealStatus     String?   @map("deal_status") @db.VarChar(48)
   nextAction     String?   @map("next_action")
   nextActionDate DateTime? @map("next_action_date") @db.Date
+  /// Set when the rep ticks the next action off in their list.
+  nextActionDoneAt DateTime? @map("next_action_done_at") @db.Timestamptz(6)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -800,6 +870,7 @@ model SlotLock {
   lockedBy User @relation("SlotLockHolder", fields: [lockedById], references: [id])
 
   @@index([salesRepId, startsAt])
+  @@index([salesRepId, expiresAt])
   @@index([expiresAt])
   @@map("slot_locks")
 }
@@ -814,6 +885,12 @@ model TelemarketerProfile {
   isAllocationTarget Boolean  @default(true) @map("is_allocation_target")
   /// Fixed territory prefectures, e.g. 京都・滋賀・奈良
   territory          String[] @default([])
+  /// Usual working pattern, used to fill a month of shifts in one go.
+  usualStart         String?  @map("usual_start") @db.VarChar(5)
+  usualEnd           String?  @map("usual_end") @db.VarChar(5)
+  usualBreakMinutes  Int      @default(60) @map("usual_break_minutes")
+  /// 0 = Sunday … 6 = Saturday
+  usualWeekdays      Int[]    @default([1, 2, 3, 4, 5]) @map("usual_weekdays")
   updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -830,11 +907,16 @@ model Shift {
   endTime        String?  @map("end_time") @db.VarChar(5)
   breakMinutes   Int      @default(0) @map("break_minutes")
   workingMinutes Int      @default(0) @map("working_minutes")
+  /// e.g. 「本人から電話：体調不良」 for a same-day change
+  note           String?  @db.VarChar(200)
+  enteredById    String?  @map("entered_by_id") @db.Uuid
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user User @relation(fields: [userId], references: [id])
+  user      User  @relation("ShiftOwner", fields: [userId], references: [id])
+  enteredBy User? @relation("ShiftEnteredBy", fields: [enteredById], references: [id])
 
   @@unique([userId, date])
+  @@index([date])
   @@map("shifts")
 }
 
@@ -856,11 +938,14 @@ model Allocation {
   appointmentId String?          @map("appointment_id") @db.Uuid
   assigneeId    String           @map("assignee_id") @db.Uuid
   status        AllocationStatus @default(DRAFT)
+  confirmedAt   DateTime?        @map("confirmed_at") @db.Timestamptz(6)
+  confirmedById String?          @map("confirmed_by_id") @db.Uuid
   createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   company     Company?     @relation(fields: [companyId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
   assignee    User         @relation("AllocationAssignee", fields: [assigneeId], references: [id])
+  confirmedBy User?        @relation("AllocationConfirmer", fields: [confirmedById], references: [id])
 
   @@index([date, kind, assigneeId])
   @@map("allocations")

@@ -1,5 +1,8 @@
 import type {
   AdminUserDto,
+  AppDto,
+  CreateAppRequest,
+  UpdateAppRequest,
   AppSettingsDto,
   AreaRuleDto,
   AreaRuleRequest,
@@ -36,6 +39,7 @@ export const adminKeys = {
   groups: ['admin', 'company-groups'] as const,
   locks: ['admin', 'locks'] as const,
   settings: ['admin', 'settings'] as const,
+  apps: ['admin', 'apps'] as const,
   audit: (filter: unknown) => ['admin', 'audit', filter] as const,
 };
 
@@ -218,6 +222,24 @@ export const useAdminSettings = () =>
 export const useSaveSettings = () =>
   useInvalidatingMutation([adminKeys.settings, ['settings']], (request: AppSettingsDto) =>
     apiClient.put<AppSettingsDto>('/admin/settings', request),
+  );
+
+export const useApps = () =>
+  useQuery({
+    queryKey: adminKeys.apps,
+    queryFn: ({ signal }) => apiClient.get<AppDto[]>('/admin/apps', signal),
+  });
+
+export const useCreateApp = () =>
+  useInvalidatingMutation([adminKeys.apps], (request: CreateAppRequest) =>
+    apiClient.post<AppDto>('/admin/apps', request),
+  );
+
+export const useUpdateApp = () =>
+  useInvalidatingMutation(
+    [adminKeys.apps, ['system']],
+    ({ key, request }: { key: string; request: UpdateAppRequest }) =>
+      apiClient.put<AppDto>(`/admin/apps/${key}`, request),
   );
 
 export const useAuditLog = (filter: { targetType?: string; targetId?: string; limit?: number }) =>

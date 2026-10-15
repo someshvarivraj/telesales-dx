@@ -7,11 +7,13 @@ import {
   DayBeforeResult,
   ErrorCode,
   ListImportPurpose,
+  ListImportRowStatus,
   MeetingFormat,
   PASSWORD_MIN_LENGTH,
   Permission,
   PlanStatus,
   Role,
+  SourceFileType,
   TimeOffKind,
 } from '@telesales/shared';
 
@@ -22,6 +24,8 @@ import {
 export const ja = {
   app: {
     name: 'テレマ・営業DX',
+    company: 'モラブ阪神工業株式会社',
+    notice: '社内利用限定です。個人情報を扱うため、取り扱いにご注意ください。',
   },
   role: {
     [Role.Telema]: 'テレマ',
@@ -35,6 +39,7 @@ export const ja = {
     schedule: 'スケジュール管理',
     appointments: 'アポ一覧',
     dashboard: 'ダッシュボード',
+    telema: 'テレマ管理',
   },
   nav: {
     home: 'ホーム',
@@ -42,6 +47,7 @@ export const ja = {
     schedule: '予定',
     appointments: 'アポ',
     dashboard: '集計',
+    telema: 'テレマ',
     admin: '管理',
     notifications: 'お知らせ',
   },
@@ -94,6 +100,17 @@ export const ja = {
     [CompanyFlag.Duplicate]: '重複',
     [CompanyFlag.NeedsCheck]: '要確認',
   },
+  importRowStatus: {
+    [ListImportRowStatus.Imported]: '登録',
+    [ListImportRowStatus.Duplicate]: '重複',
+    [ListImportRowStatus.NeedsCheck]: '要確認',
+    [ListImportRowStatus.Invalid]: 'エラー',
+  },
+  sourceFileType: {
+    [SourceFileType.ExistingListCsv]: 'テレマシステムのCSV',
+    [SourceFileType.HandoverPdf]: '伝達事項PDF',
+    [SourceFileType.Other]: 'その他のファイル',
+  },
   permission: {
     [Permission.ViewData]: '閲覧',
     [Permission.WriteComments]: 'コメント',
@@ -122,6 +139,7 @@ export const ja = {
     notices: '通知の宛先',
     locks: '編集中の押さえ',
     settings: 'その他の設定',
+    apps: 'アプリ・メンテナンス',
     audit: '操作履歴',
   },
   auth: {
@@ -198,6 +216,7 @@ export const ja = {
     [ErrorCode.FileTooLarge]: 'ファイルが大きすぎます（20MBまで）。',
     [ErrorCode.InvalidState]: 'いまの状態ではこの操作はできません。画面を読み込み直してください。',
     [ErrorCode.Conflict]: 'すでに登録されています。',
+    [ErrorCode.Maintenance]: 'ただいまメンテナンス中です。終わるまでお待ちください。',
     network: '通信エラーが発生しました。ネットワークの接続をご確認ください。',
     unexpected: 'エラーが発生しました。時間をおいて再度お試しください。',
   },

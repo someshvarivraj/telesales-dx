@@ -10,6 +10,8 @@ import type {
   FindRepRequest,
   ListImportDto,
   ListImportPreview,
+  ListImportRowDto,
+  ListImportRowStatus,
   Page,
   RepSuggestion,
   ResolveFlagRequest,
@@ -23,6 +25,7 @@ export const callsKeys = {
   company: (id: string) => ['companies', id] as const,
   records: (id: string) => ['companies', id, 'call-records'] as const,
   imports: ['list-imports'] as const,
+  importRows: (id: string, status: string) => ['list-imports', id, 'rows', status] as const,
   flagged: ['companies', 'flagged'] as const,
   listNames: ['companies', 'list-names'] as const,
   comments: (target: { appointmentId?: string; callRecordId?: string }) =>
@@ -96,6 +99,19 @@ export function useListImports() {
   });
 }
 
+/** The rows of one import as read and judged; `status` empty = all rows. */
+export function useImportRows(id: string | null, status: ListImportRowStatus | '') {
+  return useQuery({
+    queryKey: callsKeys.importRows(id ?? '', status),
+    queryFn: ({ signal }) =>
+      apiClient.get<ListImportRowDto[]>(
+        `/list-imports/${id}/rows${toQuery({ status: status || undefined })}`,
+        signal,
+      ),
+    enabled: id !== null,
+  });
+}
+
 export function usePreviewImport() {
   return useMutation({
     mutationFn: (file: File) => {
@@ -131,7 +147,10 @@ export function useResolveFlag() {
   return useMutation({
     mutationFn: ({ id, request }: { id: string; request: ResolveFlagRequest }) =>
       apiClient.post<CompanyDetail>(`/companies/${id}/resolve-flag`, request),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['companies'] }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['companies'] });
+      void client.invalidateQueries({ queryKey: callsKeys.imports });
+    },
   });
 }
 

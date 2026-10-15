@@ -7,6 +7,7 @@ import type {
   DayBeforeResult,
   EmailStatus,
   MeetingFormat,
+  SourceFileType,
 } from '../enums.js';
 import {
   dateString,
@@ -174,6 +175,15 @@ export interface AppointmentListItem {
   openChangeRequest: ChangeRequestStatus | null;
 }
 
+/** Day-before checks of one check date, with who was allocated each (after confirmation). */
+export interface DayBeforeListResponse {
+  checkDate: string;
+  dates: string[];
+  /** True once the lead has confirmed the day's allocation. */
+  allocated: boolean;
+  items: (AppointmentListItem & { assignee: UserRef | null })[];
+}
+
 export interface PreparationDto {
   id: string;
   author: UserRef;
@@ -192,8 +202,27 @@ export interface MeetingResultDto {
   dealStatus: string | null;
   nextAction: string | null;
   nextActionDate: string | null;
+  nextActionDoneAt: string | null;
   createdAt: string;
 }
+
+/** A sales rep's own next actions (spec §6, priority 2). */
+export interface NextActionDto {
+  resultId: string;
+  appointmentId: string;
+  company: { id: string; name: string };
+  visitedOn: string;
+  nextAction: string;
+  nextActionDate: string | null;
+  doneAt: string | null;
+  author: UserRef;
+}
+
+export const nextActionsQuerySchema = z.object({
+  includeDone: z.enum(['true', 'false']).default('false'),
+});
+
+export const nextActionDoneRequestSchema = z.object({ done: z.boolean() });
 
 export interface AppointmentChangeDto {
   id: string;
@@ -272,7 +301,8 @@ export interface AppointmentDetail extends AppointmentListItem {
   sourceCallRecordId: string | null;
   originalAppointmentId: string | null;
   rebookingIds: string[];
-  sourceFile: FileDto | null;
+  /** The CSV and/or PDF an existing-list appointment was read from. */
+  sourceFiles: AppointmentSourceFileDto[];
   attendees: UserRef[];
   preparations: PreparationDto[];
   results: MeetingResultDto[];
@@ -360,4 +390,11 @@ export interface CommentDto {
   body: string;
   createdAt: string;
   replies: CommentDto[];
+}
+
+export interface AppointmentSourceFileDto {
+  file: FileDto;
+  sourceType: SourceFileType;
+  /** CSV row (header = 1); null for PDFs and one-row CSVs. */
+  rowNumber: number | null;
 }

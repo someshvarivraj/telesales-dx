@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminLayout } from '@/features/admin/AdminLayout';
+import { AppsPage } from '@/features/admin/AppsPage';
 import { AreaTablePage } from '@/features/admin/AreaTablePage';
 import { AuditPage } from '@/features/admin/AuditPage';
 import { CalendarAdminPage } from '@/features/admin/CalendarAdminPage';
@@ -17,6 +18,7 @@ import { AppointmentsLayout } from '@/features/appointments/AppointmentsLayout';
 import { ChangeRequestsPage } from '@/features/appointments/ChangeRequestsPage';
 import { DayBeforePage } from '@/features/appointments/DayBeforePage';
 import { MailPage } from '@/features/appointments/MailPage';
+import { NextActionsPage } from '@/features/appointments/NextActionsPage';
 import { RequirePermission } from '@/features/auth/guards/RequirePermission';
 import { RequireSession } from '@/features/auth/guards/RequireSession';
 import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage';
@@ -33,6 +35,11 @@ import { adminMenu, visibleItems } from '@/features/home/menus';
 import { BookingPage } from '@/features/schedule/BookingPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { NotFoundPage } from '@/features/system/NotFoundPage';
+import { AllocationPage } from '@/features/telema/AllocationPage';
+import { PeoplePage } from '@/features/telema/PeoplePage';
+import { ShiftsPage } from '@/features/telema/ShiftsPage';
+import { TelemaLayout } from '@/features/telema/TelemaLayout';
+import { TodayPage } from '@/features/telema/TodayPage';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { paths } from './paths';
 
@@ -104,11 +111,28 @@ export const routes: RouteObject[] = [
           { index: true, element: <AppointmentListPage /> },
           { path: 'day-before', element: <DayBeforePage /> },
           { path: 'change-requests', element: <ChangeRequestsPage /> },
+          {
+            path: 'next-actions',
+            element: guard(
+              [Permission.WorkOnAppointments, Permission.Administer],
+              <NextActionsPage />,
+            ),
+          },
         ],
       },
       { path: '/appointments/:id', element: guard(view, <AppointmentPage />) },
       { path: '/appointments/:id/mail/:kind', element: guard(view, <MailPage />) },
       { path: paths.dashboard, element: guard(view, <DashboardPage />) },
+      {
+        path: paths.telema,
+        element: guard(view, <TelemaLayout />),
+        children: [
+          { index: true, element: <TodayPage /> },
+          { path: 'shifts', element: <ShiftsPage /> },
+          { path: 'allocation', element: <AllocationPage /> },
+          { path: 'people', element: <PeoplePage /> },
+        ],
+      },
       {
         path: paths.admin.root,
         element: guard([Permission.Administer, Permission.EditAreaTable], <AdminLayout />),
@@ -121,6 +145,7 @@ export const routes: RouteObject[] = [
           { path: 'notices', element: guard(adminOnly, <NoticesPage />) },
           { path: 'locks', element: guard(adminOnly, <LocksPage />) },
           { path: 'settings', element: guard(adminOnly, <SettingsPage />) },
+          { path: 'apps', element: guard(adminOnly, <AppsPage />) },
           { path: 'audit', element: guard(adminOnly, <AuditPage />) },
         ],
       },

@@ -4,6 +4,7 @@ import {
   createCallRecordRequestSchema,
   createCommentRequestSchema,
   findRepRequestSchema,
+  listImportRowsQuerySchema,
   Permission,
   resolveFlagRequestSchema,
   updateCompanyRequestSchema,
@@ -45,7 +46,12 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
   const view = auth.requireAnyPermission(Permission.ViewData);
 
   router.post('/companies/search', view, async (req, res) => {
-    res.json(await deps.companies.search(parseWith(companySearchRequestSchema, req.body)));
+    res.json(
+      await deps.companies.search(
+        parseWith(companySearchRequestSchema, req.body),
+        currentUserOf(req).id,
+      ),
+    );
   });
   router.get('/companies/list-names', view, async (_req, res) => {
     res.json(await deps.companies.listNames());
@@ -145,6 +151,14 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
             parseWith(commitListImportRequestSchema, req.body),
           ),
         );
+    },
+  );
+  // Raw rows can hold more than the register shows, so only those who import or resolve see them.
+  router.get(
+    '/list-imports/:id/rows',
+    auth.requireAnyPermission(Permission.ImportLists, Permission.ResolveDuplicates),
+    async (req, res) => {
+      res.json(await deps.imports.rows(idParam(req), parseQuery(listImportRowsQuerySchema, req)));
     },
   );
   router.get(

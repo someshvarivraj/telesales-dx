@@ -1,11 +1,14 @@
 import type { appointmentListQuerySchema } from '@telesales/shared';
 import {
   addDays,
+  AllocationKind,
+  AllocationStatus,
   type AppointmentDetail,
   type AppointmentListItem,
   AppointmentSource,
   AppointmentStatus,
   type ChangeRequestListItem,
+  type DayBeforeListResponse,
   fromJst,
   jstDate,
   type Page,
@@ -16,7 +19,7 @@ import type { CalendarRepository } from '../../domain/calendar/CalendarRepositor
 import type { Clock } from '../../domain/Clock.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { NotFoundError } from '../../http/errors/AppError.js';
-import { userRefSelect } from '../../http/mappers.js';
+import { toDbDate, userRef, userRefSelect } from '../../http/mappers.js';
 import {
   appointmentDetailInclude,
   type AppointmentDetailRow,
@@ -115,22 +118,42 @@ export class AppointmentQueryService {
    * Day-before checks (spec §7): telemarketing appointments whose previous business day
    * is `checkDate` (on Friday: Saturday to Monday).
    */
-  async dayBeforeList(
-    checkDate?: string,
-  ): Promise<{ checkDate: string; dates: string[]; items: AppointmentListItem[] }> {
+  async dayBeforeList(checkDate?: string): Promise<DayBeforeListResponse> {
     const today = checkDate ?? jstDate(this.clock.now());
     const calendar = await this.calendar.load(today, addDays(today, 14));
     const { first, last, dates } = calendar.checkWindow(today);
-    const rows = await this.prisma.appointment.findMany({
-      where: {
-        status: AppointmentStatus.Scheduled,
-        source: { not: AppointmentSource.SalesBooked },
-        startsAt: { gte: fromJst(first), lt: fromJst(addDays(last, 1)) },
-      },
-      include: appointmentListInclude,
-      orderBy: { startsAt: 'asc' },
-    });
-    return { checkDate: today, dates, items: rows.map(toListItem) };
+    const [rows, allocations] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          status: AppointmentStatus.Scheduled,
+          source: { not: AppointmentSource.SalesBooked },
+          startsAt: { gte: fromJst(first), lt: fromJst(addDays(last, 1)) },
+        },
+        include: appointmentListInclude,
+        orderBy: { startsAt: 'asc' },
+      }),
+      // Who checks which appointment, once the lead has confirmed the day (priority 2).
+      this.prisma.allocation.findMany({
+        where: {
+          date: toDbDate(today),
+          kind: AllocationKind.DayBefore,
+          status: AllocationStatus.Confirmed,
+        },
+        select: { appointmentId: true, assignee: userRefSelect },
+      }),
+    ]);
+    const assigneeOf = new Map(
+      allocations.map((allocation) => [allocation.appointmentId, allocation.assignee]),
+    );
+    return {
+      checkDate: today,
+      dates,
+      allocated: allocations.length > 0,
+      items: rows.map((row) => ({
+        ...toListItem(row),
+        assignee: userRef(assigneeOf.get(row.id) ?? null),
+      })),
+    };
   }
 
   async changeRequests(openOnly: boolean): Promise<ChangeRequestListItem[]> {

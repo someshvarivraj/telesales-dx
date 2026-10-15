@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ja } from '@/i18n/ja';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { Alert } from './Alert';
-import { Spinner } from './Spinner';
+import { MoraBot } from '@/components/brand/MoraBot';
 
 interface QueryStateProps<T> {
   query: { data: T | undefined; isPending: boolean; isError: boolean; error: unknown };
@@ -13,8 +13,12 @@ interface QueryStateProps<T> {
 export function QueryState<T>({ query, children }: QueryStateProps<T>) {
   if (query.isPending) {
     return (
-      <div className="flex justify-center py-12 text-ink-sub">
-        <Spinner className="size-6" label={ja.common.loading} />
+      <div
+        role="status"
+        className="flex flex-col items-center justify-center gap-2 py-10 text-sm text-ink-sub"
+      >
+        <MoraBot mood="think" size={56} animate title="" />
+        {ja.common.loading}
       </div>
     );
   }

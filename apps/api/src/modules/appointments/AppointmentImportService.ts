@@ -138,7 +138,7 @@ export class AppointmentImportService {
     );
     const already = hash
       ? await this.prisma.appointment.findUnique({
-          where: { sourceFileHash: hash },
+          where: { sourceFingerprint: hash },
           select: { id: true },
         })
       : null;

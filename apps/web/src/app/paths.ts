@@ -16,6 +16,11 @@ export const paths = {
     `/appointments/${id}/mail/${kind}`,
   dayBefore: '/appointments/day-before',
   changeRequests: '/appointments/change-requests',
+  nextActions: '/appointments/next-actions',
+  telema: '/telema',
+  telemaShifts: '/telema/shifts',
+  telemaAllocation: '/telema/allocation',
+  telemaPeople: '/telema/people',
   dashboard: '/dashboard',
   admin: {
     root: '/admin',
@@ -26,6 +31,7 @@ export const paths = {
     notices: '/admin/notices',
     locks: '/admin/locks',
     settings: '/admin/settings',
+    apps: '/admin/apps',
     audit: '/admin/audit',
   },
 } as const;

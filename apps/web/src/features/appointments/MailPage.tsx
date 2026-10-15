@@ -1,9 +1,10 @@
 import type { EmailDraftDto } from '@telesales/shared';
-import { CircleCheck, RefreshCw, Send } from 'lucide-react';
+import { RefreshCw, Send } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
+import { MoraBot } from '@/components/brand/MoraBot';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
@@ -98,7 +99,7 @@ function MailEditor({
       {sent ? (
         <Alert tone="success">
           <span className="flex flex-wrap items-center gap-2">
-            <CircleCheck className="size-4" aria-hidden="true" />
+            <MoraBot mood="approved" size={32} title="" />
             {email.sentAt && formatDateTime(email.sentAt)}
             に送信しました。同じメールは二度送られません。
             {kind === 'booking' && (
