@@ -4,37 +4,56 @@ import {
   DayBeforeResult,
   MeetingFormat,
 } from '@telesales/shared';
-import { Badge, type BadgeTone } from '@/components/ui/Badge';
+import { Building2, Video } from 'lucide-react';
+import { MetaLabel, StatusLabel, type StatusTone } from '@/components/ui/StatusLabel';
 import { ja } from '@/i18n/ja';
 
-const STATUS_TONE: Record<AppointmentStatus, BadgeTone> = {
+/*
+ * Appointment states. The main state is a dot and dark text; follow-up states
+ * (sales check, day-before check, change request) are smaller and grey, so only the
+ * dots carry colour and a row never turns into a strip of coloured boxes.
+ */
+
+const STATUS_TONE: Record<AppointmentStatus, StatusTone> = {
   [AppointmentStatus.Scheduled]: 'info',
   [AppointmentStatus.Completed]: 'success',
   [AppointmentStatus.Cancelled]: 'neutral',
 };
 
 export function AppointmentStatusBadge({ status }: { status: AppointmentStatus }) {
-  return <Badge tone={STATUS_TONE[status]}>{ja.appointmentStatus[status]}</Badge>;
+  return <StatusLabel tone={STATUS_TONE[status]}>{ja.appointmentStatus[status]}</StatusLabel>;
 }
 
 export function FormatBadge({ format }: { format: MeetingFormat }) {
   return (
-    <Badge tone={format === MeetingFormat.Online ? 'info' : 'outline'}>{ja.format[format]}</Badge>
+    <MetaLabel icon={format === MeetingFormat.Online ? Video : Building2}>
+      {ja.format[format]}
+    </MetaLabel>
   );
 }
 
-const DAY_BEFORE_TONE: Record<DayBeforeResult, BadgeTone> = {
+const DAY_BEFORE_TONE: Record<DayBeforeResult, StatusTone> = {
   [DayBeforeResult.Confirmed]: 'success',
   [DayBeforeResult.NotReached]: 'warning',
-  [DayBeforeResult.Changed]: 'calls',
+  [DayBeforeResult.Changed]: 'info',
 };
 
 export function DayBeforeBadge({ result }: { result: DayBeforeResult | null }) {
-  if (!result) return <Badge tone="outline">前日確認 未入力</Badge>;
-  return <Badge tone={DAY_BEFORE_TONE[result]}>前日確認：{ja.dayBefore[result]}</Badge>;
+  if (!result) {
+    return (
+      <StatusLabel tone="warning" secondary>
+        前日確認 未入力
+      </StatusLabel>
+    );
+  }
+  return (
+    <StatusLabel tone={DAY_BEFORE_TONE[result]} secondary>
+      前日確認：{ja.dayBefore[result]}
+    </StatusLabel>
+  );
 }
 
-const REQUEST_TONE: Record<ChangeRequestStatus, BadgeTone> = {
+const REQUEST_TONE: Record<ChangeRequestStatus, StatusTone> = {
   [ChangeRequestStatus.Requested]: 'danger',
   [ChangeRequestStatus.InProgress]: 'warning',
   [ChangeRequestStatus.Done]: 'success',
@@ -42,13 +61,21 @@ const REQUEST_TONE: Record<ChangeRequestStatus, BadgeTone> = {
 };
 
 export function ChangeRequestBadge({ status }: { status: ChangeRequestStatus }) {
-  return <Badge tone={REQUEST_TONE[status]}>変更依頼：{ja.changeRequestStatus[status]}</Badge>;
+  return (
+    <StatusLabel tone={REQUEST_TONE[status]} secondary>
+      変更依頼：{ja.changeRequestStatus[status]}
+    </StatusLabel>
+  );
 }
 
 export function ConfirmedBadge({ confirmedAt }: { confirmedAt: string | null }) {
   return confirmedAt ? (
-    <Badge tone="success">営業確認済み</Badge>
+    <StatusLabel tone="success" secondary>
+      営業確認済み
+    </StatusLabel>
   ) : (
-    <Badge tone="warning">営業 未確認</Badge>
+    <StatusLabel tone="warning" secondary>
+      営業 未確認
+    </StatusLabel>
   );
 }

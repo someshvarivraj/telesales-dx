@@ -179,7 +179,7 @@ export function AppointmentListPage() {
                           >
                             {item.company.name}
                           </Link>
-                          <div className="mt-1 flex flex-wrap gap-1">
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
                             <FormatBadge format={item.format} />
                             {item.isNewAppointment && (
                               <span className="text-xs text-ink-sub">新規●</span>
@@ -197,7 +197,7 @@ export function AppointmentListPage() {
                           {customerTypes.labelOf(item.customerType)}
                         </Td>
                         <Td>
-                          <div className="flex flex-col items-start gap-1">
+                          <div className="flex flex-col items-start gap-1.5">
                             <AppointmentStatusBadge status={item.status} />
                             {item.status === 'SCHEDULED' && (
                               <ConfirmedBadge confirmedAt={item.salesConfirmedAt} />

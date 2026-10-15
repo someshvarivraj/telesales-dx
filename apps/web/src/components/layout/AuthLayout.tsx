@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -14,7 +15,8 @@ interface AuthLayoutProps {
 /** Centered single-card layout for signed-out screens, as on the skill sheet system. */
 export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-12">
+    <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-12">
+      <GridBackdrop />
       <div className="w-full max-w-md">
         <div className="mb-4 flex justify-end">
           <LanguageSwitch className="w-36" />

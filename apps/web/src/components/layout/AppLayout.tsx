@@ -1,5 +1,6 @@
 import { Permission } from '@telesales/shared';
 import { Outlet } from 'react-router';
+import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { Alert } from '@/components/ui/Alert';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
@@ -17,6 +18,7 @@ export function AppLayout() {
   const maintenance = status.data?.maintenance === true;
   return (
     <div className="min-h-dvh">
+      <GridBackdrop />
       <AppSidebar />
       <div className="app-main flex min-h-dvh min-w-0 flex-col">
         <AppHeader />
