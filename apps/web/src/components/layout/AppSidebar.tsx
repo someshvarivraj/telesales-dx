@@ -6,6 +6,7 @@ import { cn } from '@/components/ui/cn';
 import { RoleBadges } from '@/components/ui/RoleBadge';
 import { useCurrentUser, useLogout } from '@/features/auth/hooks/useSession';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
+import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
 import { BrandMark } from './BrandMark';
 import { visibleNav } from './navItems';
@@ -108,6 +109,7 @@ export function AppSidebar() {
 
       <div className="border-t border-line px-4 py-3.5">
         <div className="sidebar-full">
+          <LanguageSwitch className="mb-3" />
           <p className="truncate text-sm font-bold text-ink">{user.name}</p>
           <div className="mt-1">
             <RoleBadges roles={user.roles} />

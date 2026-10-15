@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
 import { useLogout } from '@/features/auth/hooks/useSession';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
+import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
 import { BrandMark } from './BrandMark';
 
@@ -23,7 +24,8 @@ export function AppHeader() {
           <BrandMark size={26} />
           <span className="truncate">{ja.app.name}</span>
         </Link>
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center gap-1">
+          <LanguageSwitch className="h-9" />
           <NotificationBell />
           <button
             type="button"

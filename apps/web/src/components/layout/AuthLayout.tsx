@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
+import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
 
 interface AuthLayoutProps {
@@ -15,6 +16,9 @@ export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLa
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-12">
       <div className="w-full max-w-md">
+        <div className="mb-4 flex justify-end">
+          <LanguageSwitch />
+        </div>
         <div className="mb-6 flex items-center justify-center gap-3">
           <MoraBot mood={mood} size={76} />
           <div>
