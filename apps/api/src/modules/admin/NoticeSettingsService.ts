@@ -1,5 +1,4 @@
 import {
-  type AuditLogDto,
   isRole,
   type NoticeRecipientDto,
   type NoticeSettingDto,
@@ -10,7 +9,6 @@ import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js
 import type { Actor } from '../../domain/access/AccessPolicy.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../http/errors/AppError.js';
-import { iso, userRef } from '../../http/mappers.js';
 
 const ROLE_LABEL: Record<string, string> = {
   TELEMA: 'テレマ全員',
@@ -177,32 +175,6 @@ export class NoticeSettingsService {
       before: { field: recipient.field, kind: recipient.kind, value: recipient.value },
     });
     return this.find(code);
-  }
-
-  async auditLog(filter: {
-    targetType?: string;
-    targetId?: string;
-    limit: number;
-  }): Promise<AuditLogDto[]> {
-    const rows = await this.prisma.auditLog.findMany({
-      where: {
-        ...(filter.targetType ? { targetType: filter.targetType } : {}),
-        ...(filter.targetId ? { targetId: filter.targetId } : {}),
-      },
-      include: { actor: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: filter.limit,
-    });
-    return rows.map((row) => ({
-      id: row.id.toString(),
-      actor: userRef(row.actor),
-      action: row.action,
-      targetType: row.targetType,
-      targetId: row.targetId,
-      before: row.before,
-      after: row.after,
-      createdAt: iso(row.createdAt),
-    }));
   }
 
   private async find(code: string): Promise<NoticeSettingDto> {

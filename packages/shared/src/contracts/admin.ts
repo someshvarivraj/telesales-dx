@@ -152,17 +152,6 @@ export interface CompanyGroupDto {
   isActive: boolean;
 }
 
-export interface AuditLogDto {
-  id: string;
-  actor: UserRef | null;
-  action: string;
-  targetType: string | null;
-  targetId: string | null;
-  before: unknown;
-  after: unknown;
-  createdAt: string;
-}
-
 export interface AppSettingsDto {
   travelBufferMinutes: number;
   travelBufferMode: 'WARN' | 'BLOCK';

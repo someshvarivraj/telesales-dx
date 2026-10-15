@@ -45,11 +45,6 @@ export interface AdminDeps {
   audit: AuditLogger;
 }
 
-const auditQuery = z.object({
-  targetType: z.string().max(64).optional(),
-  targetId: z.string().max(64).optional(),
-  limit: z.coerce.number().int().min(1).max(500).default(100),
-});
 const noticeCodeParam = z.string().regex(/^N\d{1,2}$/);
 
 /** Admin screens (spec §6). The area table is also open to the person entrusted with it. */
@@ -254,9 +249,6 @@ export function createAdminRouter(deps: AdminDeps): Router {
     );
   });
 
-  router.get('/audit-logs', admin, async (req, res) => {
-    res.json(await deps.notices.auditLog(parseQuery(auditQuery, req)));
-  });
 
   router.use(() => {
     throw new NotFoundError();

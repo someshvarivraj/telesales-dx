@@ -913,7 +913,6 @@ export const EXACT: Readonly<Record<string, string>> = {
   '終わると自動でもとの画面に戻ります。しばらくお待ちください。':
     'The screen comes back automatically when it is over. Please wait.',
   'この画面を閉じると二度と表示されません。': 'This will not be shown again once closed.',
-  操作履歴: 'Audit log',
   操作: 'Action',
   '空のときは今日になります。': 'If empty, today.',
   '空のときは自分になります。': 'If empty, you.',

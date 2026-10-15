@@ -17,7 +17,7 @@ export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLa
     <div className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-4 flex justify-end">
-          <LanguageSwitch />
+          <LanguageSwitch className="w-36" />
         </div>
         <div className="mb-6 flex items-center justify-center gap-3">
           <MoraBot mood={mood} size={76} />
