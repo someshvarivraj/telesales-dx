@@ -37,9 +37,15 @@ export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLa
           {children}
         </main>
 
-        <footer className="flex flex-col gap-1 border-t border-line bg-column px-6 py-3 text-xs text-ink-sub [text-wrap:pretty] max-sm:px-5">
+        <footer className="flex flex-col gap-1 border-t border-line bg-column px-6 py-3 text-xs text-ink-sub max-sm:px-5">
           {footer && <p>{footer}</p>}
-          <p>{ja.app.notice}</p>
+          {/* One sentence per line, so no line ends with a stray 「さい。」. */}
+          {ja.app.notice
+            .split('。')
+            .filter(Boolean)
+            .map((sentence) => (
+              <p key={sentence}>{sentence}。</p>
+            ))}
         </footer>
       </div>
     </div>
