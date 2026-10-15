@@ -4,6 +4,20 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Area table: company groups
+  グループを追加: 'Add group',
+  企業グループの変更: 'Edit company group',
+  企業グループを追加: 'Add company group',
+  このグループを使う: 'Use this group',
+  使用中: 'In use',
+  使わない: 'Not used',
+  対象の企業: 'Companies',
+  '1行に1社。「株式会社」などや空白の違いは同じ会社として扱います。':
+    'One company per line. Differences such as 株式会社 or spaces are treated as the same company.',
+  '特定の企業だけ担当が違うとき（注力企業など）に、グループを作って担当を決めます。':
+    'When specific companies have a different rep (such as focus companies), make a group and set its rep.',
+  '注力企業など、会社で担当が決まっているときに使います。':
+    'Used when the rep is fixed by company, such as focus companies.',
   // Sign-in screen flow
   '架電からアポ、打ち合わせの結果まで。': 'From calls to appointments to meeting results.',
   'テレマと営業が、同じ情報で動けます。': 'Telemarketing and sales work from the same information.',
@@ -1117,6 +1131,8 @@ export const EXACT: Readonly<Record<string, string>> = {
 
 /** Text with values in it. `{n}` matches anything; the matched parts are translated too. */
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['対象の企業（{0}社）', 'Companies ({0})'],
+  ['{0}社', '{0} companies'],
   ['今日やることが {0} 件あります。', 'You have {0} things to do today.'],
   ['{0} {1} を開く', 'Open {0} {1}'],
   ['{0} {1}〜{2}（休憩{3}分）', '{0} {1}–{2} (break {3} min)'],

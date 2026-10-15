@@ -144,12 +144,17 @@ export interface AreaRuleDto {
 export const companyGroupRequestSchema = z.object({
   name: requiredText(100),
   isActive: z.boolean().default(true),
+  /** Company names in the group, matched on the normalised name. Omitted = keep as is. */
+  members: z.array(requiredText(200)).max(1000).optional(),
 });
+export type CompanyGroupRequest = z.input<typeof companyGroupRequestSchema>;
 
 export interface CompanyGroupDto {
   id: string;
   name: string;
   isActive: boolean;
+  /** Company names that belong to the group, in the order entered. */
+  members: string[];
 }
 
 export interface AppSettingsDto {

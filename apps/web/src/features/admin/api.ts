@@ -8,6 +8,7 @@ import type {
   AreaRuleRequest,
   CalendarDayAdminDto,
   CompanyGroupDto,
+  CompanyGroupRequest,
   CreateUserRequest,
   NoticeSettingDto,
   OptionDto,
@@ -193,7 +194,7 @@ export const useCompanyGroups = () =>
 export const useSaveCompanyGroup = () =>
   useInvalidatingMutation(
     [adminKeys.groups, adminKeys.areaRules],
-    ({ id, request }: { id?: string; request: { name: string; isActive: boolean } }) =>
+    ({ id, request }: { id?: string; request: CompanyGroupRequest }) =>
       id
         ? apiClient.put<CompanyGroupDto>(`/admin/company-groups/${id}`, request)
         : apiClient.post<CompanyGroupDto>('/admin/company-groups', request),

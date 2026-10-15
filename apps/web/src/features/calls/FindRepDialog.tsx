@@ -24,7 +24,7 @@ export function FindRepDialog({ open, onClose, companyId, onChoose }: FindRepDia
   const find = useFindRep();
   const reps = usePeople(Role.Sales);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
-  const [area, setArea] = useState({ prefecture: '', city: '', customerType: '' });
+  const [area, setArea] = useState({ companyName: '', prefecture: '', city: '', customerType: '' });
   const [repId, setRepId] = useState('');
 
   const { mutate } = find;
@@ -37,6 +37,7 @@ export function FindRepDialog({ open, onClose, companyId, onChoose }: FindRepDia
   const lookUp = () => {
     find.mutate(
       {
+        companyName: area.companyName || undefined,
         prefecture: area.prefecture || undefined,
         city: area.city || undefined,
         customerType: area.customerType || undefined,
@@ -65,6 +66,20 @@ export function FindRepDialog({ open, onClose, companyId, onChoose }: FindRepDia
       <div className="flex flex-col gap-4">
         {!companyId && (
           <div className="grid gap-3 sm:grid-cols-3">
+            <div className="sm:col-span-3">
+              <FormField
+                label="会社名"
+                hint="注力企業など、会社で担当が決まっているときに使います。"
+              >
+                {(c) => (
+                  <TextInput
+                    {...c}
+                    value={area.companyName}
+                    onChange={(e) => setArea({ ...area, companyName: e.target.value })}
+                  />
+                )}
+              </FormField>
+            </div>
             <FormField label="都道府県">
               {(c) => (
                 <TextInput

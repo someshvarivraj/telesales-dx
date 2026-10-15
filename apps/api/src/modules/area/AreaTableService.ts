@@ -10,6 +10,7 @@ import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js
 import type { Actor } from '../../domain/access/AccessPolicy.js';
 import { splitJapaneseAddress } from '../../domain/area/japaneseAddress.js';
 import { type AreaRule, RepFinder } from '../../domain/area/RepFinder.js';
+import { normalizeCompanyName } from '../../domain/companies/duplicates.js';
 import type { Clock } from '../../domain/Clock.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { ConflictError, NotFoundError } from '../../http/errors/AppError.js';
@@ -53,6 +54,35 @@ function toRule(row: RuleRow): AreaRule {
     validFrom: dto.validFrom,
     validTo: dto.validTo,
   };
+}
+
+const groupSelect = {
+  id: true,
+  name: true,
+  isActive: true,
+  members: { select: { name: true }, orderBy: { createdAt: 'asc' } },
+} satisfies Prisma.CompanyGroupSelect;
+
+type GroupRow = Prisma.CompanyGroupGetPayload<{ select: typeof groupSelect }>;
+
+function toGroupDto(row: GroupRow): CompanyGroupDto {
+  return {
+    id: row.id,
+    name: row.name,
+    isActive: row.isActive,
+    members: row.members.map((member) => member.name),
+  };
+}
+
+/** Distinct members by normalised name (the first spelling wins). */
+function uniqueMembers(names: readonly string[]): { name: string; nameKey: string }[] {
+  const byKey = new Map<string, string>();
+  for (const raw of names) {
+    const name = raw.trim();
+    const nameKey = normalizeCompanyName(name);
+    if (nameKey && !byKey.has(nameKey)) byKey.set(nameKey, name);
+  }
+  return [...byKey].map(([nameKey, name]) => ({ name, nameKey }));
 }
 
 const CONDITION_LABEL = { CURRENT: '現取', NOT_CURRENT: '現取以外' } as const;
@@ -115,16 +145,17 @@ export class AreaTableService {
   }
 
   async listGroups(): Promise<CompanyGroupDto[]> {
-    return this.prisma.companyGroup.findMany({
+    const rows = await this.prisma.companyGroup.findMany({
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, isActive: true },
+      select: groupSelect,
     });
+    return rows.map(toGroupDto);
   }
 
   async saveGroup(
     actor: Actor,
     id: string | null,
-    input: { name: string; isActive: boolean },
+    input: { name: string; isActive: boolean; members?: string[] },
   ): Promise<CompanyGroupDto> {
     const clash = await this.prisma.companyGroup.findFirst({
       where: { name: input.name, ...(id ? { id: { not: id } } : {}) },
@@ -132,17 +163,29 @@ export class AreaTableService {
     if (clash) {
       throw new ConflictError({ reason: 'name_exists' });
     }
-    const row = id
-      ? await this.prisma.companyGroup.update({ where: { id }, data: input })
-      : await this.prisma.companyGroup.create({ data: input });
+    const members = input.members ? uniqueMembers(input.members) : null;
+    const row = await this.prisma.$transaction(async (tx) => {
+      const data = { name: input.name, isActive: input.isActive };
+      const group = id
+        ? await tx.companyGroup.update({ where: { id }, data })
+        : await tx.companyGroup.create({ data });
+      if (members) {
+        await tx.companyGroupMember.deleteMany({ where: { groupId: group.id } });
+        await tx.companyGroupMember.createMany({
+          data: members.map((member) => ({ ...member, groupId: group.id })),
+        });
+      }
+      return tx.companyGroup.findUniqueOrThrow({ where: { id: group.id }, select: groupSelect });
+    });
+    const dto = toGroupDto(row);
     await this.audit.record({
       action: AuditAction.SettingsChanged,
       actorUserId: actor.id,
       targetType: 'company_group',
       targetId: row.id,
-      after: input,
+      after: dto as unknown as Record<string, unknown>,
     });
-    return { id: row.id, name: row.name, isActive: row.isActive };
+    return dto;
   }
 
   /** Suggests the rep; the telemarketer can still pick someone else (spec §7). */
@@ -151,7 +194,7 @@ export class AreaTableService {
       prefecture: input.prefecture ?? null,
       city: input.city ?? null,
       customerType: input.customerType ?? null,
-      companyGroupId: input.companyGroupId ?? null,
+      companyGroupId: input.companyGroupId ?? (await this.groupByName(input.companyName)),
     };
     if (input.companyId) {
       const company = await this.prisma.company.findUnique({ where: { id: input.companyId } });
@@ -163,7 +206,8 @@ export class AreaTableService {
         prefecture: input.prefecture ?? company.prefecture ?? parts.prefecture,
         city: input.city ?? company.city ?? parts.city,
         customerType: input.customerType ?? company.customerType,
-        companyGroupId: input.companyGroupId ?? company.companyGroupId,
+        companyGroupId:
+          input.companyGroupId ?? company.companyGroupId ?? (await this.groupByName(company.name)),
       };
     }
     const rows = await this.prisma.salesAreaRule.findMany({ include: ruleInclude });
@@ -192,6 +236,18 @@ export class AreaTableService {
       ruleId: row.id,
       matchedBy: reason,
     };
+  }
+
+  /** The active group a company belongs to by name (e.g. a 注力企業), if any. */
+  private async groupByName(name: string | null | undefined): Promise<string | null> {
+    const nameKey = name ? normalizeCompanyName(name) : '';
+    if (!nameKey) return null;
+    const member = await this.prisma.companyGroupMember.findFirst({
+      where: { nameKey, group: { isActive: true } },
+      orderBy: { createdAt: 'asc' },
+      select: { groupId: true },
+    });
+    return member?.groupId ?? null;
   }
 
   private toData(input: AreaRuleRequest) {

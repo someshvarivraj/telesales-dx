@@ -220,6 +220,8 @@ export const findRepRequestSchema = z.object({
   city: z.string().trim().max(50).optional(),
   customerType: z.string().trim().max(48).optional(),
   companyGroupId: z.uuid().optional(),
+  /** For a company not saved yet: its group is looked up by name. */
+  companyName: z.string().trim().max(200).optional(),
 });
 export type FindRepRequest = z.infer<typeof findRepRequestSchema>;
 

@@ -327,8 +327,25 @@ model CompanyGroup {
 
   companies Company[]
   rules     SalesAreaRule[]
+  members   CompanyGroupMember[]
 
   @@map("company_groups")
+}
+
+/// A company that belongs to a group by name (e.g. the 注力企業 list), matched on the
+/// normalised name so it applies to companies imported later as well.
+model CompanyGroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  name      String   @db.VarChar(200)
+  nameKey   String   @map("name_key") @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group CompanyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, nameKey])
+  @@index([nameKey])
+  @@map("company_group_members")
 }
 
 /// Area (prefecture/city) + customer-type condition + company group → sales rep.
