@@ -31,7 +31,7 @@ function fileNameFrom(header: string | null, fallback: string): string {
  * Sends the session cookie and the CSRF header, and normalises errors to ApiError.
  */
 export class ApiClient {
-  constructor(private readonly baseUrl = '/api') {}
+  constructor(private readonly baseUrl = `${import.meta.env.BASE_URL}api`) {}
 
   get<T>(path: string, signal?: AbortSignal): Promise<T> {
     return this.request<T>('GET', path, undefined, signal);

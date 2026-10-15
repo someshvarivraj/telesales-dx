@@ -153,5 +153,7 @@ export const routes: RouteObject[] = [
 ];
 
 export function createRouter() {
-  return createBrowserRouter(routes);
+  // Under a path such as /telesales-dx/ the routes live below it (see VITE_BASE_PATH).
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+  return createBrowserRouter(routes, { basename });
 }

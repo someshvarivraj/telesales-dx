@@ -1,0 +1,16 @@
+# Keep the build context small and free of secrets and local data.
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+**/*.local.txt
+**/*.log
+apps/api/storage
+apps/api/src/generated
+.git
+.github
+.claude
+docs
+**/.DS_Store

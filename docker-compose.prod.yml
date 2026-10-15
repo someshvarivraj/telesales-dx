@@ -1,0 +1,60 @@
+# Production on a single server (the company EC2 instance). See docs/DEPLOY-COMPANY-AWS.md.
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#
+# .env (read by compose itself): POSTGRES_PASSWORD, APP_PORT, DATA_DIR, VITE_BASE_PATH
+# .env.production (read by the app): everything in apps/api/.env.example
+name: telesales-dx
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: telesales
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: telesales
+    volumes:
+      - ${DATA_DIR:?set DATA_DIR in .env}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U telesales -d telesales']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # No published port: only the app reaches the database.
+
+  app:
+    image: telesales-dx-app:latest
+    build:
+      context: .
+      target: runtime
+      args:
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
+    restart: unless-stopped
+    env_file: .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+    # Local only; nginx on the server forwards to it.
+    ports:
+      - '127.0.0.1:${APP_PORT:-3200}:3000'
+    volumes:
+      - ${DATA_DIR}/storage:/app/storage
+
+  # Never started by `up`: migrations and the CLIs (create user, import area table).
+  tools:
+    image: telesales-dx-tools:latest
+    build:
+      context: .
+      target: builder
+      args:
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
+    profiles: ['tools']
+    env_file: .env.production
+    working_dir: /repo/apps/api
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ${DATA_DIR}/storage:/repo/apps/api/storage
+      - ${DATA_DIR}/import:/import:ro

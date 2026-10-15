@@ -1,0 +1,105 @@
+# Deploys main to the company EC2 instance after every merge (and on demand).
+#
+# GitHub Actions signs in to AWS with a short-lived OIDC token (no access keys are
+# stored anywhere) and asks the instance, through SSM, to fetch this commit, rebuild,
+# run the database migrations and restart the app. The instance pulls the code itself
+# with a read-only deploy key; nothing is uploaded from here.
+#
+# One-time AWS setup: docs/DEPLOY-COMPANY-AWS.md (steps 10–11). Repository variables
+# (Settings → Secrets and variables → Actions → Variables):
+#
+#   AWS_DEPLOY_ROLE_ARN  arn:aws:iam::<account>:role/telesales-dx-github-deploy
+#   DEPLOY_INSTANCE_ID   i-...
+#   AWS_REGION           ap-northeast-1
+#   DEPLOY_DIR           /opt/apps/telesales-dx
+#   APP_URL              the public address, e.g. https://dx.morabu.com/telesales-dx
+#
+# Until AWS_DEPLOY_ROLE_ARN is set the job is skipped, so merges never fail on it.
+
+name: Deploy to company EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Never two deploys at once on the same server; a newer merge waits for the running one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # OIDC: receive temporary AWS credentials
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ vars.AWS_DEPLOY_ROLE_ARN != '' }}
+    runs-on: ubuntu-latest
+    # No `environment:` here: it would change the OIDC subject the AWS trust policy expects.
+    steps:
+      - name: Configure AWS credentials (OIDC, no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+
+      - name: Rebuild and restart on EC2
+        env:
+          SHA: ${{ github.sha }}
+          INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/apps/telesales-dx' }}
+        run: |
+          set -e
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+          cat > /tmp/commands.json <<EOF
+          {
+            "commands": [
+              "set -e",
+              "cd ${DEPLOY_DIR}",
+              "git fetch origin ${SHA}",
+              "git reset --hard ${SHA}",
+              "docker builder prune -af --filter until=24h || true",
+              "${COMPOSE} build app tools",
+              "${COMPOSE} run --rm tools pnpm exec prisma migrate deploy",
+              "${COMPOSE} up -d app",
+              "docker image prune -f || true",
+              "df -h / | tail -1",
+              "echo DEPLOY_DONE"
+            ]
+          }
+          EOF
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters file:///tmp/commands.json \
+            --timeout-seconds 1800 \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command: $CMD_ID"
+          # A build plus migrations can take several minutes on the instance.
+          for i in $(seq 1 90); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text 2>/dev/null || echo "Pending")
+            echo "status: $STATUS"
+            case "$STATUS" in
+              Success) break ;;
+              Failed|Cancelled|TimedOut)
+                aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID"
+                exit 1 ;;
+              *) sleep 10 ;;
+            esac
+          done
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query '{status: Status, output: StandardOutputContent}' --output json
+          [ "$STATUS" = "Success" ] || { echo "Deploy did not finish in time"; exit 1; }
+
+      - name: Check the site answers
+        if: ${{ vars.APP_URL != '' }}
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          for i in $(seq 1 18); do
+            if curl -fsS "${APP_URL%/}/health/ready"; then echo; exit 0; fi
+            sleep 10
+          done
+          echo "The site did not become ready: ${APP_URL%/}/health/ready"
+          exit 1

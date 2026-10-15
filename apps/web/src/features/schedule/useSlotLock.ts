@@ -72,7 +72,7 @@ export function useSlotLock() {
     const onPageHide = () => {
       const id = lockId.current;
       if (id) {
-        void fetch(`/api/slot-locks/${id}/release`, {
+        void fetch(`${import.meta.env.BASE_URL}api/slot-locks/${id}/release`, {
           method: 'POST',
           keepalive: true,
           credentials: 'same-origin',

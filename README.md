@@ -68,6 +68,15 @@ pnpm db:deploy
 WEB_DIST_DIR=$(pwd)/apps/web/dist NODE_ENV=production TRUST_PROXY=true pnpm start
 ```
 
-API が画面（`apps/web/dist`）も配信するため、1つのオリジンで動きます。HTTPS は ALB などで終端してください。
+API が画面（`apps/web/dist`）も配信するため、1つのオリジンで動きます。HTTPS は nginx や ALB で終端してください。既存サイトのパスの下（例 `/telesales-dx/`）で動かすときは、ビルド時に `VITE_BASE_PATH=/telesales-dx/` を指定します。
 
-The API also serves the built web app, so everything runs on one origin. Terminate HTTPS at the load balancer (e.g. AWS ALB).
+The API also serves the built web app, so everything runs on one origin. Terminate HTTPS at nginx or a load balancer. To serve it under a path of an existing site (e.g. `/telesales-dx/`), build with `VITE_BASE_PATH=/telesales-dx/`.
+
+### 会社のAWSへのデプロイ / Company AWS deployment
+
+- 手順書 / Runbook: [docs/DEPLOY-COMPANY-AWS.md](docs/DEPLOY-COMPANY-AWS.md)
+- `Dockerfile` + `docker-compose.prod.yml`: アプリと PostgreSQL をサーバー1台で動かす / the app and PostgreSQL on one server
+- `.github/workflows/ci.yml`: プルリクエストごとに lint・型・テスト・ビルド / every pull request is checked
+- `.github/workflows/deploy.yml`: `main` にマージすると自動で本番に反映（OIDC + SSM、アクセスキーは保存しない） / every merge into `main` is deployed automatically
+
+営業担当表の読み込み / Loading the sales area table: `pnpm --filter @telesales/api run area:import --file <xlsx> --dry-run`（手順書のステップ13）
