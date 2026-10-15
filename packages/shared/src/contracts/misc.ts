@@ -5,6 +5,8 @@ export interface NotificationDto {
   id: string;
   noticeCode: string;
   title: string;
+  /** Extra line under the title (e.g. the comment text), when the notice has one. */
+  body: string | null;
   linkPath: string | null;
   readAt: string | null;
   createdAt: string;

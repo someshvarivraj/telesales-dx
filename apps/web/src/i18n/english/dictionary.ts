@@ -1093,6 +1093,18 @@ export const EXACT: Readonly<Record<string, string>> = {
   連絡事項: 'Notes',
   部署名: 'Department',
   電話: 'Phone',
+  // Notification panel
+  '未読のお知らせはありません。': 'No unread notifications.',
+  未読: 'Unread',
+  たった今: 'Just now',
+  それ以前: 'Earlier',
+  昨日: 'Yesterday',
+  新しいアポ: 'New appointment',
+  会議リンク: 'Meeting link',
+  会議URL未登録: 'Meeting URL missing',
+  翌日のアポ: "Tomorrow's appointments",
+  日程変更: 'Rescheduled',
+  打ち合わせ結果: 'Meeting result',
 };
 
 /** Text with values in it. `{n}` matches anything; the matched parts are translated too. */
@@ -1125,6 +1137,10 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['{0}を外す', 'Remove {0}'],
   ['{0}・{1}（取得 {2}）', '{0}・{1} (booked by {2})'],
   ['{0}分', '{0} min'],
+  ['{0}分前', '{0} min ago'],
+  ['{0}時間前', '{0}h ago'],
+  ['昨日 {0}', 'Yesterday {0}'],
+  ['未読（{0}）', 'Unread ({0})'],
   ['{0}年{1}月', '{1}/{0}'],
   ['{0}年の休日', 'Holidays in {0}'],
   ['{0}年', '{0}'],

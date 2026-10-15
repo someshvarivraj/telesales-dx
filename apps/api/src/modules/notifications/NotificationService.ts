@@ -111,6 +111,7 @@ export class NotificationService {
       id: row.id,
       noticeCode: row.noticeCode,
       title: row.title,
+      body: row.body,
       linkPath: row.linkPath,
       readAt: iso(row.readAt),
       createdAt: iso(row.createdAt),
