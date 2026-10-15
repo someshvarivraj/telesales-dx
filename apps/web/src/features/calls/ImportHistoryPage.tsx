@@ -28,7 +28,7 @@ export function ImportHistoryPage() {
       <QueryState query={query}>
         {(items) =>
           items.length === 0 ? (
-            <EmptyState>まだ取り込みはありません。</EmptyState>
+            <EmptyState scene="calling">まだ取り込みはありません。</EmptyState>
           ) : (
             <Table>
               <thead>

@@ -1,4 +1,4 @@
-import { Permission } from '@telesales/shared';
+import { Permission, Role } from '@telesales/shared';
 import {
   type LucideIcon,
   CalendarCheck,
@@ -16,6 +16,7 @@ import {
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { MoraBot } from '@/components/brand/MoraBot';
+import { Scene, type SceneName } from '@/components/illustrations/Scenes';
 import { cn } from '@/components/ui/cn';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useHomeSummary } from '@/features/dashboard/api';
@@ -71,9 +72,17 @@ function TaskTile({ task }: { task: Task }) {
   );
 }
 
+/** The home picture shows the person's own part of the work. */
+function sceneFor(roles: readonly string[]): SceneName {
+  if (roles.includes(Role.Admin)) return 'flow';
+  if (roles.includes(Role.TelemaLead) || roles.includes(Role.Telema)) return 'calling';
+  if (roles.includes(Role.Sales)) return 'schedule';
+  return 'report';
+}
+
 /** Home: what needs this person's attention, then the modules (decided by permissions). */
 export function HomePage() {
-  const { permissions, name } = useCurrentUser();
+  const { permissions, name, roles } = useCurrentUser();
   const summary = useHomeSummary();
   const main = visibleItems(mainMenu, permissions);
   const admin = visibleItems(adminMenu, permissions);
@@ -200,9 +209,9 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 overflow-hidden border border-line bg-surface px-6 py-5 shadow-(--shadow-card) max-sm:px-4">
         <MoraBot mood={data && open === 0 ? 'approved' : 'checking'} size={64} title="" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-lg font-bold">{name}さん、おつかれさまです。</p>
           <p className="text-sm text-ink-sub">
             {!data
@@ -212,6 +221,7 @@ export function HomePage() {
                 : `今日やることが ${open} 件あります。`}
           </p>
         </div>
+        <Scene name={sceneFor(roles)} className="-my-3 w-60 shrink-0 max-sm:hidden" />
       </div>
       {tasks.length > 0 && (
         <section aria-labelledby="tasks-title">

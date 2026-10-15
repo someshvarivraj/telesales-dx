@@ -218,7 +218,7 @@ export function CompanyPage() {
                 <QueryState query={records}>
                   {(list) =>
                     list.length === 0 ? (
-                      <EmptyState>まだ架電記録はありません。</EmptyState>
+                      <EmptyState scene="calling">まだ架電記録はありません。</EmptyState>
                     ) : (
                       <ul className="flex flex-col gap-4">
                         {list.map((record) => (
@@ -297,7 +297,7 @@ export function CompanyPage() {
               </Card>
               <Card title="この会社のアポ">
                 {companyAppointments.length === 0 ? (
-                  <EmptyState>まだアポはありません。</EmptyState>
+                  <EmptyState scene="schedule">まだアポはありません。</EmptyState>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {companyAppointments.map((item) => (

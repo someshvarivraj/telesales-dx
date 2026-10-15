@@ -145,7 +145,7 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
           </div>
         )}
         {appointment.results.length === 0 && !open ? (
-          <EmptyState>まだ打ち合わせ結果は入っていません。</EmptyState>
+          <EmptyState scene="report">まだ打ち合わせ結果は入っていません。</EmptyState>
         ) : (
           <ul className="flex flex-col gap-4">
             {appointment.results.map((result) => (

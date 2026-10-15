@@ -93,7 +93,7 @@ export function PreparationSection({ appointment }: { appointment: AppointmentDe
           </div>
         )}
         {appointment.preparations.length === 0 && !open ? (
-          <EmptyState>まだ準備の記録はありません。</EmptyState>
+          <EmptyState scene="meeting">まだ準備の記録はありません。</EmptyState>
         ) : (
           <ul className="flex flex-col gap-3">
             {appointment.preparations.map((preparation) => (
