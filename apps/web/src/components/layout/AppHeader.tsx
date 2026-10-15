@@ -25,7 +25,7 @@ export function AppHeader() {
           <span className="truncate">{ja.app.name}</span>
         </Link>
         <div className="ml-auto flex items-center gap-1">
-          <LanguageSwitch className="h-9" />
+          <LanguageSwitch className="w-32" />
           <NotificationBell />
           <button
             type="button"

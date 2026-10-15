@@ -174,7 +174,7 @@ export function AppSidebar() {
           </button>
         </div>
         <div className="sidebar-full mt-1.5 px-1.5">
-          <LanguageSwitch className="h-9 w-full" />
+          <LanguageSwitch className="w-full" />
         </div>
         <button
           type="button"
