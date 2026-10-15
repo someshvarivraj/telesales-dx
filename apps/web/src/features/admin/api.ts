@@ -240,4 +240,3 @@ export const useUpdateApp = () =>
     ({ key, request }: { key: string; request: UpdateAppRequest }) =>
       apiClient.put<AppDto>(`/admin/apps/${key}`, request),
   );
-

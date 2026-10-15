@@ -22,7 +22,8 @@ export const EXACT: Readonly<Record<string, string>> = {
   '架電からアポ、打ち合わせの結果まで。': 'From calls to appointments to meeting results.',
   'テレマと営業が、同じ情報で動けます。': 'Telemarketing and sales work from the same information.',
   'リストから電話をかけ、結果を記録': 'Call down the list and record each result',
-  '営業の空き枠を押さえて登録、すぐ共有': "Hold a free slot in a rep's schedule, book it, share it at once",
+  '営業の空き枠を押さえて登録、すぐ共有':
+    "Hold a free slot in a rep's schedule, book it, share it at once",
   '打ち合わせ・結果': 'Meeting & results',
   '準備・結果・次回アクションまで一か所に': 'Preparation, results and next actions in one place',
   // ── General ──────────────────────────────────────────────────────────────

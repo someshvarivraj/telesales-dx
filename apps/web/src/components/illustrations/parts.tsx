@@ -51,7 +51,15 @@ export function Sparkle({ x, y, size = 10 }: { x: number; y: number; size?: numb
 }
 
 /** A thick limb drawn as an outlined stroke. */
-export function Limb({ d, color = FILL.deep, width = 13 }: { d: string; color?: string; width?: number }) {
+export function Limb({
+  d,
+  color = FILL.deep,
+  width = 13,
+}: {
+  d: string;
+  color?: string;
+  width?: number;
+}) {
   return (
     <>
       <path d={d} fill="none" stroke={INK} strokeWidth={width + 5} strokeLinecap="round" />
@@ -118,9 +126,29 @@ export function Bust({
       <path d="M6 -80 Q10 -77 14 -80" fill="none" {...line} strokeWidth={2} />
       {headset && (
         <>
-          <path d="M-21 -92 C-22 -118 20 -118 21 -92" fill="none" stroke={FILL.accent} strokeWidth={4} strokeLinecap="round" />
-          <rect x={-26} y={-98} width={9} height={15} fill={FILL.accent} {...line} strokeWidth={2} />
-          <path d="M-20 -84 C-16 -72 -2 -70 6 -73" fill="none" stroke={INK} strokeWidth={2.5} strokeLinecap="round" />
+          <path
+            d="M-21 -92 C-22 -118 20 -118 21 -92"
+            fill="none"
+            stroke={FILL.accent}
+            strokeWidth={4}
+            strokeLinecap="round"
+          />
+          <rect
+            x={-26}
+            y={-98}
+            width={9}
+            height={15}
+            fill={FILL.accent}
+            {...line}
+            strokeWidth={2}
+          />
+          <path
+            d="M-20 -84 C-16 -72 -2 -70 6 -73"
+            fill="none"
+            stroke={INK}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
           <circle cx={7} cy={-73} r={3} fill={INK} />
         </>
       )}
@@ -143,14 +171,23 @@ export function Bust({
 export function Desk({ x1, x2, y }: { x1: number; x2: number; y: number }) {
   return (
     <g>
-      <path d={`M${x1 + 14} ${y + 12} L${x1 + 14} ${y + 52} M${x2 - 14} ${y + 12} L${x2 - 14} ${y + 52}`} {...line} />
+      <path
+        d={`M${x1 + 14} ${y + 12} L${x1 + 14} ${y + 52} M${x2 - 14} ${y + 12} L${x2 - 14} ${y + 52}`}
+        {...line}
+      />
       <rect x={x1} y={y} width={x2 - x1} height={12} fill={FILL.paper} {...line} />
     </g>
   );
 }
 
 /** A month calendar card; `done` is the cell with the booked appointment. */
-export function Calendar(props: { x: number; y: number; w: number; h: number; done?: [number, number] }) {
+export function Calendar(props: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  done?: [number, number];
+}) {
   const { x, y, w, h } = props;
   const cols = 5;
   const rows = 4;
@@ -200,7 +237,16 @@ export function Calendar(props: { x: number; y: number; w: number; h: number; do
       <rect x={x} y={y} width={w} height={h} fill={FILL.paper} {...line} />
       <rect x={x} y={y} width={w} height={head} fill={FILL.deep} {...line} />
       {[0.28, 0.72].map((p) => (
-        <rect key={p} x={x + w * p - head * 0.14} y={y - head * 0.36} width={head * 0.28} height={head * 0.72} fill={FILL.paper} {...line} strokeWidth={2} />
+        <rect
+          key={p}
+          x={x + w * p - head * 0.14}
+          y={y - head * 0.36}
+          width={head * 0.28}
+          height={head * 0.72}
+          fill={FILL.paper}
+          {...line}
+          strokeWidth={2}
+        />
       ))}
       {cells}
     </g>
@@ -239,7 +285,17 @@ export function RisingChart({ x, y, w, h }: { x: number; y: number; w: number; h
 }
 
 /** A round "bubble" holding a small picture, as in the flow scene. */
-export function Bubble({ cx, cy, r, children }: { cx: number; cy: number; r: number; children: ReactNode }) {
+export function Bubble({
+  cx,
+  cy,
+  r,
+  children,
+}: {
+  cx: number;
+  cy: number;
+  r: number;
+  children: ReactNode;
+}) {
   return (
     <g>
       <circle cx={cx} cy={cy} r={r + 5} fill={FILL.paper} stroke={FILL.light} strokeWidth={3} />

@@ -249,7 +249,6 @@ export function createAdminRouter(deps: AdminDeps): Router {
     );
   });
 
-
   router.use(() => {
     throw new NotFoundError();
   });

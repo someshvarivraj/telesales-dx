@@ -52,14 +52,26 @@ function Frame({ className, title, children }: SceneProps & { children: React.Re
 function CallList({ x, y }: { x: number; y: number }) {
   return (
     <g>
-      <path d={`M${x + 58} ${y + 96} L${x + 52} ${y + 118} M${x + 70} ${y + 96} L${x + 76} ${y + 118}`} {...line} />
+      <path
+        d={`M${x + 58} ${y + 96} L${x + 52} ${y + 118} M${x + 70} ${y + 96} L${x + 76} ${y + 118}`}
+        {...line}
+      />
       <rect x={x} y={y} width={128} height={96} fill={FILL.paper} {...line} />
       <rect x={x} y={y} width={128} height={14} fill={FILL.light} {...line} strokeWidth={2} />
       {[0, 1, 2, 3].map((i) => (
         <g key={i}>
           {i === 1 && <rect x={x + 6} y={y + 34} width={116} height={14} fill={FILL.accentSoft} />}
-          <circle cx={x + 14} cy={y + 27 + i * 18} r={3.5} fill={i === 1 ? FILL.accent : FILL.mid} />
-          <path d={`M${x + 24} ${y + 27 + i * 18} L${x + (i === 1 ? 92 : 80 + i * 6)} ${y + 27 + i * 18}`} {...line} strokeWidth={2} />
+          <circle
+            cx={x + 14}
+            cy={y + 27 + i * 18}
+            r={3.5}
+            fill={i === 1 ? FILL.accent : FILL.mid}
+          />
+          <path
+            d={`M${x + 24} ${y + 27 + i * 18} L${x + (i === 1 ? 92 : 80 + i * 6)} ${y + 27 + i * 18}`}
+            {...line}
+            strokeWidth={2}
+          />
         </g>
       ))}
     </g>
@@ -95,7 +107,13 @@ export function CallingScene(props: SceneProps) {
       </Bubble>
       <path d="M108 84 L124 96" {...line} strokeWidth={2} strokeDasharray="2 6" />
       {/* sound waves */}
-      <path d="M182 92 C188 98 188 106 182 112 M190 86 C200 96 200 108 190 118" fill="none" stroke={FILL.mid} strokeWidth={3} strokeLinecap="round" />
+      <path
+        d="M182 92 C188 98 188 106 182 112 M190 86 C200 96 200 108 190 118"
+        fill="none"
+        stroke={FILL.mid}
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
       <Sparkle x={356} y={60} />
       <Sparkle x={332} y={36} size={6} />
     </Frame>
@@ -111,7 +129,11 @@ export function ScheduleScene(props: SceneProps) {
       <circle cx={300} cy={198} r={30} fill={FILL.paper} {...line} />
       <path d="M300 180 L300 198 L314 206" fill="none" {...line} strokeWidth={3} />
       {/* pin dropping onto the booked day */}
-      <path d="M244 18 C232 18 226 28 230 38 L244 60 L258 38 C262 28 256 18 244 18 Z" fill={FILL.accent} {...line} />
+      <path
+        d="M244 18 C232 18 226 28 230 38 L244 60 L258 38 C262 28 256 18 244 18 Z"
+        fill={FILL.accent}
+        {...line}
+      />
       <circle cx={244} cy={33} r={5} fill={FILL.paper} {...line} strokeWidth={2} />
       {/* rep figure beside the calendar */}
       <Bust x={78} y={236} suit={FILL.mid} raise scale={0.8} />
@@ -130,7 +152,16 @@ export function MeetingScene(props: SceneProps) {
         <rect x={160} y={40} width={86} height={150} fill={FILL.light} {...line} />
         {[0, 1, 2, 3, 4].map((r) =>
           [0, 1, 2].map((c) => (
-            <rect key={`${r}-${c}`} x={172 + c * 24} y={54 + r * 24} width={14} height={12} fill={FILL.paper} {...line} strokeWidth={1.5} />
+            <rect
+              key={`${r}-${c}`}
+              x={172 + c * 24}
+              y={54 + r * 24}
+              width={14}
+              height={12}
+              fill={FILL.paper}
+              {...line}
+              strokeWidth={1.5}
+            />
           )),
         )}
       </g>
@@ -145,7 +176,14 @@ export function MeetingScene(props: SceneProps) {
         <rect x={186} y={8} width={44} height={30} fill={FILL.paper} {...line} />
         <path d="M200 38 L204 46 L210 38" fill={FILL.paper} {...line} />
         <circle cx={208} cy={23} r={9} fill={FILL.accent} />
-        <path d="M203 23 L207 27 L213 19" fill="none" stroke={FILL.paper} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M203 23 L207 27 L213 19"
+          fill="none"
+          stroke={FILL.paper}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </g>
       <Sparkle x={58} y={62} />
       <Sparkle x={350} y={52} size={7} />
@@ -177,7 +215,14 @@ export function FlowScene(props: SceneProps) {
     <Frame {...props}>
       <Blob d="M30 176 C18 112 64 56 136 50 C210 44 240 78 300 64 C362 50 392 108 378 160 C366 212 300 236 214 234 C126 232 44 232 30 176 Z" />
       {/* dashed path linking the steps */}
-      <path d="M76 168 C110 120 150 110 196 116 C246 122 276 100 320 72" fill="none" stroke={INK} strokeWidth={2} strokeDasharray="3 7" strokeLinecap="round" />
+      <path
+        d="M76 168 C110 120 150 110 196 116 C246 122 276 100 320 72"
+        fill="none"
+        stroke={INK}
+        strokeWidth={2}
+        strokeDasharray="3 7"
+        strokeLinecap="round"
+      />
 
       <defs>
         {(

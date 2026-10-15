@@ -86,10 +86,7 @@ export function GridBackdrop() {
       for (let col = home.col - reach; col <= home.col + reach; col++) {
         for (let row = home.row - reach; row <= home.row + reach; row++) {
           const isHome = col === home.col && row === home.row;
-          const distance = Math.hypot(
-            (col + 0.5) * CELL - ripple.x,
-            (row + 0.5) * CELL - ripple.y,
-          );
+          const distance = Math.hypot((col + 0.5) * CELL - ripple.x, (row + 0.5) * CELL - ripple.y);
           // Lit while the ring passes over the cell; the clicked cell flashes at once.
           const ring = 1 - Math.abs(distance - radius) / RIPPLE_BAND;
           const strength = isHome ? Math.max(ring, 1 - t * 2.5) : ring;
@@ -137,7 +134,10 @@ export function GridBackdrop() {
 
     const press = (event: PointerEvent) => {
       // At most a few rings at once, so fast clicking stays light.
-      ripples = [...ripples.slice(-3), { x: event.clientX, y: event.clientY, born: performance.now() }];
+      ripples = [
+        ...ripples.slice(-3),
+        { x: event.clientX, y: event.clientY, born: performance.now() },
+      ];
     };
 
     resize();
