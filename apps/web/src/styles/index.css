@@ -134,7 +134,7 @@
    bottom tab bar on phones. The « button folds the menu to icons.
    --------------------------------------------------------------------------- */
 :root {
-  --sidebar-w: 13.5rem;
+  --sidebar-w: 15rem;
 }
 html[data-sidebar='closed'] {
   --sidebar-w: 4.25rem;

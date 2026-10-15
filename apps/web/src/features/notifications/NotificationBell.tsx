@@ -57,15 +57,19 @@ export function NotificationBell({ variant = 'icon' }: NotificationBellProps) {
           unread > 0 ? `${ja.nav.notifications}（未読${unread}件）` : ja.nav.notifications
         }
         className={cn(
-          'relative flex cursor-pointer items-center text-ink-sub hover:bg-hover hover:text-ink',
+          'relative flex cursor-pointer items-center text-ink-sub hover:text-ink',
           variant === 'icon'
-            ? 'size-10 justify-center'
-            : 'nav-link h-10 w-full gap-3 px-3 text-sm font-medium',
-          open && 'bg-hover text-ink',
+            ? 'size-10 justify-center hover:bg-hover'
+            : 'nav-link h-9 w-full gap-3 px-2.5 text-[13.5px] font-medium hover:bg-line/60',
+          open && (variant === 'icon' ? 'bg-hover text-ink' : 'bg-line/60 text-ink'),
         )}
       >
         <span className="relative">
-          <Bell aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} />
+          <Bell
+            aria-hidden="true"
+            className={variant === 'icon' ? 'size-5 shrink-0' : 'size-[18px] shrink-0'}
+            strokeWidth={1.8}
+          />
           {unread > 0 && (
             <span className="absolute -top-1.5 -right-2 h-4 min-w-4 rounded-full! bg-danger px-1 text-center text-[10px] leading-4 font-bold text-white ring-2 ring-surface">
               {unread > 99 ? '99+' : unread}
