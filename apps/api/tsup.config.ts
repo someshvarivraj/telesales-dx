@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/main.ts', 'src/cli/createUser.ts'],
+  entry: ['src/main.ts', 'src/cli/createUser.ts', 'src/cli/importAreaTable.ts'],
   format: ['esm'],
   target: 'node22',
   platform: 'node',

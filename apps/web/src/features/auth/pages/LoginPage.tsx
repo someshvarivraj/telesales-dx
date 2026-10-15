@@ -33,7 +33,13 @@ export function LoginPage() {
     return <FullPageSpinner />;
   }
   if (session.data) {
-    return <Navigate to={paths.home} replace />;
+    // The session refetch after login can render before onSuccess navigates; honour the redirect.
+    return (
+      <Navigate
+        to={session.data.mustChangePassword ? paths.changePassword : (redirectTo ?? paths.home)}
+        replace
+      />
+    );
   }
 
   const onSubmit = handleSubmit((values) => {
@@ -49,7 +55,11 @@ export function LoginPage() {
   });
 
   return (
-    <AuthLayout title={ja.auth.loginTitle} footer={ja.auth.forgotPassword}>
+    <AuthLayout
+      title={ja.auth.loginTitle}
+      footer={ja.auth.forgotPassword}
+      mood={login.isError ? 'trouble' : 'default'}
+    >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
         {login.isError && <Alert tone="error">{errorMessageOf(login.error)}</Alert>}
 

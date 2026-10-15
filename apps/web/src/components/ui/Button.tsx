@@ -16,10 +16,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClass: Record<Variant, string> = {
-  primary: 'bg-main text-white hover:bg-main-hover',
-  secondary: 'border border-line bg-surface text-ink hover:bg-column',
-  danger: 'bg-danger text-white hover:brightness-95',
-  text: 'text-ink-sub hover:bg-column hover:text-ink',
+  primary: 'bg-main text-white shadow-[0_1px_2px_rgb(194_65_12/0.25)] hover:bg-main-hover',
+  secondary:
+    'border border-line-strong bg-surface text-ink hover:border-main-line hover:bg-main-soft hover:text-ink',
+  danger: 'border border-danger/40 bg-surface text-danger hover:border-danger hover:bg-danger-soft',
+  text: 'text-ink hover:bg-hover',
 };
 
 const sizeClass: Record<Size, string> = {
@@ -46,8 +47,8 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-(--radius-control) font-bold whitespace-nowrap transition-colors duration-150',
-        'disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex cursor-pointer items-center justify-center gap-2 font-medium whitespace-nowrap transition-colors duration-150 active:translate-y-px',
+        'disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0',
         variantClass[variant],
         sizeClass[size],
         fullWidth && 'w-full',

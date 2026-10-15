@@ -16,6 +16,11 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-console': 'error',
+      // Full-width spaces (U+3000) are normal in Japanese strings.
+      'no-irregular-whitespace': [
+        'error',
+        { skipStrings: true, skipTemplates: true, skipRegExps: true, skipComments: true },
+      ],
     },
   },
   {

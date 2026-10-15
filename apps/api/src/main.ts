@@ -14,7 +14,12 @@ async function main(): Promise<void> {
     sessionMiddleware: container.session.middleware,
     authenticator: container.authenticator,
     authController: container.authController,
+    apiRouters: container.apiRouters,
   });
+
+  if (config.jobsEnabled) {
+    container.jobs.start();
+  }
 
   const server = app.listen(config.port, () => {
     logger.info({ port: config.port, env: config.env }, 'API server started');

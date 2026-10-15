@@ -2,58 +2,93 @@
 
 /*
  * Design tokens. Components use these semantic names only — never raw hex.
- * Palette follows common Japanese business-SaaS conventions (warm greys, one main blue).
+ *
+ * Taken from the skill sheet system (dx-skillsheet) so the company's apps look
+ * like one family: a quiet white workspace on a very light grey page, one
+ * orange accent, square corners everywhere, and lighter type.
+ *
+ *   orange   #C2410C  fills and lines only (primary buttons, the current-item bar,
+ *                     focus ring) — never text: orange text reads like a warning
+ *   blue     #24588F  links
+ *   greys    #F7F8FA page, #E3E6EA rules, #1E2530 text
+ *   red      #B42318  必須 and destructive actions only
+ *
+ * Module and role colours come from the skill sheet's section palette: muted,
+ * low-saturation tones that tell areas apart without decorating them.
  */
 @theme {
   --font-sans:
-    'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'BIZ UDPGothic', Meiryo,
+    'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', YuGothic, Meiryo,
     system-ui, sans-serif;
 
-  /* Brand / action */
-  --color-main: #0077c7;
-  --color-main-hover: #00639f;
-  --color-main-soft: #e8f2fa;
+  /* One step lighter than browser bold, as on the skill sheet screens. */
+  --font-weight-bold: 600;
+
+  /* Brand / action — orange. White on main is 5.2:1 (WCAG AA). */
+  --color-main: #c2410c;
+  --color-main-hover: #9a3412;
+  --color-main-soft: #fff5ed;
+  --color-main-line: #fdd0ad;
+  --color-main-focus: #ea6a1f;
 
   /* Text */
-  --color-ink: #23221e;
-  --color-ink-sub: #706d65;
-  --color-ink-disabled: #c1bdb7;
-  --color-link: #0071c1;
+  --color-ink: #1e2530;
+  --color-ink-sub: #5b6573;
+  --color-ink-disabled: #a3abb5;
+  --color-link: #24588f;
 
   /* Surfaces & lines */
-  --color-base: #f8f7f6;
+  --color-canvas: #f7f8fa;
   --color-surface: #ffffff;
-  --color-column: #f2f1f0;
-  --color-line: #d6d3d0;
+  --color-column: #fafbfc;
+  --color-hover: #f7f8fa;
+  --color-line: #e3e6ea;
+  --color-line-strong: #d5dae0;
 
-  /* Status */
-  --color-danger: #e01e5a;
-  --color-danger-soft: #fdedf2;
-  --color-warning: #ffcc17;
-  --color-warning-soft: #fff8dc;
-  --color-success: #0f7f85;
-  --color-success-soft: #e6f3f3;
+  /* Status — semantic, not decorative. */
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+  --color-warning: #c99a2e;
+  --color-warning-soft: #fdf6e7;
+  --color-warning-ink: #7a5610;
+  --color-success: #1f6135;
+  --color-success-soft: #e6f4ea;
 
-  /* Modules — 架電状況共有 / スケジュール管理 */
-  --color-calls: #e0561b;
-  --color-calls-soft: #fdf0e9;
-  --color-schedule: #0077c7;
-  --color-schedule-soft: #e8f2fa;
+  /* Modules — ① 架電状況共有 (teal) / ② スケジュール管理 (blue) / アポ (amber) / 管理 (grey) */
+  --color-calls: #2e6f66;
+  --color-calls-soft: #e5f0ee;
+  --color-schedule: #2f6ba8;
+  --color-schedule-soft: #e5eff9;
+  --color-appointments: #a0662c;
+  --color-appointments-soft: #f7efe4;
+  --color-admin: #5c6472;
+  --color-admin-soft: #edeff2;
 
   /* Roles */
-  --color-role-telema: #0f7f85;
-  --color-role-telema-soft: #e6f3f3;
-  --color-role-sales: #0077c7;
-  --color-role-sales-soft: #e8f2fa;
-  --color-role-viewer: #706d65;
-  --color-role-viewer-soft: #f2f1f0;
-  --color-role-admin: #4b4943;
-  --color-role-admin-soft: #edebe8;
+  --color-role-telema: #2e6f66;
+  --color-role-telema-soft: #e5f0ee;
+  --color-role-sales: #2f6ba8;
+  --color-role-sales-soft: #e5eff9;
+  --color-role-viewer: #5c6472;
+  --color-role-viewer-soft: #edeff2;
+  --color-role-admin: #3d5a8a;
+  --color-role-admin-soft: #eaeff7;
 
-  --radius-control: 6px;
-  --radius-card: 10px;
-  --shadow-card: 0 1px 2px rgb(3 3 2 / 0.06), 0 1px 1px rgb(3 3 2 / 0.04);
-  --shadow-raised: 0 4px 12px rgb(3 3 2 / 0.08);
+  --radius-control: 0;
+  --radius-card: 0;
+  --shadow-card: 0 1px 2px rgb(30 37 48 / 0.04);
+  --shadow-raised: 0 6px 16px rgb(30 37 48 / 0.1), 0 2px 4px rgb(30 37 48 / 0.05);
+}
+
+/*
+ * Square corners everywhere — buttons, inputs, cards, badges, menus, dialogs.
+ * Unlayered on purpose, so it also wins over Tailwind's rounded-* utilities and
+ * the browser's own rounded controls (same rule as the skill sheet system).
+ */
+*,
+*::before,
+*::after {
+  border-radius: 0;
 }
 
 @layer base {
@@ -62,18 +97,26 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-base font-sans text-ink antialiased;
-    line-height: 1.5;
-    font-feature-settings: 'palt' 0;
+    @apply bg-canvas font-sans text-ink antialiased;
+    line-height: 1.7;
+    /* 禁則処理 — a line never starts with 、。）」 or ends with （「. */
+    line-break: strict;
+    overflow-wrap: anywhere;
   }
   h1,
   h2,
   h3 {
-    line-height: 1.25;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    font-feature-settings: 'palt';
     text-wrap: balance;
   }
+  :is(em, i) {
+    font-style: normal;
+    font-weight: 600;
+  }
   :focus-visible {
-    outline: 2px solid var(--color-main);
+    outline: 2px solid var(--color-main-focus);
     outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -83,5 +126,127 @@
       transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
     }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Application shell: a fixed left menu on tablets and wider; a top bar and a
+   bottom tab bar on phones. The « button folds the menu to icons.
+   --------------------------------------------------------------------------- */
+:root {
+  --sidebar-w: 15rem;
+}
+html[data-sidebar='closed'] {
+  --sidebar-w: 4.25rem;
+}
+@media (min-width: 768px) {
+  .app-main {
+    margin-left: var(--sidebar-w);
+    transition: margin-left 0.18s ease;
+  }
+}
+.sidebar {
+  width: var(--sidebar-w);
+  transition: width 0.18s ease;
+}
+html[data-sidebar='closed'] .sidebar :is(.nav-label, .sidebar-full) {
+  display: none;
+}
+html[data-sidebar='closed'] .sidebar .nav-link {
+  justify-content: center;
+  padding-inline: 0;
+}
+.sidebar .sidebar-compact {
+  display: none;
+}
+html[data-sidebar='closed'] .sidebar .sidebar-compact {
+  display: flex;
+}
+
+/* ---------------------------------------------------------------------------
+   モラボット
+   --------------------------------------------------------------------------- */
+.morabot {
+  flex: none;
+  overflow: visible;
+}
+.morabot-busy {
+  animation: morabot-bob 0.9s ease-in-out infinite;
+}
+@keyframes morabot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8%);
+  }
+}
+.morabot-think .morabot-antenna,
+.morabot-think .morabot-bubbles circle {
+  animation: morabot-pulse 1.4s ease-in-out infinite;
+}
+.morabot-think .morabot-bubbles circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.morabot-think .morabot-bubbles circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes morabot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.morabot-track {
+  position: relative;
+  height: 8px;
+  margin: 44px 20px 0;
+  background: var(--color-line);
+}
+.morabot-bar {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+.morabot-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-main-focus), var(--color-main));
+  transition: width 0.6s ease;
+}
+.morabot-rider {
+  position: absolute;
+  bottom: 4px;
+  transform: translateX(-50%);
+  transition: left 0.6s ease;
+  line-height: 0;
+}
+.morabot-fill-indeterminate {
+  position: absolute;
+  width: 30%;
+  animation: morabot-fill-walk 2.4s ease-in-out infinite alternate;
+}
+.morabot-rider-indeterminate {
+  animation: morabot-walk 2.4s ease-in-out infinite alternate;
+}
+@keyframes morabot-walk {
+  from {
+    left: 0%;
+  }
+  to {
+    left: 100%;
+  }
+}
+@keyframes morabot-fill-walk {
+  from {
+    left: 0%;
+    transform: translateX(-50%);
+  }
+  to {
+    left: 100%;
+    transform: translateX(-50%);
   }
 }

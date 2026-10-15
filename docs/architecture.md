@@ -29,17 +29,42 @@ and change requests all hang off `appointments`; each appointment also appears a
 `schedule_plans` row for the rep. Rescheduling moves the same appointment; only a re-booking after
 cancellation creates a new one (`original_appointment_id`).
 
+`appointments` is the source of truth for the rep and the time. The linked `schedule_plans` row is
+its calendar view: booking, rescheduling and cancelling update both in one transaction, and the
+schedule screen cannot edit a plan that belongs to an appointment (`AccessPolicy.canEditPlan`).
+
+Imports keep their history row by row. `list_import_rows` records every row of a list file (raw
+values, how it was judged, the company it became), so one company can come in on many lists; a
+lead's "same company" decision merges the flagged copy into the existing company.
+`appointment_source_files` links an existing-list appointment to its CSV and/or handover PDF.
+
 Guards that live in the database, not only in code:
 
 - `schedule_plans_no_overlapping_appointments` — a GiST exclusion constraint: two live appointment
   plans of the same rep can never overlap (spec §2-11, "check again on save").
 - `*_time_order` checks (`ends_at > starts_at`) and `comments_single_target`.
-- `appointments.source_file_hash` is unique, so importing the same file twice cannot double-register.
+- `appointments.source_fingerprint` (file hashes + CSV row) is unique, so the same imported record
+  cannot register twice, while other rows of the same CSV still can.
 - `outbound_emails.dedupe_key` is unique, so the appointment e-mail is sent only once (spec §2-13).
 
 Settings that change over time are data: option lists (`option_items`, disabled never deleted),
 notice settings and recipients per notice code (`notice_settings`, `notice_recipients`),
-holidays (`calendar_days`), the sales area table (`sales_area_rules`).
+holidays (`calendar_days`), the sales area table (`sales_area_rules`), and who takes part in
+allocation (`telemarketer_profiles`: allocation target or not, fixed territory, usual hours).
+
+Telemarketing (priority 2): one `shifts` row per person per day (`WORK` with start, end and break,
+or `OFF`; late start and early leave are just other times). The allocation rules live in
+`domain/allocation/Allocator.ts` with no database: share = own working minutes ÷ everyone's,
+remainders to the largest fractions, companies with the same name kept together, day-before checks
+to the booker when they are working. `AllocationService` writes the day as `DRAFT` rows in
+`allocations`; the lead moves rows and confirms (`CONFIRMED`, N11). Drafts are shown only to leads
+and admins. Companies in someone's fixed territory are left out.
+
+Scheduled jobs (`ScheduledJobs`, every minute, business days): N4, N19, N3, N12, N15 at their
+configured times, N13 while switched on, and the morning allocation draft at the time in
+`app_settings`. Each on-screen reminder carries a `notifications.dedupe_key`, so a restart or a
+second instance never notifies twice. `apps.maintenance_mode` blocks everyone but admins
+(503 `MAINTENANCE`; `/api/system/status` stays open so the web app can show the notice).
 
 ## API (`apps/api`)
 
@@ -68,7 +93,7 @@ src/
 2. Put request/response schemas and types in `packages/shared` so the web app reuses them.
 3. Create `modules/<feature>/` with a repository (port in `domain/`), a service and a controller.
 4. Register the classes in `container.ts` and mount the router in `app.ts` behind
-   `requireAuth()` and `requireRole(...)`.
+   `requireAuth()` and `requireAnyPermission(...)` (never role names).
 5. Unit-test the service with in-memory fakes (see `test/support/fakes.ts`).
 
 ### Security baseline

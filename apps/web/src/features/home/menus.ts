@@ -1,6 +1,8 @@
 import { Permission } from '@telesales/shared';
 import {
+  BarChart3,
   CalendarDays,
+  SlidersHorizontal,
   CalendarOff,
   ClipboardList,
   type LucideIcon,
@@ -9,7 +11,9 @@ import {
   Bell,
   ListChecks,
   PhoneCall,
+  Power,
   Users,
+  UsersRound,
 } from 'lucide-react';
 import { paths } from '@/app/paths';
 import { ja } from '@/i18n/ja';
@@ -51,6 +55,22 @@ export const mainMenu: readonly MenuItem[] = [
     icon: ClipboardList,
     tone: 'appointments',
     anyOf: [Permission.ViewData],
+  },
+  {
+    key: 'dashboard',
+    title: ja.module.dashboard,
+    path: paths.dashboard,
+    icon: BarChart3,
+    tone: 'appointments',
+    anyOf: [Permission.ViewData],
+  },
+  {
+    key: 'telema',
+    title: ja.module.telema,
+    path: paths.telema,
+    icon: UsersRound,
+    tone: 'calls',
+    anyOf: [Permission.WriteShifts, Permission.ConfirmAllocation, Permission.Administer],
   },
 ];
 
@@ -101,6 +121,22 @@ export const adminMenu: readonly MenuItem[] = [
     title: ja.admin.locks,
     path: paths.admin.locks,
     icon: Lock,
+    tone: 'admin',
+    anyOf: [Permission.Administer],
+  },
+  {
+    key: 'settings',
+    title: ja.admin.settings,
+    path: paths.admin.settings,
+    icon: SlidersHorizontal,
+    tone: 'admin',
+    anyOf: [Permission.Administer],
+  },
+  {
+    key: 'apps',
+    title: ja.admin.apps,
+    path: paths.admin.apps,
+    icon: Power,
     tone: 'admin',
     anyOf: [Permission.Administer],
   },
