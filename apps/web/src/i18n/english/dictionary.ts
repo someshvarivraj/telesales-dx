@@ -5,6 +5,12 @@
  */
 export const EXACT: Readonly<Record<string, string>> = {
   // Operation history
+  今すぐ実行: 'Run now',
+  定時処理: 'Scheduled job',
+  '宛先が設定されていないため、送りませんでした。下の「宛先」を足してから実行してください。':
+    'Not sent: no recipients are set. Add recipients below, then run it.',
+  '送るものはありませんでした（対象のアポがない、または今日すでに送り済み）。':
+    'Nothing to send (no matching appointments, or already sent today).',
   '地域（都道府県）': 'Region (prefecture)',
   操作履歴: 'Operation history',
   全員: 'Everyone',
@@ -1175,6 +1181,10 @@ export const EXACT: Readonly<Record<string, string>> = {
 
 /** Text with values in it. `{n}` matches anything; the matched parts are translated too. */
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  [
+    '送りました：メール {0} 通、画面のお知らせ {1} 件。',
+    'Sent: {0} e-mails, {1} on-screen notices.',
+  ],
   [
     '画面で見られるのは直近{0}日分です。それより前の履歴は、管理者からシステム担当に依頼して出します。',
     'The screen shows the last {0} days. For older history, an admin asks the system team to extract it.',

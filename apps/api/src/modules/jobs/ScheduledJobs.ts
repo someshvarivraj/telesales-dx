@@ -11,6 +11,8 @@ import {
   NoticeCode,
   OptionCategory,
   PlanStatus,
+  type JobRunResponse,
+  type RunnableJob,
 } from '@telesales/shared';
 import type { Logger } from 'pino';
 import { AuditAction } from '../../domain/audit/AuditLogger.js';
@@ -94,6 +96,35 @@ export class ScheduledJobs {
     } finally {
       this.running = false;
     }
+  }
+
+  /**
+   * Runs one job now, whatever the time or day, and reports what it produced. The same
+   * dedupe keys apply, so anything already sent today is not sent again.
+   */
+  async runNow(code: RunnableJob): Promise<JobRunResponse> {
+    const started = this.clock.now();
+    if (code === NoticeCode.DailyAppointmentList) {
+      const resolved = await this.recipients.resolve(code);
+      if (resolved.to.length === 0 && resolved.cc.length === 0) {
+        return { code, emails: 0, notices: 0, reason: 'no_recipients' };
+      }
+    }
+    const jobs: Record<RunnableJob, () => Promise<void>> = {
+      [NoticeCode.TomorrowAppointments]: () => this.sendTomorrowAppointments(),
+      [NoticeCode.DailyAppointmentList]: () => this.sendDailyList(),
+      [NoticeCode.MeetingUrlMissing]: () => this.remindMeetingUrls(),
+      [NoticeCode.DayBeforeMissing]: () => this.remindDayBeforeChecks(),
+      [NoticeCode.TentativeExpired]: () => this.remindExpiredTentatives(),
+    };
+    await jobs[code]();
+    const since = { noticeCode: code, createdAt: { gte: started } };
+    const [emails, notices] = await Promise.all([
+      this.prisma.outboundEmail.count({ where: since }),
+      this.prisma.notification.count({ where: since }),
+    ]);
+    this.logger.info({ code, emails, notices }, 'job run by hand');
+    return { code, emails, notices, reason: null };
   }
 
   private async runIfDue(code: NoticeCode, job: () => Promise<void>): Promise<void> {

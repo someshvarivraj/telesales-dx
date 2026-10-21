@@ -192,6 +192,20 @@ export interface AuditLogResponse {
   days: number;
 }
 
+/** Scheduled jobs an admin can run by hand on the test environment (Q-11). */
+export const RUNNABLE_JOBS = ['N4', 'N19', 'N3', 'N12', 'N15'] as const;
+export type RunnableJob = (typeof RUNNABLE_JOBS)[number];
+
+export interface JobRunResponse {
+  code: RunnableJob;
+  /** E-mails written by this run (sent, or kept as files when sending is not set up). */
+  emails: number;
+  /** On-screen notices created by this run. */
+  notices: number;
+  /** Set when nothing could be sent for a known reason. */
+  reason: 'no_recipients' | null;
+}
+
 export interface AppSettingsDto {
   travelBufferMinutes: number;
   travelBufferMode: 'WARN' | 'BLOCK';

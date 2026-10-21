@@ -38,6 +38,7 @@ const TARGETS: Record<string, string> = {
   shift: 'シフト',
   telemarketer_profile: 'テレマ情報',
   allocation: '割り振り',
+  scheduled_job: '定時処理',
 };
 
 /** Recorded actions in plain words. */

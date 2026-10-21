@@ -266,6 +266,7 @@ export class Container {
       apps,
       audit: this.audit,
       history: new AuditLogService(prisma, this.clock),
+      jobs: this.jobs,
     });
     this.apiRouters.push(mountAt('/admin', adminRouter));
   }

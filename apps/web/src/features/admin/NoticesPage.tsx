@@ -1,11 +1,14 @@
 import {
   ALL_ROLES,
+  type JobRunResponse,
   type NoticeSettingDto,
   RECIPIENT_CONTEXTS,
+  RUNNABLE_JOBS,
+  type RunnableJob,
   type RecipientField,
   type RecipientKind,
 } from '@telesales/shared';
-import { X } from 'lucide-react';
+import { Play, X } from 'lucide-react';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
@@ -19,7 +22,28 @@ import { usePeople } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { timeOptions } from '@/lib/format';
 import { ja } from '@/i18n/ja';
-import { useAddRecipient, useNoticeSettings, useRemoveRecipient, useUpdateNotice } from './api';
+import {
+  useAddRecipient,
+  useNoticeSettings,
+  useRemoveRecipient,
+  useRunJob,
+  useUpdateNotice,
+} from './api';
+
+function isRunnable(code: string): code is RunnableJob {
+  return (RUNNABLE_JOBS as readonly string[]).includes(code);
+}
+
+/** What a run by hand produced, in words. */
+function runSummary(result: JobRunResponse): string {
+  if (result.reason === 'no_recipients') {
+    return '宛先が設定されていないため、送りませんでした。下の「宛先」を足してから実行してください。';
+  }
+  if (result.emails === 0 && result.notices === 0) {
+    return '送るものはありませんでした（対象のアポがない、または今日すでに送り済み）。';
+  }
+  return `送りました：メール ${result.emails} 通、画面のお知らせ ${result.notices} 件。`;
+}
 
 /** Notices that run at a set time (spec §6 定時処理). */
 const SCHEDULED = new Set(['N3', 'N4', 'N12', 'N15', 'N19']);
@@ -143,6 +167,7 @@ function NoticeCard({ notice }: { notice: NoticeSettingDto }) {
               アポの {notice.daysBefore.join('日前・')}日前
             </span>
           )}
+          {isRunnable(notice.code) && <RunNowButton code={notice.code} />}
         </div>
         <div>
           <p className="mb-1 text-xs font-bold text-ink-sub">宛先</p>
@@ -208,6 +233,28 @@ function NoticeCard({ notice }: { notice: NoticeSettingDto }) {
 }
 
 /** Recipients, days and times per notice (spec §8: never written in the program). */
+/**
+ * Runs the timed notice now instead of waiting for its time (for the test environment):
+ * the same rules apply, so anything already sent today is not sent again.
+ */
+function RunNowButton({ code }: { code: RunnableJob }) {
+  const run = useRunJob();
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button
+        variant="secondary"
+        icon={<Play className="size-4" aria-hidden="true" />}
+        loading={run.isPending}
+        onClick={() => run.mutate(code)}
+      >
+        今すぐ実行
+      </Button>
+      {run.data && <span className="text-xs text-ink-sub">{runSummary(run.data)}</span>}
+      {run.isError && <span className="text-xs text-danger">{errorMessageOf(run.error)}</span>}
+    </div>
+  );
+}
+
 export function NoticesPage() {
   const query = useNoticeSettings();
   return (

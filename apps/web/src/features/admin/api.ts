@@ -8,6 +8,8 @@ import type {
   AreaRuleRequest,
   AuditLogQuery,
   AuditLogResponse,
+  JobRunResponse,
+  RunnableJob,
   CalendarDayAdminDto,
   CompanyGroupDto,
   CompanyGroupRequest,
@@ -249,4 +251,10 @@ export const useAuditLog = (query: AuditLogQuery) =>
     queryKey: adminKeys.audit(query),
     queryFn: ({ signal }) =>
       apiClient.get<AuditLogResponse>(`/admin/audit-logs${toQuery(query)}`, signal),
+  });
+
+/** Runs a scheduled notice now (test environment, Q-11). */
+export const useRunJob = () =>
+  useMutation({
+    mutationFn: (code: RunnableJob) => apiClient.post<JobRunResponse>(`/admin/jobs/${code}/run`),
   });
