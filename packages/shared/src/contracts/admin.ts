@@ -157,6 +157,41 @@ export interface CompanyGroupDto {
   members: string[];
 }
 
+/** Recent operation history (Q-09): who, when, what, and what changed. */
+export const auditLogQuerySchema = z.object({
+  /** e.g. appointment, plan, company, user; empty = everything. */
+  targetType: z.string().trim().max(64).optional(),
+  actorId: z.uuid().optional(),
+  from: dateString.optional(),
+  to: dateString.optional(),
+});
+export type AuditLogQuery = z.input<typeof auditLogQuerySchema>;
+
+/** One changed field; values are already turned into short display text. */
+export interface AuditChangeDto {
+  field: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface AuditLogDto {
+  id: string;
+  createdAt: string;
+  actor: UserRef | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  changes: AuditChangeDto[];
+}
+
+export interface AuditLogResponse {
+  items: AuditLogDto[];
+  /** True when more entries matched than are shown (older ones: ask an admin). */
+  truncated: boolean;
+  /** Days of history the screen covers. */
+  days: number;
+}
+
 export interface AppSettingsDto {
   travelBufferMinutes: number;
   travelBufferMode: 'WARN' | 'BLOCK';

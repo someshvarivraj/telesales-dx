@@ -6,6 +6,8 @@ import type {
   AppSettingsDto,
   AreaRuleDto,
   AreaRuleRequest,
+  AuditLogQuery,
+  AuditLogResponse,
   CalendarDayAdminDto,
   CompanyGroupDto,
   CompanyGroupRequest,
@@ -40,6 +42,7 @@ export const adminKeys = {
   locks: ['admin', 'locks'] as const,
   settings: ['admin', 'settings'] as const,
   apps: ['admin', 'apps'] as const,
+  audit: (query: AuditLogQuery) => ['admin', 'audit', query] as const,
 };
 
 export const useAdminUsers = () =>
@@ -240,3 +243,10 @@ export const useUpdateApp = () =>
     ({ key, request }: { key: string; request: UpdateAppRequest }) =>
       apiClient.put<AppDto>(`/admin/apps/${key}`, request),
   );
+
+export const useAuditLog = (query: AuditLogQuery) =>
+  useQuery({
+    queryKey: adminKeys.audit(query),
+    queryFn: ({ signal }) =>
+      apiClient.get<AuditLogResponse>(`/admin/audit-logs${toQuery(query)}`, signal),
+  });

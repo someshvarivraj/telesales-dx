@@ -4,6 +4,48 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Operation history
+  操作履歴: 'Operation history',
+  全員: 'Everyone',
+  '期間（から）': 'Period (from)',
+  '期間（まで）': 'Period (to)',
+  'システム（自動）': 'System (automatic)',
+  'この条件の履歴はありません。': 'No history for these conditions.',
+  '件数が多いため、新しい順に一部だけ表示しています。期間や対象を絞ってください。':
+    'There are many entries, so only the newest are shown. Narrow the period or target.',
+  ログイン失敗: 'Login failed',
+  アカウントのロック: 'Account locked',
+  パスワード変更: 'Password changed',
+  ユーザー登録: 'User created',
+  ユーザー変更: 'User changed',
+  役割の変更: 'Roles changed',
+  パスワード再発行: 'Password reissued',
+  企業の登録: 'Company registered',
+  企業の変更: 'Company changed',
+  '重複・要確認の扱いを決定': 'Duplicate decided',
+  企業の統合: 'Companies merged',
+  架電結果の変更: 'Call result changed',
+  アポの変更: 'Appointment changed',
+  日時の変更: 'Date/time changed',
+  アポの取り消し: 'Appointment cancelled',
+  営業の確認: 'Confirmed by sales',
+  準備の記録: 'Preparation added',
+  変更依頼の対応: 'Change request handled',
+  メール送信: 'E-mail sent',
+  予定の登録: 'Plan added',
+  予定の削除: 'Plan deleted',
+  休みの登録: 'Time off added',
+  休みの削除: 'Time off deleted',
+  押さえの解除: 'Hold released',
+  設定の変更: 'Settings changed',
+  テレマ情報の変更: 'Telemarketer changed',
+  シフトの削除: 'Shift deleted',
+  シフトの一括入力: 'Shifts filled',
+  割り振りの計算: 'Allocation calculated',
+  割り振りの手直し: 'Allocation adjusted',
+  アプリの追加: 'App added',
+  アプリの変更: 'App changed',
+  押さえ: 'Hold',
   // Area table: company groups
   グループを追加: 'Add group',
   企業グループの変更: 'Edit company group',
@@ -1132,6 +1174,11 @@ export const EXACT: Readonly<Record<string, string>> = {
 
 /** Text with values in it. `{n}` matches anything; the matched parts are translated too. */
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  [
+    '画面で見られるのは直近{0}日分です。それより前の履歴は、管理者からシステム担当に依頼して出します。',
+    'The screen shows the last {0} days. For older history, an admin asks the system team to extract it.',
+  ],
+  ['{0}を開く', 'Open {0}'],
   ['対象の企業（{0}社）', 'Companies ({0})'],
   ['{0}社', '{0} companies'],
   ['今日やることが {0} 件あります。', 'You have {0} things to do today.'],

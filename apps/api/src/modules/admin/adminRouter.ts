@@ -1,6 +1,7 @@
 import {
   appSettingsRequestSchema,
   areaRuleRequestSchema,
+  auditLogQuerySchema,
   calendarYearQuerySchema,
   companyGroupRequestSchema,
   companyHolidayRequestSchema,
@@ -25,6 +26,7 @@ import { uploadSingleFile } from '../../http/upload.js';
 import { idParam, parseQuery, parseWith } from '../../http/validate.js';
 import type { AppService } from '../apps/AppService.js';
 import type { AreaTableService } from '../area/AreaTableService.js';
+import type { AuditLogService } from '../audit/AuditLogService.js';
 import type { CalendarService } from '../calendar/CalendarService.js';
 import type { OptionService } from '../options/OptionService.js';
 import type { SlotGuard } from '../schedule/SlotGuard.js';
@@ -43,6 +45,7 @@ export interface AdminDeps {
   settings: SettingsService;
   apps: AppService;
   audit: AuditLogger;
+  history: AuditLogService;
 }
 
 const noticeCodeParam = z.string().regex(/^N\d{1,2}$/);
@@ -199,6 +202,10 @@ export function createAdminRouter(deps: AdminDeps): Router {
         parseWith(companyGroupRequestSchema, req.body),
       ),
     );
+  });
+
+  router.get('/audit-logs', admin, async (req, res) => {
+    res.json(await deps.history.recent(parseQuery(auditLogQuerySchema, req)));
   });
 
   router.get('/slot-locks', admin, async (req, res) => {
