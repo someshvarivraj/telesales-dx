@@ -33,11 +33,16 @@ interface SceneProps {
 }
 
 function Frame({ className, title, children }: SceneProps & { children: React.ReactNode }) {
+  // Each picture moves on its own beat, so two on one screen are not in step.
+  const id = useId();
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return (
     <svg
       viewBox="0 0 400 260"
       // Full width unless the caller sets a size.
-      className={cn('block h-auto', className ?? 'w-full')}
+      className={cn('scene block h-auto', className ?? 'w-full')}
+      style={{ '--scene-delay': `-${(hash % 40) / 10}s` } as React.CSSProperties}
       role={title ? 'img' : undefined}
       aria-hidden={title ? undefined : true}
       aria-label={title || undefined}
@@ -60,7 +65,16 @@ function CallList({ x, y }: { x: number; y: number }) {
       <rect x={x} y={y} width={128} height={14} fill={FILL.light} {...line} strokeWidth={2} />
       {[0, 1, 2, 3].map((i) => (
         <g key={i}>
-          {i === 1 && <rect x={x + 6} y={y + 34} width={116} height={14} fill={FILL.accentSoft} />}
+          {i === 1 && (
+            <rect
+              className="scene-pulse"
+              x={x + 6}
+              y={y + 34}
+              width={116}
+              height={14}
+              fill={FILL.accentSoft}
+            />
+          )}
           <circle
             cx={x + 14}
             cy={y + 27 + i * 18}
@@ -103,11 +117,14 @@ export function CallingScene(props: SceneProps) {
       <path d="M364 177 C372 177 372 187 363 187" fill="none" {...line} strokeWidth={2} />
       {/* call bubble */}
       <Bubble cx={84} cy={70} r={24}>
-        <Handset x={84} y={70} />
+        <g className="scene-ring">
+          <Handset x={84} y={70} />
+        </g>
       </Bubble>
       <path d="M108 84 L124 96" {...line} strokeWidth={2} strokeDasharray="2 6" />
       {/* sound waves */}
       <path
+        className="scene-waves"
         d="M182 92 C188 98 188 106 182 112 M190 86 C200 96 200 108 190 118"
         fill="none"
         stroke={FILL.mid}
@@ -127,14 +144,22 @@ export function ScheduleScene(props: SceneProps) {
       <Calendar x={104} y={46} w={196} h={168} done={[3, 1]} />
       {/* clock */}
       <circle cx={300} cy={198} r={30} fill={FILL.paper} {...line} />
-      <path d="M300 180 L300 198 L314 206" fill="none" {...line} strokeWidth={3} />
-      {/* pin dropping onto the booked day */}
       <path
-        d="M244 18 C232 18 226 28 230 38 L244 60 L258 38 C262 28 256 18 244 18 Z"
-        fill={FILL.accent}
+        className="scene-hand"
+        d="M300 180 L300 198 L314 206"
+        fill="none"
         {...line}
+        strokeWidth={3}
       />
-      <circle cx={244} cy={33} r={5} fill={FILL.paper} {...line} strokeWidth={2} />
+      {/* pin dropping onto the booked day */}
+      <g className="scene-bounce">
+        <path
+          d="M244 18 C232 18 226 28 230 38 L244 60 L258 38 C262 28 256 18 244 18 Z"
+          fill={FILL.accent}
+          {...line}
+        />
+        <circle cx={244} cy={33} r={5} fill={FILL.paper} {...line} strokeWidth={2} />
+      </g>
       {/* rep figure beside the calendar */}
       <Bust x={78} y={236} suit={FILL.mid} raise scale={0.8} />
       <Sparkle x={340} y={66} />
@@ -172,7 +197,7 @@ export function MeetingScene(props: SceneProps) {
       <path d="M180 192 L186 160 L228 160 L232 192 Z" fill={FILL.paper} {...line} />
       <path d="M170 194 L242 194" {...line} strokeWidth={4} />
       {/* agreement bubble */}
-      <g>
+      <g className="scene-bounce">
         <rect x={186} y={8} width={44} height={30} fill={FILL.paper} {...line} />
         <path d="M200 38 L204 46 L210 38" fill={FILL.paper} {...line} />
         <circle cx={208} cy={23} r={9} fill={FILL.accent} />
@@ -216,6 +241,7 @@ export function FlowScene(props: SceneProps) {
       <Blob d="M30 176 C18 112 64 56 136 50 C210 44 240 78 300 64 C362 50 392 108 378 160 C366 212 300 236 214 234 C126 232 44 232 30 176 Z" />
       {/* dashed path linking the steps */}
       <path
+        className="scene-march"
         d="M76 168 C110 120 150 110 196 116 C246 122 276 100 320 72"
         fill="none"
         stroke={INK}
