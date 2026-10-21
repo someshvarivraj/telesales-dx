@@ -33,6 +33,11 @@ import type { NotificationService } from '../notifications/NotificationService.j
 import type { SettingsService } from '../settings/SettingsService.js';
 import type { SlotGuard } from './SlotGuard.js';
 
+/** A repeated time band (e.g. テレマアポ停止) covers at most about three months. */
+const MAX_TIME_OFF_DAYS = 92;
+/** JST has no daylight saving, so a day is always 24 hours. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 type PlanCommand = z.output<typeof planRequestSchema>;
 
 const WEEK_MS = 7 * 24 * 60 * 60_000;
@@ -184,6 +189,7 @@ export class ScheduleService {
       kind: 'APPOINTMENT' | 'PLAN';
       planId?: string | null;
       holidayWork?: boolean;
+      salesBooked?: boolean;
     },
   ): Promise<SlotCheckResult> {
     return this.guard.check({ ...input, actorId: actor.id });
@@ -384,18 +390,44 @@ export class ScheduleService {
     if (endsAt <= startsAt) {
       throw new SlotUnavailableError([{ kind: 'INVALID_TIME' }]);
     }
-    const row = await this.prisma.timeOff.create({
-      data: {
-        userId: input.userId,
-        enteredById: actor.id,
-        kind: input.kind,
-        startsAt,
-        endsAt,
-        allDay: input.allDay ?? false,
-        note: input.note ?? null,
-      },
-      include: { user: userRefSelect, enteredBy: userRefSelect },
-    });
+    // 「この日まで毎日」: the same time band on every day up to repeatUntil, one row per day.
+    const firstDay = jstDate(startsAt);
+    const days: number[] = [0];
+    if (input.repeatUntil && !input.allDay) {
+      if (
+        input.repeatUntil < firstDay ||
+        addDays(firstDay, MAX_TIME_OFF_DAYS) < input.repeatUntil
+      ) {
+        throw new ValidationError({ repeatUntil: ['invalid_range'] });
+      }
+      for (
+        let day = addDays(firstDay, 1), n = 1;
+        day <= input.repeatUntil;
+        day = addDays(day, 1), n++
+      ) {
+        days.push(n);
+      }
+    }
+    const rows = await this.prisma.$transaction(
+      days.map((offset) =>
+        this.prisma.timeOff.create({
+          data: {
+            userId: input.userId,
+            enteredById: actor.id,
+            kind: input.kind,
+            startsAt: new Date(startsAt.getTime() + offset * DAY_MS),
+            endsAt: new Date(endsAt.getTime() + offset * DAY_MS),
+            allDay: input.allDay ?? false,
+            note: input.note ?? null,
+          },
+          include: { user: userRefSelect, enteredBy: userRefSelect },
+        }),
+      ),
+    );
+    const [row] = rows;
+    if (!row) {
+      throw new ValidationError({ startsAt: ['required'] });
+    }
     await this.audit.record({
       action: AuditAction.TimeOffCreated,
       actorUserId: actor.id,
@@ -406,6 +438,7 @@ export class ScheduleService {
         kind: row.kind,
         startsAt: iso(row.startsAt),
         endsAt: iso(row.endsAt),
+        ...(rows.length > 1 ? { repeatUntil: input.repeatUntil, days: rows.length } : {}),
       },
     });
     if (row.userId !== actor.id) {

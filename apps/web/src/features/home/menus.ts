@@ -12,6 +12,7 @@ import {
   ListChecks,
   PhoneCall,
   Power,
+  History,
   Users,
   UsersRound,
 } from 'lucide-react';
@@ -137,6 +138,14 @@ export const adminMenu: readonly MenuItem[] = [
     title: ja.admin.apps,
     path: paths.admin.apps,
     icon: Power,
+    tone: 'admin',
+    anyOf: [Permission.Administer],
+  },
+  {
+    key: 'audit',
+    title: ja.admin.audit,
+    path: paths.admin.audit,
+    icon: History,
     tone: 'admin',
     anyOf: [Permission.Administer],
   },

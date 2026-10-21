@@ -32,6 +32,7 @@ export const paths = {
     locks: '/admin/locks',
     settings: '/admin/settings',
     apps: '/admin/apps',
+    audit: '/admin/audit',
   },
 } as const;
 

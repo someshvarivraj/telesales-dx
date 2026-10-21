@@ -151,6 +151,7 @@ export class AppointmentBookingService {
             endsAt,
             actorId: actor.id,
             kind: 'APPOINTMENT',
+            salesBooked: command.source === AppointmentSource.SalesBooked,
           },
           tx,
         );
@@ -322,6 +323,7 @@ export class AppointmentBookingService {
             actorId: actor.id,
             kind: 'APPOINTMENT',
             appointmentId: id,
+            salesBooked: row.source === AppointmentSource.SalesBooked,
           },
           tx,
         );

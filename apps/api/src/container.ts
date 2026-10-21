@@ -33,6 +33,7 @@ import { NextActionService } from './modules/appointments/NextActionService.js';
 import { AppService } from './modules/apps/AppService.js';
 import { createSystemRouter } from './modules/apps/systemRouter.js';
 import { AreaTableService } from './modules/area/AreaTableService.js';
+import { AuditLogService } from './modules/audit/AuditLogService.js';
 import { PrismaAuditLogger } from './modules/audit/PrismaAuditLogger.js';
 import { AuthController } from './modules/auth/AuthController.js';
 import { AuthService } from './modules/auth/AuthService.js';
@@ -264,6 +265,8 @@ export class Container {
       settings,
       apps,
       audit: this.audit,
+      history: new AuditLogService(prisma, this.clock),
+      jobs: this.jobs,
     });
     this.apiRouters.push(mountAt('/admin', adminRouter));
   }

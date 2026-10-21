@@ -1,4 +1,4 @@
-import { addDays, OptionCategory, Role } from '@telesales/shared';
+import { addDays, OptionCategory, PREFECTURE_NAMES, Role } from '@telesales/shared';
 import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
@@ -7,7 +7,7 @@ import { QueryState } from '@/components/ui/QueryState';
 import { Select } from '@/components/ui/Select';
 import { Table, Td, Th } from '@/components/ui/Table';
 import { TextInput } from '@/components/ui/TextInput';
-import { useListNames } from '@/features/calls/api';
+import { useIndustries, useListNames } from '@/features/calls/api';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { formatPercent, monthRange, startOfWeek, todayJst } from '@/lib/format';
 import { ja } from '@/i18n/ja';
@@ -54,23 +54,32 @@ function Bar({ value, max }: { value: number; max: number }) {
 export function DashboardPage() {
   const [preset, setPreset] = useState<string>('month');
   const [range, setRange] = useState(presetRange('month'));
-  const [filters, setFilters] = useState({ telemarketerId: '', salesRepId: '', listName: '' });
+  const [filters, setFilters] = useState({
+    telemarketerId: '',
+    salesRepId: '',
+    listName: '',
+    industry: '',
+    prefecture: '',
+  });
   const telemas = usePeople(Role.Telema);
   const reps = usePeople(Role.Sales);
   const lists = useListNames();
+  const industries = useIndustries();
   const grades = useOptionList(OptionCategory.CallGrade);
   const query = useDashboard({
     ...range,
     telemarketerId: filters.telemarketerId || undefined,
     salesRepId: filters.salesRepId || undefined,
     listName: filters.listName || undefined,
+    industry: filters.industry || undefined,
+    prefecture: filters.prefecture || undefined,
   });
 
   return (
     <>
       <PageHeader title={ja.module.dashboard} />
       <Card className="mb-5">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <FormField label="期間">
             {(c) => (
               <Select
@@ -136,6 +145,28 @@ export function DashboardPage() {
                 placeholder={ja.common.all}
                 options={(lists.data ?? []).map((name) => ({ value: name, label: name }))}
                 onChange={(e) => setFilters({ ...filters, listName: e.target.value })}
+              />
+            )}
+          </FormField>
+          <FormField label="業種">
+            {(c) => (
+              <Select
+                {...c}
+                value={filters.industry}
+                placeholder={ja.common.all}
+                options={(industries.data ?? []).map((name) => ({ value: name, label: name }))}
+                onChange={(e) => setFilters({ ...filters, industry: e.target.value })}
+              />
+            )}
+          </FormField>
+          <FormField label="地域（都道府県）">
+            {(c) => (
+              <Select
+                {...c}
+                value={filters.prefecture}
+                placeholder={ja.common.all}
+                options={PREFECTURE_NAMES.map((name) => ({ value: name, label: name }))}
+                onChange={(e) => setFilters({ ...filters, prefecture: e.target.value })}
               />
             )}
           </FormField>

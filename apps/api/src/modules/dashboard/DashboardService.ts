@@ -39,10 +39,20 @@ export class DashboardService {
     const start = fromJst(query.from);
     const end = fromJst(addDays(query.to, 1));
 
+    // 業種・地域 are the company's; calls and appointments are filtered through it.
+    const companyWhere: Prisma.CompanyWhereInput = {
+      ...(query.industry ? { industry: query.industry } : {}),
+      ...(query.prefecture ? { prefecture: query.prefecture } : {}),
+    };
+    const byCompany = Object.keys(companyWhere).length > 0 ? { company: companyWhere } : {};
+
     const callWhere: Prisma.CallRecordWhereInput = {
       calledAt: { gte: start, lt: end },
       ...(query.telemarketerId ? { telemarketerId: query.telemarketerId } : {}),
-      ...(query.listName ? { company: { listName: query.listName } } : {}),
+      company: {
+        ...companyWhere,
+        ...(query.listName ? { listName: query.listName } : {}),
+      },
     };
     const bookedWhere: Prisma.AppointmentWhereInput = {
       bookedAt: { gte: start, lt: end },
@@ -50,12 +60,14 @@ export class DashboardService {
       ...(query.telemarketerId ? { bookedById: query.telemarketerId } : {}),
       ...(query.salesRepId ? { salesRepId: query.salesRepId } : {}),
       ...(query.listName ? { listName: query.listName } : {}),
+      ...byCompany,
     };
     const meetingWhere: Prisma.AppointmentWhereInput = {
       startsAt: { gte: start, lt: end },
       ...(query.telemarketerId ? { bookedById: query.telemarketerId } : {}),
       ...(query.salesRepId ? { salesRepId: query.salesRepId } : {}),
       ...(query.listName ? { listName: query.listName } : {}),
+      ...byCompany,
     };
 
     const [

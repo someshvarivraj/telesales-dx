@@ -48,6 +48,8 @@ const telema: Permission[] = [
   ...everyone,
   Permission.WriteCallRecords,
   Permission.EditCompanies,
+  // Q-03 (10/20): telemarketers also decide what to do with duplicates.
+  Permission.ResolveDuplicates,
   Permission.ManageTelemaAppointments,
   Permission.HandleChangeRequests,
   Permission.WriteDayBeforeChecks,
@@ -57,15 +59,10 @@ const telema: Permission[] = [
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   [Role.Telema]: telema,
   // A lead is a telemarketer with extra permissions.
-  [Role.TelemaLead]: [
-    ...telema,
-    Permission.ImportLists,
-    Permission.ResolveDuplicates,
-    Permission.ConfirmAllocation,
-  ],
+  [Role.TelemaLead]: [...telema, Permission.ImportLists, Permission.ConfirmAllocation],
   [Role.Sales]: [
     ...everyone,
-    Permission.ImportLists,
+    // Q-02 (10/20): sales do not import new lists (an admin can still grant it).
     Permission.EditCompanies,
     Permission.ManageSalesAppointments,
     Permission.WorkOnAppointments,

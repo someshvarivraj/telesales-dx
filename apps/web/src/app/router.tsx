@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminLayout } from '@/features/admin/AdminLayout';
 import { AppsPage } from '@/features/admin/AppsPage';
+import { AuditPage } from '@/features/admin/AuditPage';
 import { AreaTablePage } from '@/features/admin/AreaTablePage';
 import { CalendarAdminPage } from '@/features/admin/CalendarAdminPage';
 import { LocksPage } from '@/features/admin/LocksPage';
@@ -145,6 +146,7 @@ export const routes: RouteObject[] = [
           { path: 'locks', element: guard(adminOnly, <LocksPage />) },
           { path: 'settings', element: guard(adminOnly, <SettingsPage />) },
           { path: 'apps', element: guard(adminOnly, <AppsPage />) },
+          { path: 'audit', element: guard(adminOnly, <AuditPage />) },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

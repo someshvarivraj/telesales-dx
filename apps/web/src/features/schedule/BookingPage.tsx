@@ -312,6 +312,7 @@ function BookingForm(props: BookingFormProps) {
             onChange={setSlot}
             lock={lock.state}
             repLocked={salesBooked && !isAdmin}
+            salesBooked={salesBooked}
             onLock={() =>
               void lock.acquire(
                 slot.repId,

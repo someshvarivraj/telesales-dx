@@ -1,6 +1,8 @@
 import {
   appSettingsRequestSchema,
   areaRuleRequestSchema,
+  auditLogQuerySchema,
+  RUNNABLE_JOBS,
   calendarYearQuerySchema,
   companyGroupRequestSchema,
   companyHolidayRequestSchema,
@@ -25,6 +27,8 @@ import { uploadSingleFile } from '../../http/upload.js';
 import { idParam, parseQuery, parseWith } from '../../http/validate.js';
 import type { AppService } from '../apps/AppService.js';
 import type { AreaTableService } from '../area/AreaTableService.js';
+import type { AuditLogService } from '../audit/AuditLogService.js';
+import type { ScheduledJobs } from '../jobs/ScheduledJobs.js';
 import type { CalendarService } from '../calendar/CalendarService.js';
 import type { OptionService } from '../options/OptionService.js';
 import type { SlotGuard } from '../schedule/SlotGuard.js';
@@ -43,6 +47,8 @@ export interface AdminDeps {
   settings: SettingsService;
   apps: AppService;
   audit: AuditLogger;
+  history: AuditLogService;
+  jobs: ScheduledJobs;
 }
 
 const noticeCodeParam = z.string().regex(/^N\d{1,2}$/);
@@ -199,6 +205,23 @@ export function createAdminRouter(deps: AdminDeps): Router {
         parseWith(companyGroupRequestSchema, req.body),
       ),
     );
+  });
+
+  router.post('/jobs/:code/run', admin, async (req, res) => {
+    const code = parseWith(z.enum(RUNNABLE_JOBS), req.params.code);
+    const result = await deps.jobs.runNow(code);
+    await deps.audit.record({
+      action: AuditAction.SettingsChanged,
+      actorUserId: currentUserOf(req).id,
+      targetType: 'scheduled_job',
+      targetId: code,
+      after: { ranByHand: code, emails: result.emails, notices: result.notices },
+    });
+    res.json(result);
+  });
+
+  router.get('/audit-logs', admin, async (req, res) => {
+    res.json(await deps.history.recent(parseQuery(auditLogQuerySchema, req)));
   });
 
   router.get('/slot-locks', admin, async (req, res) => {

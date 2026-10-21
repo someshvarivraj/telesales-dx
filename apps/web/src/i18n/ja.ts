@@ -90,6 +90,7 @@ export const ja = {
     [TimeOffKind.LateStart]: '遅刻',
     [TimeOffKind.EarlyLeave]: '早退',
     [TimeOffKind.Partial]: '時間休',
+    [TimeOffKind.TelemaStop]: 'テレマアポ停止',
   },
   listPurpose: {
     [ListImportPurpose.CallRequest]: '架電を依頼する',
@@ -140,6 +141,7 @@ export const ja = {
     locks: '編集中の押さえ',
     settings: 'その他の設定',
     apps: 'アプリ・メンテナンス',
+    audit: '操作履歴',
   },
   auth: {
     loginTitle: 'ログイン',

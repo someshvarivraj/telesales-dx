@@ -6,6 +6,10 @@ import type {
   AppSettingsDto,
   AreaRuleDto,
   AreaRuleRequest,
+  AuditLogQuery,
+  AuditLogResponse,
+  JobRunResponse,
+  RunnableJob,
   CalendarDayAdminDto,
   CompanyGroupDto,
   CompanyGroupRequest,
@@ -40,6 +44,7 @@ export const adminKeys = {
   locks: ['admin', 'locks'] as const,
   settings: ['admin', 'settings'] as const,
   apps: ['admin', 'apps'] as const,
+  audit: (query: AuditLogQuery) => ['admin', 'audit', query] as const,
 };
 
 export const useAdminUsers = () =>
@@ -240,3 +245,16 @@ export const useUpdateApp = () =>
     ({ key, request }: { key: string; request: UpdateAppRequest }) =>
       apiClient.put<AppDto>(`/admin/apps/${key}`, request),
   );
+
+export const useAuditLog = (query: AuditLogQuery) =>
+  useQuery({
+    queryKey: adminKeys.audit(query),
+    queryFn: ({ signal }) =>
+      apiClient.get<AuditLogResponse>(`/admin/audit-logs${toQuery(query)}`, signal),
+  });
+
+/** Runs a scheduled notice now (test environment, Q-11). */
+export const useRunJob = () =>
+  useMutation({
+    mutationFn: (code: RunnableJob) => apiClient.post<JobRunResponse>(`/admin/jobs/${code}/run`),
+  });

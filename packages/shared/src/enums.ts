@@ -63,6 +63,8 @@ export const TimeOffKind = {
   LateStart: 'LATE_START',
   EarlyLeave: 'EARLY_LEAVE',
   Partial: 'PARTIAL',
+  /** テレマアポ停止 (Q-07): telemarketing sees the time as taken (営業枠). */
+  TelemaStop: 'TELEMA_STOP',
 } as const;
 export type TimeOffKind = (typeof TimeOffKind)[keyof typeof TimeOffKind];
 export const TIME_OFF_KINDS = valuesOf(TimeOffKind);
