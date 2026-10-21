@@ -5,6 +5,13 @@
  */
 export const EXACT: Readonly<Record<string, string>> = {
   // Operation history
+  テレマアポ停止: 'Telemarketing stop',
+  '休み・遅刻・早退・テレマアポ停止を入力':
+    'Enter time off, late start, early leave or telemarketing stop',
+  '期間中は毎日、下の時間帯が営業枠になります。':
+    'Every day in the period, the time band below is kept for sales.',
+  'テレマの画面ではこの時間が「埋まり（営業枠）」になり、アポを入れられません。自分の予定は入れられます。':
+    'Telemarketing sees this time as taken (sales time) and cannot book it. You can still add your own plans.',
   今すぐ実行: 'Run now',
   定時処理: 'Scheduled job',
   '宛先が設定されていないため、送りませんでした。下の「宛先」を足してから実行してください。':
@@ -1181,6 +1188,11 @@ export const EXACT: Readonly<Record<string, string>> = {
 
 /** Text with values in it. `{n}` matches anything; the matched parts are translated too. */
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  [
+    '埋まり（営業枠）：営業がテレマアポ停止にしている時間です（{0}）。',
+    'Taken (sales time): the rep has stopped telemarketing bookings ({0}).',
+  ],
+  ['埋まり（営業枠）：{0}', 'Taken (sales time): {0}'],
   [
     '送りました：メール {0} 通、画面のお知らせ {1} 件。',
     'Sent: {0} e-mails, {1} on-screen notices.',

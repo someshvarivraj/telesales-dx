@@ -27,6 +27,8 @@ export interface SlotCheckInput {
   kind: 'APPOINTMENT' | 'PLAN';
   planId?: string | null;
   holidayWork?: boolean;
+  /** The rep's own appointment: テレマアポ停止 does not apply to it. */
+  salesBooked?: boolean;
 }
 
 /**
@@ -81,12 +83,13 @@ export class SlotGuard {
           deletedAt: null,
           startsAt: { lt: endsAt },
           endsAt: { gt: startsAt },
+          ...(input.salesBooked ? { kind: { not: 'TELEMA_STOP' } } : {}),
         },
         take: 1,
       });
       if (timeOff[0]) {
         problems.push({
-          kind: 'TIME_OFF',
+          kind: timeOff[0].kind === 'TELEMA_STOP' ? 'SALES_BLOCK' : 'TIME_OFF',
           startsAt: iso(timeOff[0].startsAt),
           endsAt: iso(timeOff[0].endsAt),
         });

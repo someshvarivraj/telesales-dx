@@ -35,6 +35,7 @@ export interface SlotCheckInput {
   appointmentId?: string | null;
   planId?: string | null;
   holidayWork?: boolean;
+  salesBooked?: boolean;
 }
 
 export function useSlotCheck(input: SlotCheckInput | null) {

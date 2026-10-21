@@ -32,6 +32,8 @@ interface SlotPickerProps {
   appointmentId?: string;
   /** Sales booking their own appointment pick themselves. */
   repLocked?: boolean;
+  /** The rep's own appointment: their テレマアポ停止 time is open to them. */
+  salesBooked?: boolean;
 }
 
 const TIMES = timeOptions(7, 21).map((time) => ({ value: time, label: time }));
@@ -48,6 +50,7 @@ export function SlotPicker({
   onUnlock,
   appointmentId,
   repLocked = false,
+  salesBooked = false,
 }: SlotPickerProps) {
   const reps = usePeople(Role.Sales);
   const held = lock.status === 'held';
@@ -62,6 +65,7 @@ export function SlotPicker({
           endsAt: toInstant(slot.date, slot.end),
           kind: 'APPOINTMENT',
           appointmentId,
+          salesBooked,
         }
       : null,
   );

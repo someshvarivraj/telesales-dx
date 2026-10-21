@@ -14,7 +14,11 @@ import { useSaveTimeOff } from './api';
 
 const TIMES = timeOptions(6, 22).map((time) => ({ value: time, label: time }));
 
-/** Time off, late start, early leave — also for other people who called in (spec §7). */
+/**
+ * Time off, late start, early leave — also for other people who called in (spec §7) —
+ * and テレマアポ停止 (Q-07): a period and a daily time band that telemarketing sees as
+ * taken (営業枠) while the rep can still put their own plans in it.
+ */
 export function TimeOffDialog({
   open,
   onClose,
@@ -38,16 +42,27 @@ export function TimeOffDialog({
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
   const allDay = values.kind === Kind.DayOff;
+  const stop = values.kind === Kind.TelemaStop;
+  const lastDay = values.endDate < values.date ? values.date : values.endDate;
 
   const submit = () => {
     const startsAt = allDay
       ? toInstant(values.date, '00:00')
       : toInstant(values.date, values.start);
     const endsAt = allDay
-      ? toInstant(addDays(values.endDate < values.date ? values.date : values.endDate, 1), '00:00')
+      ? toInstant(addDays(lastDay, 1), '00:00')
       : toInstant(values.date, values.end);
     save.mutate(
-      { userId: values.userId, kind: values.kind, startsAt, endsAt, allDay, note: values.note },
+      {
+        userId: values.userId,
+        kind: values.kind,
+        startsAt,
+        endsAt,
+        allDay,
+        note: values.note,
+        // テレマアポ停止: the same time band on every day of the period.
+        repeatUntil: stop && lastDay > values.date ? lastDay : null,
+      },
       { onSuccess: onClose },
     );
   };
@@ -56,7 +71,7 @@ export function TimeOffDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="休み・遅刻・早退を入力"
+      title="休み・遅刻・早退・テレマアポ停止を入力"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -74,7 +89,7 @@ export function TimeOffDialog({
     >
       <div className="flex flex-col gap-4">
         {save.isError && <Alert tone="error">{errorMessageOf(save.error)}</Alert>}
-        <FormField label="誰の休み" required>
+        <FormField label="誰の予定" required>
           {(c) => (
             <Select
               {...c}
@@ -99,7 +114,7 @@ export function TimeOffDialog({
           )}
         </FormField>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label={allDay ? '開始日' : '日付'} required>
+          <FormField label={allDay || stop ? '開始日' : '日付'} required>
             {(c) => (
               <TextInput
                 {...c}
@@ -111,8 +126,11 @@ export function TimeOffDialog({
               />
             )}
           </FormField>
-          {allDay && (
-            <FormField label="終了日">
+          {(allDay || stop) && (
+            <FormField
+              label="終了日"
+              hint={stop ? '期間中は毎日、下の時間帯が営業枠になります。' : undefined}
+            >
               {(c) => (
                 <TextInput
                   {...c}
@@ -148,6 +166,11 @@ export function TimeOffDialog({
               )}
             </FormField>
           </div>
+        )}
+        {stop && (
+          <Alert tone="info">
+            テレマの画面ではこの時間が「埋まり（営業枠）」になり、アポを入れられません。自分の予定は入れられます。
+          </Alert>
         )}
         <FormField label="メモ" hint="例：電話で連絡あり（受けた人が入力）">
           {(c) => (

@@ -849,6 +849,8 @@ enum TimeOffKind {
   LATE_START
   EARLY_LEAVE
   PARTIAL
+  /// テレマアポ停止 (Q-07): telemarketing cannot book; the rep can still plan.
+  TELEMA_STOP
 }
 
 /// Time off for sales and telemarketing alike (all day or a time range).

@@ -44,11 +44,13 @@ export type PlanRequest = z.input<typeof planRequestSchema>;
 
 export const timeOffRequestSchema = z.object({
   userId: z.uuid(),
-  kind: z.enum(['DAY_OFF', 'LATE_START', 'EARLY_LEAVE', 'PARTIAL']),
+  kind: z.enum(['DAY_OFF', 'LATE_START', 'EARLY_LEAVE', 'PARTIAL', 'TELEMA_STOP']),
   startsAt: instantString,
   endsAt: instantString,
   allDay: z.boolean().default(false),
   note: optionalText(200),
+  /** Repeat the same time band every day up to this date (e.g. テレマアポ停止 for a week). */
+  repeatUntil: dateString.nullish(),
 });
 export type TimeOffRequest = z.input<typeof timeOffRequestSchema>;
 
@@ -131,6 +133,8 @@ export interface SlotCheckResult {
 export type SlotProblem =
   | { kind: 'NOT_BUSINESS_DAY'; date: string; name: string | null }
   | { kind: 'TIME_OFF'; startsAt: string; endsAt: string }
+  /** テレマアポ停止: the rep keeps this time for their own work (営業枠). */
+  | { kind: 'SALES_BLOCK'; startsAt: string; endsAt: string }
   | { kind: 'OVERLAP'; title: string; startsAt: string; endsAt: string }
   | { kind: 'LOCKED'; by: string }
   | { kind: 'INVALID_TIME' };

@@ -5,6 +5,7 @@ import {
   type ScheduleResponse,
   type SlotLockDto,
   type TimeOffDto,
+  TimeOffKind,
 } from '@telesales/shared';
 
 export type EventKind =
@@ -103,7 +104,13 @@ export function buildEvents(data: ScheduleResponse): CalendarEvent[] {
       startsAt: timeOff.startsAt,
       endsAt: timeOff.endsAt,
       allDay: timeOff.allDay,
-      title: timeOff.note ? `休み：${timeOff.note}` : '休み',
+      // テレマアポ停止 reads as taken for the rep's own work (営業枠).
+      title:
+        timeOff.kind === TimeOffKind.TelemaStop
+          ? `埋まり（営業枠）${timeOff.note ? `：${timeOff.note}` : ''}`
+          : timeOff.note
+            ? `休み：${timeOff.note}`
+            : '休み',
       timeOff,
     });
   }

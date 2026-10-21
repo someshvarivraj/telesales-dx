@@ -28,6 +28,7 @@ const checkSchema = z.object({
   appointmentId: z.uuid().nullish(),
   planId: z.uuid().nullish(),
   holidayWork: z.boolean().default(false),
+  salesBooked: z.boolean().default(false),
 });
 const deleteQuery = z.object({ series: z.enum(['true', 'false']).default('false') });
 
