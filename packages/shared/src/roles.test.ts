@@ -39,6 +39,12 @@ describe('resolvePermissions (spec v1 §4)', () => {
       expect.arrayContaining([Permission.ImportLists, Permission.ConfirmAllocation]),
     );
     expect(telema).not.toContain(Permission.ImportLists);
+    // Q-03: every telemarketer can decide on duplicates.
+    expect(telema).toContain(Permission.ResolveDuplicates);
+  });
+
+  it('does not let sales import new lists (Q-02)', () => {
+    expect(resolvePermissions([Role.Sales])).not.toContain(Permission.ImportLists);
   });
 
   it('stops sales from booking telemarketing appointments but lets them request changes', () => {
