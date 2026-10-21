@@ -23,6 +23,9 @@ export const dashboardQuerySchema = z.object({
   telemarketerId: z.uuid().optional(),
   salesRepId: z.uuid().optional(),
   listName: z.string().trim().max(200).optional(),
+  /** 業種 and 地域 (prefecture) of the company (Q-12, 10/20). */
+  industry: z.string().trim().max(100).optional(),
+  prefecture: z.string().trim().max(10).optional(),
 });
 export type DashboardQuery = z.input<typeof dashboardQuerySchema>;
 

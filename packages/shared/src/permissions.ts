@@ -59,11 +59,7 @@ const telema: Permission[] = [
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   [Role.Telema]: telema,
   // A lead is a telemarketer with extra permissions.
-  [Role.TelemaLead]: [
-    ...telema,
-    Permission.ImportLists,
-    Permission.ConfirmAllocation,
-  ],
+  [Role.TelemaLead]: [...telema, Permission.ImportLists, Permission.ConfirmAllocation],
   [Role.Sales]: [
     ...everyone,
     // Q-02 (10/20): sales do not import new lists (an admin can still grant it).

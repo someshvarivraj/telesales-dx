@@ -5,6 +5,7 @@
  */
 export const EXACT: Readonly<Record<string, string>> = {
   // Operation history
+  '地域（都道府県）': 'Region (prefecture)',
   操作履歴: 'Operation history',
   全員: 'Everyone',
   '期間（から）': 'Period (from)',
