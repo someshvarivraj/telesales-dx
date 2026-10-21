@@ -182,6 +182,111 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
     transform: translateY(-8%);
   }
 }
+/*
+ * Idle life: MoraBot breathes, sways its head a little, blinks, its antenna glows and
+ * its arms swing. Slow and small so it never pulls attention from the work; each
+ * instance starts at its own point (--morabot-delay). Off for reduced motion.
+ */
+.morabot-idle {
+  animation: morabot-breathe 3.6s ease-in-out infinite;
+  animation-delay: var(--morabot-delay, 0s);
+}
+img.morabot-idle {
+  animation-name: morabot-float;
+}
+.morabot-idle .morabot-head {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: morabot-sway 5.4s ease-in-out infinite;
+  animation-delay: var(--morabot-delay, 0s);
+}
+.morabot-idle .morabot-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: morabot-blink 4.8s infinite;
+  animation-delay: var(--morabot-delay, 0s);
+}
+.morabot-idle .morabot-antenna {
+  animation: morabot-glow 2.4s ease-in-out infinite;
+  animation-delay: var(--morabot-delay, 0s);
+}
+.morabot-idle .morabot-arm-left,
+.morabot-idle .morabot-arm-right {
+  transform-box: fill-box;
+  transform-origin: 50% 10%;
+  animation: morabot-swing 3.6s ease-in-out infinite;
+  animation-delay: var(--morabot-delay, 0s);
+}
+.morabot-idle .morabot-arm-right {
+  animation-direction: reverse;
+}
+@keyframes morabot-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3%);
+  }
+}
+@keyframes morabot-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4%) rotate(-1.5deg);
+  }
+}
+@keyframes morabot-sway {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-2.5deg);
+  }
+  70% {
+    transform: rotate(2deg);
+  }
+}
+@keyframes morabot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes morabot-glow {
+  0%,
+  100% {
+    filter: none;
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 22px rgba(255, 154, 51, 0.9));
+    opacity: 0.85;
+  }
+}
+@keyframes morabot-swing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .morabot-idle,
+  .morabot-idle *,
+  .morabot-busy {
+    animation: none !important;
+  }
+}
 .morabot-think .morabot-antenna,
 .morabot-think .morabot-bubbles circle {
   animation: morabot-pulse 1.4s ease-in-out infinite;
@@ -248,5 +353,173 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
   to {
     left: 100%;
     transform: translateX(-50%);
+  }
+}
+
+/*
+ * Illustrations (components/illustrations): the same quiet life as MoraBot. People
+ * breathe, nod and blink; the phone rings, sound waves pulse, the current list row
+ * glows, the clock hand turns, pins and bubbles bob, chart bars rise in turn, the
+ * flow's dotted path moves and sparkles twinkle. Off for reduced motion.
+ */
+.scene .scene-breathe,
+.scene .scene-head,
+.scene .scene-blink,
+.scene .scene-ring,
+.scene .scene-twinkle,
+.scene .scene-bar,
+.scene .scene-arrow,
+.scene .scene-bounce {
+  transform-box: fill-box;
+}
+.scene .scene-breathe {
+  transform-origin: 50% 100%;
+  animation: scene-breathe 3.8s ease-in-out infinite var(--scene-delay, 0s);
+}
+.scene .scene-head {
+  transform-origin: 50% 100%;
+  animation: scene-nod 5.6s ease-in-out infinite var(--scene-delay, 0s);
+}
+.scene .scene-blink {
+  transform-origin: center;
+  animation: scene-blink 4.6s infinite var(--scene-delay, 0s);
+}
+.scene .scene-ring {
+  transform-origin: center;
+  animation: scene-ring 2.8s ease-in-out infinite;
+}
+.scene .scene-waves,
+.scene .scene-pulse {
+  animation: scene-pulse 2s ease-in-out infinite;
+}
+.scene .scene-hand {
+  transform-box: view-box;
+  transform-origin: 300px 198px;
+  animation: scene-turn 12s linear infinite;
+}
+.scene .scene-bounce {
+  animation: scene-bounce 2.6s ease-in-out infinite var(--scene-delay, 0s);
+}
+.scene .scene-twinkle {
+  transform-origin: center;
+  animation: scene-twinkle 3s ease-in-out infinite;
+}
+.scene .scene-bar {
+  transform-origin: 50% 100%;
+  animation: scene-rise 3.2s ease-in-out infinite;
+}
+.scene .scene-arrow {
+  transform-origin: 0% 100%;
+  animation: scene-arrow 3.2s ease-in-out infinite;
+}
+.scene .scene-march {
+  animation: scene-march 1.6s linear infinite;
+}
+@keyframes scene-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.025);
+  }
+}
+@keyframes scene-nod {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  35% {
+    transform: rotate(-4deg);
+  }
+  70% {
+    transform: rotate(2deg);
+  }
+}
+@keyframes scene-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes scene-ring {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+  66%,
+  78% {
+    transform: rotate(-12deg);
+  }
+  72%,
+  84% {
+    transform: rotate(12deg);
+  }
+}
+@keyframes scene-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes scene-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes scene-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes scene-twinkle {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+}
+@keyframes scene-rise {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.88);
+  }
+}
+@keyframes scene-arrow {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(3px, -4px);
+  }
+}
+@keyframes scene-march {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene * {
+    animation: none !important;
   }
 }

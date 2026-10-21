@@ -42,6 +42,8 @@ export function Sparkle({ x, y, size = 10 }: { x: number; y: number; size?: numb
   const q = s * 0.22;
   return (
     <path
+      className="scene-twinkle"
+      style={{ animationDelay: `-${((x + y) % 30) / 10}s` }}
       d={`M${x} ${y - s} Q${x + q} ${y - q} ${x + s} ${y} Q${x + q} ${y + q} ${x} ${y + s} Q${x - q} ${y + q} ${x - s} ${y} Q${x - q} ${y - q} ${x} ${y - s} Z`}
       fill={FILL.paper}
       {...line}
@@ -96,73 +98,79 @@ export function Bust({
   const f = facing;
   return (
     <g transform={`translate(${x} ${y}) scale(${scale * f} ${scale})`}>
-      {/* back arm */}
-      <Limb d="M-30 -42 C-44 -24 -40 -6 -18 -4" color={suit} />
-      {/* long hair falls to the shoulders on both sides (behind the torso) */}
-      {hair === 'long' && (
-        <path
-          d="M-21 -94 C-29 -74 -28 -60 -22 -52 L-11 -60 L-12 -84 Z M21 -94 C29 -74 28 -60 22 -52 L11 -60 L12 -84 Z"
-          fill={INK}
-        />
-      )}
-      {/* torso */}
-      <path d="M-38 0 C-40 -40 -26 -60 0 -60 C26 -60 40 -40 38 0 Z" fill={suit} {...line} />
-      <path d="M-11 -58 L0 -38 L11 -58" fill={FILL.paper} {...line} strokeWidth={2} />
-      <path d="M0 -38 L-3 -24 L0 -14 L3 -24 Z" fill={INK} />
-      {/* neck + head */}
-      <rect x={-6} y={-70} width={12} height={12} fill={FILL.skin} {...line} strokeWidth={2} />
-      <circle cx={0} cy={-90} r={20} fill={FILL.skin} {...line} />
-      <path
-        d={
-          hair === 'long'
-            ? 'M-21 -88 C-24 -114 22 -118 22 -90 C14 -100 0 -104 -12 -96 C-16 -94 -19 -91 -21 -88 Z'
-            : 'M-20 -92 C-20 -114 20 -116 21 -94 C12 -102 -4 -104 -20 -92 Z'
-        }
-        fill={INK}
-      />
-      {/* face, turned a little toward `facing` */}
-      <circle cx={4} cy={-90} r={2} fill={INK} />
-      <circle cx={13} cy={-90} r={2} fill={INK} />
-      <path d="M6 -80 Q10 -77 14 -80" fill="none" {...line} strokeWidth={2} />
-      {headset && (
-        <>
+      <g className="scene-breathe">
+        {/* back arm */}
+        <Limb d="M-30 -42 C-44 -24 -40 -6 -18 -4" color={suit} />
+        {/* long hair falls to the shoulders on both sides (behind the torso) */}
+        {hair === 'long' && (
           <path
-            d="M-21 -92 C-22 -118 20 -118 21 -92"
-            fill="none"
-            stroke={FILL.accent}
-            strokeWidth={4}
-            strokeLinecap="round"
+            d="M-21 -94 C-29 -74 -28 -60 -22 -52 L-11 -60 L-12 -84 Z M21 -94 C29 -74 28 -60 22 -52 L11 -60 L12 -84 Z"
+            fill={INK}
           />
-          <rect
-            x={-26}
-            y={-98}
-            width={9}
-            height={15}
-            fill={FILL.accent}
-            {...line}
-            strokeWidth={2}
-          />
+        )}
+        {/* torso */}
+        <path d="M-38 0 C-40 -40 -26 -60 0 -60 C26 -60 40 -40 38 0 Z" fill={suit} {...line} />
+        <path d="M-11 -58 L0 -38 L11 -58" fill={FILL.paper} {...line} strokeWidth={2} />
+        <path d="M0 -38 L-3 -24 L0 -14 L3 -24 Z" fill={INK} />
+        {/* neck + head (the head nods a little) */}
+        <rect x={-6} y={-70} width={12} height={12} fill={FILL.skin} {...line} strokeWidth={2} />
+        <g className="scene-head">
+          <circle cx={0} cy={-90} r={20} fill={FILL.skin} {...line} />
           <path
-            d="M-20 -84 C-16 -72 -2 -70 6 -73"
-            fill="none"
-            stroke={INK}
-            strokeWidth={2.5}
-            strokeLinecap="round"
+            d={
+              hair === 'long'
+                ? 'M-21 -88 C-24 -114 22 -118 22 -90 C14 -100 0 -104 -12 -96 C-16 -94 -19 -91 -21 -88 Z'
+                : 'M-20 -92 C-20 -114 20 -116 21 -94 C12 -102 -4 -104 -20 -92 Z'
+            }
+            fill={INK}
           />
-          <circle cx={7} cy={-73} r={3} fill={INK} />
-        </>
-      )}
-      {/* front arm */}
-      {raise ? (
-        <Limb d="M26 -46 C40 -60 50 -80 56 -100" color={suit} />
-      ) : (
-        <Limb d="M28 -42 C40 -22 36 -6 14 -4" color={suit} />
-      )}
-      {raise ? (
-        <circle cx={57} cy={-104} r={7} fill={FILL.skin} {...line} strokeWidth={2} />
-      ) : (
-        <ellipse cx={10} cy={-4} rx={8} ry={5} fill={FILL.skin} {...line} strokeWidth={2} />
-      )}
+          {/* face, turned a little toward `facing` */}
+          <g className="scene-blink">
+            <circle cx={4} cy={-90} r={2} fill={INK} />
+            <circle cx={13} cy={-90} r={2} fill={INK} />
+          </g>
+          <path d="M6 -80 Q10 -77 14 -80" fill="none" {...line} strokeWidth={2} />
+          {headset && (
+            <>
+              <path
+                d="M-21 -92 C-22 -118 20 -118 21 -92"
+                fill="none"
+                stroke={FILL.accent}
+                strokeWidth={4}
+                strokeLinecap="round"
+              />
+              <rect
+                x={-26}
+                y={-98}
+                width={9}
+                height={15}
+                fill={FILL.accent}
+                {...line}
+                strokeWidth={2}
+              />
+              <path
+                d="M-20 -84 C-16 -72 -2 -70 6 -73"
+                fill="none"
+                stroke={INK}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+              />
+              <circle cx={7} cy={-73} r={3} fill={INK} />
+            </>
+          )}
+        </g>
+        {/* front arm */}
+        {raise ? (
+          <Limb d="M26 -46 C40 -60 50 -80 56 -100" color={suit} />
+        ) : (
+          <Limb d="M28 -42 C40 -22 36 -6 14 -4" color={suit} />
+        )}
+        {raise ? (
+          <circle cx={57} cy={-104} r={7} fill={FILL.skin} {...line} strokeWidth={2} />
+        ) : (
+          <ellipse cx={10} cy={-4} rx={8} ry={5} fill={FILL.skin} {...line} strokeWidth={2} />
+        )}
+      </g>
     </g>
   );
 }
@@ -208,6 +216,7 @@ export function Calendar(props: {
       cells.push(
         <rect
           key={`${c}-${r}`}
+          className={isDone ? 'scene-pulse' : undefined}
           x={cx + 2}
           y={cy + 2}
           width={cw - 4}
@@ -265,6 +274,8 @@ export function RisingChart({ x, y, w, h }: { x: number; y: number; w: number; h
         return (
           <rect
             key={p}
+            className="scene-bar"
+            style={{ animationDelay: `${i * 0.15}s` }}
             x={bx}
             y={y + h - bh}
             width={bw}
@@ -276,6 +287,7 @@ export function RisingChart({ x, y, w, h }: { x: number; y: number; w: number; h
         );
       })}
       <path
+        className="scene-arrow"
         d={`M${x} ${y + h * 0.9} C${x + w * 0.45} ${y + h * 0.85} ${x + w * 0.7} ${y + h * 0.5} ${x + w * 0.86} ${y + h * 0.08} L${x + w * 0.76} ${y + h * 0.1} L${x + w * 0.98} ${y - h * 0.16} L${x + w * 1.02} ${y + h * 0.18} L${x + w * 0.93} ${y + h * 0.12} C${x + w * 0.76} ${y + h * 0.6} ${x + w * 0.5} ${y + h * 0.96} ${x} ${y + h * 0.96} Z`}
         fill={FILL.mid}
         {...line}
