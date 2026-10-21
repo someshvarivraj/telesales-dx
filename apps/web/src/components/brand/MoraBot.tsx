@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, useId } from 'react';
 import { cn } from '@/components/ui/cn';
 
 /**
@@ -47,12 +47,19 @@ const ART: Partial<Record<MoraBotMood, { file: string; ratio: number }>> = {
   writing: { file: 'morabot/writing.png', ratio: 429 / 480 },
 };
 
+/** A per-instance delay (0–3.9 s) from the React id, so the beat is stable across renders. */
+function idleBeat(id: string): CSSProperties {
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return { '--morabot-delay': `-${(hash % 40) / 10}s` } as CSSProperties;
+}
+
 function RingEyes({ look = [0, 0], small = false }: { look?: [number, number]; small?: boolean }) {
   const r = small ? 62 : 75;
   return (
     <>
       {[600, 840].map((cx) => (
-        <g key={cx}>
+        <g key={cx} className="morabot-eye">
           <circle cx={cx} cy={606} r={r} fill={C.blue} />
           <circle cx={cx} cy={606} r={r - 30} fill={C.white} />
           <circle cx={cx + look[0]} cy={606 + look[1]} r={15} fill={C.navy} />
@@ -127,6 +134,8 @@ interface MoraBotProps {
   className?: string;
   /** A gentle bob, for a MoraBot that is busy. */
   animate?: boolean;
+  /** No idle movement (breathing, blinking), e.g. for a printed page. */
+  still?: boolean;
   /** Just the head, for small marks such as the logo. */
   headOnly?: boolean;
   /** Accessible name; defaults to the mood's name. Pass '' for decoration. */
@@ -138,11 +147,19 @@ export function MoraBot({
   size = 96,
   className,
   animate = false,
+  still = false,
   headOnly = false,
   title,
 }: MoraBotProps) {
   const label = title ?? LABELS[mood];
-  const classes = cn('morabot', animate && 'morabot-busy', `morabot-${mood}`, className);
+  // Each MoraBot breathes and blinks on its own beat, so several on a page look alive.
+  const beat = idleBeat(useId());
+  const classes = cn(
+    'morabot',
+    animate ? 'morabot-busy' : !still && 'morabot-idle',
+    `morabot-${mood}`,
+    className,
+  );
 
   const art = headOnly ? undefined : ART[mood];
   if (art) {
@@ -152,7 +169,7 @@ export function MoraBot({
         src={`${import.meta.env.BASE_URL}${art.file}`}
         width={width}
         height={size}
-        style={{ width, height: size, objectFit: 'contain' }}
+        style={{ width, height: size, objectFit: 'contain', ...beat }}
         alt={label}
         aria-hidden={label ? undefined : true}
         className={classes}
@@ -170,28 +187,31 @@ export function MoraBot({
       height={size}
       width={(size * w) / h}
       className={classes}
+      style={beat}
       role={label ? 'img' : undefined}
       aria-label={label || undefined}
       aria-hidden={label ? undefined : true}
     >
-      {mood === 'think' && (
-        <g className="morabot-bubbles" fill={C.bubble}>
-          <circle cx={1010} cy={390} r={16} />
-          <circle cx={1050} cy={340} r={24} />
-          <circle cx={1095} cy={280} r={32} />
-        </g>
-      )}
-      <rect x={711} y={290} width={18} height={90} fill={C.navy} />
-      <circle className="morabot-antenna" cx={720} cy={263} r={42} fill={C.orange} />
-      <rect x={330} y={540} width={60} height={144} rx={26} fill={C.orange} />
-      <rect x={1050} y={540} width={60} height={144} rx={26} fill={C.orange} />
-      <rect x={390} y={372} width={660} height={528} rx={150} fill={C.blue} />
-      <rect x={462} y={456} width={516} height={300} rx={110} fill={C.white} />
-      <Face mood={mood} />
+      <g className="morabot-head">
+        {mood === 'think' && (
+          <g className="morabot-bubbles" fill={C.bubble}>
+            <circle cx={1010} cy={390} r={16} />
+            <circle cx={1050} cy={340} r={24} />
+            <circle cx={1095} cy={280} r={32} />
+          </g>
+        )}
+        <rect x={711} y={290} width={18} height={90} fill={C.navy} />
+        <circle className="morabot-antenna" cx={720} cy={263} r={42} fill={C.orange} />
+        <rect x={330} y={540} width={60} height={144} rx={26} fill={C.orange} />
+        <rect x={1050} y={540} width={60} height={144} rx={26} fill={C.orange} />
+        <rect x={390} y={372} width={660} height={528} rx={150} fill={C.blue} />
+        <rect x={462} y={456} width={516} height={300} rx={110} fill={C.white} />
+        <Face mood={mood} />
+      </g>
       {!headOnly && (
         <>
-          <ellipse cx={462} cy={1008} rx={48} ry={84} fill={C.arm} />
-          <ellipse cx={978} cy={1008} rx={48} ry={84} fill={C.arm} />
+          <ellipse className="morabot-arm-left" cx={462} cy={1008} rx={48} ry={84} fill={C.arm} />
+          <ellipse className="morabot-arm-right" cx={978} cy={1008} rx={48} ry={84} fill={C.arm} />
           <rect x={540} y={912} width={360} height={204} rx={100} fill={C.green} />
           <circle cx={720} cy={1014} r={48} fill="none" stroke={C.white} strokeWidth={9} />
           <rect x={600} y={1116} width={96} height={48} rx={20} fill={C.navy} />
