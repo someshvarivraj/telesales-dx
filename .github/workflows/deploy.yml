@@ -1,18 +1,23 @@
-# Deploys main to the company EC2 instance after every merge (and on demand).
+# Deploys main to the company staging server after every merge (and on demand).
 #
-# GitHub Actions signs in to AWS with a short-lived OIDC token (no access keys are
-# stored anywhere) and asks the instance, through SSM, to fetch this commit, rebuild,
-# run the database migrations and restart the app. The instance pulls the code itself
-# with a read-only deploy key; nothing is uploaded from here.
+# How it fits the AWS side (set up by the infrastructure owner):
+#   1. GitHub Actions signs in to AWS with a short-lived OIDC token (no stored keys).
+#   2. It builds the two images here (app = runtime stage, tools = builder stage for
+#      migrations and CLIs) and pushes them to ECR, tagged with the commit.
+#   3. It asks the server, through the SSM document `telesales-dx-staging-deploy`, to
+#      deploy exactly those image digests. The server never builds and runs nothing
+#      else: the document only accepts two sha256 digests and the 40-character commit.
+#   4. It waits for the result and, when APP_URL is set, checks the site answers.
 #
-# One-time AWS setup: docs/DEPLOY-COMPANY-AWS.md (steps 10–11). Repository variables
-# (Settings → Secrets and variables → Actions → Variables):
-#
-#   AWS_DEPLOY_ROLE_ARN  arn:aws:iam::<account>:role/telesales-dx-github-deploy
-#   DEPLOY_INSTANCE_ID   i-...
-#   AWS_REGION           ap-northeast-1
-#   DEPLOY_DIR           /opt/apps/telesales-dx
-#   APP_URL              the public address, e.g. https://dx.morabu.com/telesales-dx
+# Repository variables (Settings → Secrets and variables → Actions → Variables):
+#   AWS_DEPLOY_ROLE_ARN   arn:aws:iam::<account>:role/telesales-dx-github-deploy-staging
+#   DEPLOY_INSTANCE_ID    i-...
+#   AWS_REGION            ap-northeast-1
+#   ECR_APP_REPOSITORY    telesales-dx-staging-app      (default)
+#   ECR_TOOLS_REPOSITORY  telesales-dx-staging-tools    (default)
+#   DEPLOY_DOCUMENT       telesales-dx-staging-deploy   (default)
+#   VITE_BASE_PATH        /  or e.g. /telesales-dx/ when the app lives under a path
+#   APP_URL               the public address, e.g. https://dx.morabu.com/telesales-dx
 #
 # Until AWS_DEPLOY_ROLE_ARN is set the job is skipped, so merges never fail on it.
 
@@ -25,12 +30,19 @@ on:
 
 # Never two deploys at once on the same server; a newer merge waits for the running one.
 concurrency:
-  group: deploy-production
+  group: deploy-staging
   cancel-in-progress: false
 
 permissions:
   id-token: write # OIDC: receive temporary AWS credentials
   contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+  ECR_APP_REPOSITORY: ${{ vars.ECR_APP_REPOSITORY || 'telesales-dx-staging-app' }}
+  ECR_TOOLS_REPOSITORY: ${{ vars.ECR_TOOLS_REPOSITORY || 'telesales-dx-staging-tools' }}
+  DEPLOY_DOCUMENT: ${{ vars.DEPLOY_DOCUMENT || 'telesales-dx-staging-deploy' }}
+  VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
 
 jobs:
   deploy:
@@ -38,59 +50,75 @@ jobs:
     runs-on: ubuntu-latest
     # No `environment:` here: it would change the OIDC subject the AWS trust policy expects.
     steps:
+      - uses: actions/checkout@v5
+
       - name: Configure AWS credentials (OIDC, no stored keys)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Rebuild and restart on EC2
+      - name: Log in to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push the app image
+        id: app
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          build-args: VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
+          push: true
+          provenance: false
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_APP_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha,scope=telesales-dx
+          cache-to: type=gha,scope=telesales-dx,mode=max
+
+      - name: Build and push the tools image (migrations, CLIs)
+        id: tools
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: builder
+          build-args: VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
+          push: true
+          provenance: false
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_TOOLS_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha,scope=telesales-dx
+
+      - name: Deploy these digests on the server
         env:
-          SHA: ${{ github.sha }}
           INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }}
-          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/apps/telesales-dx' }}
+          APP_DIGEST: ${{ steps.app.outputs.digest }}
+          TOOLS_DIGEST: ${{ steps.tools.outputs.digest }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
           set -e
-          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
-          cat > /tmp/commands.json <<EOF
-          {
-            "commands": [
-              "set -e",
-              "cd ${DEPLOY_DIR}",
-              "git fetch origin ${SHA}",
-              "git reset --hard ${SHA}",
-              "docker builder prune -af --filter until=24h || true",
-              "${COMPOSE} build app tools",
-              "${COMPOSE} run --rm tools pnpm exec prisma migrate deploy",
-              "${COMPOSE} up -d app",
-              "docker image prune -f || true",
-              "df -h / | tail -1",
-              "echo DEPLOY_DONE"
-            ]
-          }
-          EOF
+          echo "app   ${APP_DIGEST}"
+          echo "tools ${TOOLS_DIGEST}"
           CMD_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --parameters file:///tmp/commands.json \
+            --document-name "$DEPLOY_DOCUMENT" \
+            --parameters "AppDigest=${APP_DIGEST},ToolsDigest=${TOOLS_DIGEST},ReleaseSha=${RELEASE_SHA}" \
             --timeout-seconds 1800 \
             --query 'Command.CommandId' --output text)
           echo "SSM command: $CMD_ID"
-          # A build plus migrations can take several minutes on the instance.
+          # Pulling the images, migrating and restarting can take a few minutes.
+          STATUS=Pending
           for i in $(seq 1 90); do
+            sleep 10
             STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text 2>/dev/null || echo "Pending")
             echo "status: $STATUS"
             case "$STATUS" in
-              Success) break ;;
-              Failed|Cancelled|TimedOut)
-                aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID"
-                exit 1 ;;
-              *) sleep 10 ;;
+              Success|Failed|Cancelled|TimedOut) break ;;
             esac
           done
           aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
-            --query '{status: Status, output: StandardOutputContent}' --output json
-          [ "$STATUS" = "Success" ] || { echo "Deploy did not finish in time"; exit 1; }
+            --query '{status: Status, output: StandardOutputContent, errors: StandardErrorContent}' --output json
+          [ "$STATUS" = "Success" ] || { echo "Deploy did not succeed: $STATUS"; exit 1; }
 
       - name: Check the site answers
         if: ${{ vars.APP_URL != '' }}
