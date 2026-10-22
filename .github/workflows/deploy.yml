@@ -3,7 +3,8 @@
 # How it fits the AWS side (set up by the infrastructure owner):
 #   1. GitHub Actions signs in to AWS with a short-lived OIDC token (no stored keys).
 #   2. It builds the two images here (app = runtime stage, tools = builder stage for
-#      migrations and CLIs) and pushes them to ECR, tagged with the commit.
+#      migrations and CLIs) and pushes them to ECR, tagged <commit>-r<run>-<attempt>
+#      (the repositories use immutable tags).
 #   3. It asks the server, through the SSM document `telesales-dx-staging-deploy`, to
 #      deploy exactly those image digests. The server never builds and runs nothing
 #      else: the document only accepts two sha256 digests and the 40-character commit.
@@ -43,6 +44,9 @@ env:
   ECR_TOOLS_REPOSITORY: ${{ vars.ECR_TOOLS_REPOSITORY || 'telesales-dx-staging-tools' }}
   DEPLOY_DOCUMENT: ${{ vars.DEPLOY_DOCUMENT || 'telesales-dx-staging-deploy' }}
   VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
+  # ECR tags are immutable, so every run gets its own tag (commit + run). The server
+  # deploys by digest; the tag only labels the image.
+  IMAGE_TAG: ${{ github.sha }}-r${{ github.run_number }}-${{ github.run_attempt }}
 
 jobs:
   deploy:
@@ -73,7 +77,7 @@ jobs:
           build-args: VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
           push: true
           provenance: false
-          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_APP_REPOSITORY }}:${{ github.sha }}
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_APP_REPOSITORY }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha,scope=telesales-dx
           cache-to: type=gha,scope=telesales-dx,mode=max
 
@@ -86,7 +90,7 @@ jobs:
           build-args: VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
           push: true
           provenance: false
-          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_TOOLS_REPOSITORY }}:${{ github.sha }}
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_TOOLS_REPOSITORY }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha,scope=telesales-dx
 
       - name: Deploy these digests on the server
