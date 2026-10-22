@@ -71,6 +71,12 @@ jobs:
             VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
           push: true
           provenance: false
+          # The host accepts only images labelled with the exact commit and this repository
+          # (staging_release_images.py: OCI revision/source labels, linux/amd64).
+          platforms: linux/amd64
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_APP_REPOSITORY }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha,scope=telesales-dx
           cache-to: type=gha,scope=telesales-dx,mode=max
@@ -84,6 +90,12 @@ jobs:
             VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
           push: true
           provenance: false
+          # The host accepts only images labelled with the exact commit and this repository
+          # (staging_release_images.py: OCI revision/source labels, linux/amd64).
+          platforms: linux/amd64
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_TOOLS_REPOSITORY }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha,scope=telesales-dx
       - name: Deploy digest-pinned images through restricted SSM document
@@ -119,6 +131,9 @@ jobs:
             esac
           done
           if [[ "$STATUS" != Success ]]; then
+            # Show the host's own message so the reason is visible here.
+            aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+              --query '{output: StandardOutputContent, errors: StandardErrorContent}' --output json || true
             echo "SSM release did not succeed ($STATUS). Existing release should remain protected by the host dispatcher."
             exit 1
           fi
