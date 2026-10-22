@@ -1,137 +1,138 @@
-# Deploys main to the company staging server after every merge (and on demand).
-#
-# How it fits the AWS side (set up by the infrastructure owner):
-#   1. GitHub Actions signs in to AWS with a short-lived OIDC token (no stored keys).
-#   2. It builds the two images here (app = runtime stage, tools = builder stage for
-#      migrations and CLIs) and pushes them to ECR, tagged <commit>-r<run>-<attempt>
-#      (the repositories use immutable tags).
-#   3. It asks the server, through the SSM document `telesales-dx-staging-deploy`, to
-#      deploy exactly those image digests. The server never builds and runs nothing
-#      else: the document only accepts two sha256 digests and the 40-character commit.
-#   4. It waits for the result and, when APP_URL is set, checks the site answers.
-#
-# Repository variables (Settings → Secrets and variables → Actions → Variables):
-#   AWS_DEPLOY_ROLE_ARN   arn:aws:iam::<account>:role/telesales-dx-github-deploy-staging
-#   DEPLOY_INSTANCE_ID    i-...
-#   AWS_REGION            ap-northeast-1
-#   ECR_APP_REPOSITORY    telesales-dx-staging-app      (default)
-#   ECR_TOOLS_REPOSITORY  telesales-dx-staging-tools    (default)
-#   DEPLOY_DOCUMENT       telesales-dx-staging-deploy   (default)
-#   VITE_BASE_PATH        /  or e.g. /telesales-dx/ when the app lives under a path
-#   APP_URL               the public address, e.g. https://dx.morabu.com/telesales-dx
-#
-# Until AWS_DEPLOY_ROLE_ARN is set the job is skipped, so merges never fail on it.
-
-name: Deploy to company EC2
+# Replace .github/workflows/deploy.yml in someshvarivraj/telesales-dx.
+# Deploy staging on a push/merge to main, AFTER verification in this workflow.
+# Existing separate CI workflow may continue running; this job independently gates deploy.
+name: Deploy to company EC2 (staging)
 
 on:
   push:
     branches: [main]
   workflow_dispatch: {}
 
-# Never two deploys at once on the same server; a newer merge waits for the running one.
 concurrency:
-  group: deploy-staging
+  group: telesales-dx-staging-deploy
   cancel-in-progress: false
 
 permissions:
-  id-token: write # OIDC: receive temporary AWS credentials
   contents: read
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
-  ECR_APP_REPOSITORY: ${{ vars.ECR_APP_REPOSITORY || 'telesales-dx-staging-app' }}
-  ECR_TOOLS_REPOSITORY: ${{ vars.ECR_TOOLS_REPOSITORY || 'telesales-dx-staging-tools' }}
-  DEPLOY_DOCUMENT: ${{ vars.DEPLOY_DOCUMENT || 'telesales-dx-staging-deploy' }}
-  VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/' }}
-  # ECR tags are immutable, so every run gets its own tag (commit + run). The server
-  # deploys by digest; the tag only labels the image.
+  AWS_REGION: ap-northeast-1
+  ECR_APP_REPOSITORY: telesales-dx-staging-app
+  ECR_TOOLS_REPOSITORY: telesales-dx-staging-tools
+  DEPLOY_DOCUMENT: telesales-dx-staging-deploy
+  VITE_BASE_PATH: /telesales-dx-staging/
   IMAGE_TAG: ${{ github.sha }}-r${{ github.run_number }}-${{ github.run_attempt }}
 
 jobs:
-  deploy:
-    if: ${{ vars.AWS_DEPLOY_ROLE_ARN != '' }}
+  verify:
     runs-on: ubuntu-latest
-    # No `environment:` here: it would change the OIDC subject the AWS trust policy expects.
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
 
-      - name: Configure AWS credentials (OIDC, no stored keys)
+  deploy:
+    needs: verify
+    # Keep this false until the host dispatcher and restricted IAM trust are accepted.
+    if: ${{ vars.DEPLOYMENT_CONFIGURED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure AWS credentials via GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Log in to ECR
+      - name: Login to ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
-
       - uses: docker/setup-buildx-action@v3
-
-      - name: Build and push the app image
+      - name: Build and publish app
         id: app
         uses: docker/build-push-action@v6
         with:
           context: .
           target: runtime
-          build-args: VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
+          build-args: |
+            VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
           push: true
           provenance: false
           tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_APP_REPOSITORY }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha,scope=telesales-dx
           cache-to: type=gha,scope=telesales-dx,mode=max
-
-      - name: Build and push the tools image (migrations, CLIs)
+      - name: Build and publish tools
         id: tools
         uses: docker/build-push-action@v6
         with:
           context: .
           target: builder
-          build-args: VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
+          build-args: |
+            VITE_BASE_PATH=${{ env.VITE_BASE_PATH }}
           push: true
           provenance: false
           tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_TOOLS_REPOSITORY }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha,scope=telesales-dx
-
-      - name: Deploy these digests on the server
+      - name: Deploy digest-pinned images through restricted SSM document
         env:
           INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }}
           APP_DIGEST: ${{ steps.app.outputs.digest }}
           TOOLS_DIGEST: ${{ steps.tools.outputs.digest }}
           RELEASE_SHA: ${{ github.sha }}
+        shell: bash
         run: |
-          set -e
-          echo "app   ${APP_DIGEST}"
-          echo "tools ${TOOLS_DIGEST}"
+          set -euo pipefail
+          : "${INSTANCE_ID:?DEPLOY_INSTANCE_ID must be set}"
+          [[ "$APP_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$TOOLS_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
           CMD_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "$DEPLOY_DOCUMENT" \
-            --parameters "AppDigest=${APP_DIGEST},ToolsDigest=${TOOLS_DIGEST},ReleaseSha=${RELEASE_SHA}" \
+            --parameters "AppDigest=$APP_DIGEST,ToolsDigest=$TOOLS_DIGEST,ReleaseSha=$RELEASE_SHA" \
             --timeout-seconds 1800 \
             --query 'Command.CommandId' --output text)
           echo "SSM command: $CMD_ID"
-          # Pulling the images, migrating and restarting can take a few minutes.
           STATUS=Pending
-          for i in $(seq 1 90); do
+          for i in $(seq 1 120); do
             sleep 10
-            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" --query 'Status' --output text 2>/dev/null || echo "Pending")
-            echo "status: $STATUS"
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            echo "Deployment status: $STATUS"
             case "$STATUS" in
-              Success|Failed|Cancelled|TimedOut) break ;;
+              Success) break ;;
+              Failed|Cancelled|TimedOut|Cancelling) break ;;
             esac
           done
-          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
-            --query '{status: Status, output: StandardOutputContent, errors: StandardErrorContent}' --output json
-          [ "$STATUS" = "Success" ] || { echo "Deploy did not succeed: $STATUS"; exit 1; }
-
-      - name: Check the site answers
-        if: ${{ vars.APP_URL != '' }}
-        env:
-          APP_URL: ${{ vars.APP_URL }}
+          if [[ "$STATUS" != Success ]]; then
+            echo "SSM release did not succeed ($STATUS). Existing release should remain protected by the host dispatcher."
+            exit 1
+          fi
+      - name: Check public staging frontend (not protected health API)
+        shell: bash
         run: |
+          set -euo pipefail
+          URL='https://dx.morabu.com/telesales-dx-staging/'
           for i in $(seq 1 18); do
-            if curl -fsS "${APP_URL%/}/health/ready"; then echo; exit 0; fi
+            CODE=$(curl --silent --show-error --location --max-time 10 \
+              --output /dev/null --write-out '%{http_code}' "$URL" || true)
+            echo "Frontend HTTP $CODE"
+            if [[ "$CODE" == 200 ]]; then exit 0; fi
             sleep 10
           done
-          echo "The site did not become ready: ${APP_URL%/}/health/ready"
+          echo 'Staging frontend did not return HTTP 200'
           exit 1
