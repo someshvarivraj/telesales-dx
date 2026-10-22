@@ -1,5 +1,25 @@
 # Deploying テレマ・営業DX to the company AWS account — step by step
 
+> **Update, 2026-10-22 — how staging actually deploys.** The infrastructure owner set up a
+> stricter design than steps 6–8 and 10 below, and `.github/workflows/deploy.yml` now
+> follows it:
+>
+> - GitHub Actions builds both images (app = `runtime`, tools = `builder`) and pushes them
+>   to ECR: `telesales-dx-staging-app` and `telesales-dx-staging-tools`.
+> - It then runs the SSM document **`telesales-dx-staging-deploy`** on the instance with
+>   three values only — the two image digests (`sha256:…`) and the 40-character commit.
+>   The document calls `/opt/apps/telesales-dx/ops/request-staging-deploy.py` on the
+>   server, which pulls exactly those digests, migrates and restarts. The server never
+>   builds and the role cannot run arbitrary shell commands.
+> - The role `telesales-dx-github-deploy-staging` may only: send that one document to
+>   that one instance, read the result, and push to those two ECR repositories.
+>
+> The trust policy must accept GitHub's immutable subject for this repository
+> (`repo:someshvarivraj@*/telesales-dx@*:ref:refs/heads/main`) as well as the plain one;
+> `docs/ci-cd/trust-policy.json` has both. Repository variable `VITE_BASE_PATH` must match
+> the path the app is served under (e.g. `/telesales-dx/`), because it is baked into the
+> image at build time.
+
 **For:** whoever sets up production in the company's AWS account (Raturi-san)
 **Result:** the app running as **`telesales-dx`** on the company's existing EC2
 instance, next to the apps already there, at
