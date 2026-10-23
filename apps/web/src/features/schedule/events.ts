@@ -25,41 +25,51 @@ export interface CalendarEvent {
 }
 
 /** Colour per kind (spec §6: appointments, attendance and time off are colour-coded). */
-export const EVENT_STYLE: Record<EventKind, { label: string; chip: string; dot: string }> = {
+export const EVENT_STYLE: Record<
+  EventKind,
+  { label: string; chip: string; dot: string; bar: string }
+> = {
   appointment: {
     label: 'アポ（テレマ）',
-    chip: 'border-l-4 border-calls bg-calls-soft text-ink',
+    chip: 'border-l-[3px] border-calls bg-calls-soft text-ink',
     dot: 'bg-calls',
+    bar: 'bg-calls',
   },
   salesAppointment: {
     label: 'アポ（営業）',
-    chip: 'border-l-4 border-calls/60 bg-calls-soft/70 text-ink',
+    chip: 'border-l-[3px] border-calls/60 bg-calls-soft/70 text-ink',
     dot: 'bg-calls/60',
+    bar: 'bg-calls/60',
   },
   plan: {
     label: '予定',
-    chip: 'border-l-4 border-schedule bg-schedule-soft text-ink',
+    chip: 'border-l-[3px] border-schedule bg-schedule-soft text-ink',
     dot: 'bg-schedule',
+    bar: 'bg-schedule',
   },
   tentative: {
     label: '仮予定',
     chip: 'border border-dashed border-schedule bg-surface text-ink',
     dot: 'border border-dashed border-schedule',
+    bar: 'bg-schedule/35',
   },
   attending: {
     label: '同席',
-    chip: 'border-l-4 border-success bg-success-soft text-ink',
+    chip: 'border-l-[3px] border-success bg-success-soft text-ink',
     dot: 'bg-success',
+    bar: 'bg-success',
   },
   timeoff: {
     label: '休み',
-    chip: 'border-l-4 border-ink-sub bg-column text-ink-sub [background-image:repeating-linear-gradient(135deg,transparent_0_6px,rgb(0_0_0/0.04)_6px_12px)]',
+    chip: 'border-l-[3px] border-ink-sub bg-column text-ink-sub [background-image:repeating-linear-gradient(135deg,transparent_0_6px,rgb(0_0_0/0.04)_6px_12px)]',
     dot: 'bg-ink-sub',
+    bar: 'bg-ink-sub/45',
   },
   lock: {
     label: '編集中',
     chip: 'border border-warning bg-warning-soft text-ink',
     dot: 'bg-warning',
+    bar: 'bg-warning',
   },
 };
 

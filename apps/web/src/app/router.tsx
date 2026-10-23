@@ -31,6 +31,7 @@ import { ImportHistoryPage } from '@/features/calls/ImportHistoryPage';
 import { ListImportPage } from '@/features/calls/ListImportPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { HomePage } from '@/features/home/HomePage';
+import { ActivityPage } from '@/features/notifications/ActivityPage';
 import { adminMenu, visibleItems } from '@/features/home/menus';
 import { BookingPage } from '@/features/schedule/BookingPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
@@ -92,6 +93,7 @@ export const routes: RouteObject[] = [
         ],
       },
       { path: '/calls/companies/:id', element: guard(view, <CompanyPage />) },
+      { path: paths.notifications, element: <ActivityPage /> },
       { path: paths.schedule, element: guard(view, <SchedulePage />) },
       {
         path: paths.book,

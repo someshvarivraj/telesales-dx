@@ -8,6 +8,7 @@ import { Download, Search } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -68,21 +69,21 @@ export function AppointmentListPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <FormField label="訪問日（から）">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={filters.from ?? ''}
                 onChange={(e) => set({ from: e.target.value || undefined })}
+                clearable
               />
             )}
           </FormField>
           <FormField label="訪問日（まで）">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={filters.to ?? ''}
                 onChange={(e) => set({ to: e.target.value || undefined })}
+                clearable
               />
             )}
           </FormField>
@@ -227,9 +228,8 @@ export function AppointmentListPage() {
         <div className="flex flex-wrap items-end gap-3">
           <FormField label="アポ取得日（から）">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={report.from}
                 onChange={(e) => setReport({ ...report, from: e.target.value })}
               />
@@ -237,9 +237,8 @@ export function AppointmentListPage() {
           </FormField>
           <FormField label="アポ取得日（まで）">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={report.to}
                 onChange={(e) => setReport({ ...report, to: e.target.value })}
               />

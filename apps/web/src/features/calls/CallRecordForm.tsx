@@ -4,6 +4,7 @@ import {
   OptionCategory,
 } from '@telesales/shared';
 import { useState } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
@@ -113,11 +114,11 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
         </FormField>
         <FormField label="次回架電日">
           {(c) => (
-            <TextInput
+            <DatePicker
               {...c}
-              type="date"
               value={values.nextCallDate ?? ''}
               onChange={(e) => set('nextCallDate', e.target.value || null)}
+              clearable
             />
           )}
         </FormField>

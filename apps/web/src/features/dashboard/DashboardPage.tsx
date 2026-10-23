@@ -1,12 +1,12 @@
 import { addDays, OptionCategory, PREFECTURE_NAMES, Role } from '@telesales/shared';
 import { useState } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { QueryState } from '@/components/ui/QueryState';
 import { Select } from '@/components/ui/Select';
 import { Table, Td, Th } from '@/components/ui/Table';
-import { TextInput } from '@/components/ui/TextInput';
 import { useIndustries, useListNames } from '@/features/calls/api';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { formatPercent, monthRange, startOfWeek, todayJst } from '@/lib/format';
@@ -95,9 +95,8 @@ export function DashboardPage() {
           </FormField>
           <FormField label="から">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={range.from}
                 disabled={preset !== 'custom'}
                 onChange={(e) => setRange({ ...range, from: e.target.value })}
@@ -106,9 +105,8 @@ export function DashboardPage() {
           </FormField>
           <FormField label="まで">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={range.to}
                 disabled={preset !== 'custom'}
                 onChange={(e) => setRange({ ...range, to: e.target.value })}

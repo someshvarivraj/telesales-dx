@@ -6,13 +6,13 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
 import { FormField } from '@/components/ui/FormField';
 import { Select } from '@/components/ui/Select';
+import { TimePicker } from '@/components/ui/TimePicker';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
-import { formatDate, timeOptions } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { useDeleteShift, useSaveShift } from './api';
 import { formatMinutes } from './telemaAccess';
 
-const TIMES = timeOptions(6, 23).map((time) => ({ value: time, label: time }));
 const BREAKS = [0, 15, 30, 45, 60, 75, 90, 120].map((minutes) => ({
   value: String(minutes),
   label: `${minutes}分`,
@@ -113,20 +113,22 @@ export function ShiftDialog({ open, onClose, person, date, shift, usual }: Shift
             <div className="grid grid-cols-3 gap-3">
               <FormField label="開始">
                 {(c) => (
-                  <Select
+                  <TimePicker
                     {...c}
                     value={start}
-                    options={TIMES}
+                    fromHour={6}
+                    toHour={23}
                     onChange={(e) => setStart(e.target.value)}
                   />
                 )}
               </FormField>
               <FormField label="終了" error={invalid ? '開始より後にしてください' : undefined}>
                 {(c) => (
-                  <Select
+                  <TimePicker
                     {...c}
                     value={end}
-                    options={TIMES}
+                    fromHour={6}
+                    toHour={23}
                     onChange={(e) => setEnd(e.target.value)}
                   />
                 )}

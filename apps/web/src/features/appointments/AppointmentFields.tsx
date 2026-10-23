@@ -1,4 +1,5 @@
 import { MeetingFormat, OptionCategory, Role } from '@telesales/shared';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { FormField } from '@/components/ui/FormField';
 import { Select } from '@/components/ui/Select';
@@ -253,9 +254,8 @@ export function AppointmentFields({
           </FormField>
           <FormField label="アポ取得日" hint="空のときは今日になります。">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={values.bookedOn}
                 onChange={(e) => set('bookedOn', e.target.value)}
               />

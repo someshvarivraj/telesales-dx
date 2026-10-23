@@ -106,3 +106,62 @@ export function dayGroupOf(iso: string, now = new Date()): DayGroup {
   if (day === jstDay(new Date(now.getTime() - 86_400_000))) return 'yesterday';
   return 'earlier';
 }
+
+/** Filter groups for the activity page: few chips, each one colour. */
+export interface NoticeCategory {
+  key: string;
+  label: string;
+  tone: NoticeTone;
+  icon: LucideIcon;
+  codes: string[];
+}
+
+export const NOTICE_CATEGORIES: NoticeCategory[] = [
+  {
+    key: 'appointment',
+    label: 'アポ',
+    tone: 'appointment',
+    icon: CalendarPlus,
+    codes: ['N1', 'N6', 'N8', 'N16'],
+  },
+  {
+    key: 'request',
+    label: '変更依頼',
+    tone: 'warning',
+    icon: MessageSquareWarning,
+    codes: ['N7', 'N13'],
+  },
+  {
+    key: 'schedule',
+    label: '予定・会議',
+    tone: 'schedule',
+    icon: CalendarClock,
+    codes: ['N2', 'N3', 'N4', 'N9', 'N10', 'N15'],
+  },
+  {
+    key: 'dayBefore',
+    label: '前日確認',
+    tone: 'success',
+    icon: ClipboardCheck,
+    codes: ['N12', 'N14'],
+  },
+  {
+    key: 'calls',
+    label: '架電・テレマ',
+    tone: 'calls',
+    icon: ListChecks,
+    codes: ['N11', 'N17', 'N19'],
+  },
+  { key: 'comment', label: 'コメント', tone: 'neutral', icon: MessageSquare, codes: ['N18'] },
+];
+
+/** Solid accent per tone: the bar on the selected item and the chip's dot. */
+export const TONE_BAR: Record<NoticeTone, string> = {
+  appointment: 'bg-appointments',
+  schedule: 'bg-schedule',
+  calls: 'bg-calls',
+  warning: 'bg-warning',
+  danger: 'bg-danger',
+  success: 'bg-success',
+  neutral: 'bg-admin',
+};

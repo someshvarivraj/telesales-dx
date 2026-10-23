@@ -8,6 +8,7 @@ import { CheckCheck, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +19,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryState } from '@/components/ui/QueryState';
 import { Select } from '@/components/ui/Select';
 import { Table, Td, Th } from '@/components/ui/Table';
-import { TextInput } from '@/components/ui/TextInput';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatDateTime, todayJst } from '@/lib/format';
@@ -70,8 +70,7 @@ export function AllocationPage() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm font-bold">
           日付
-          <TextInput
-            type="date"
+          <DatePicker
             value={date}
             onChange={(e) => e.target.value && setDate(e.target.value)}
             className="w-48"

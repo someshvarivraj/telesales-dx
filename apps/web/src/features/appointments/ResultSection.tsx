@@ -1,5 +1,6 @@
 import { type AppointmentDetail, jstDate, OptionCategory } from '@telesales/shared';
 import { useState } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -52,9 +53,8 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="訪問日" required>
                 {(c) => (
-                  <TextInput
+                  <DatePicker
                     {...c}
-                    type="date"
                     value={values.visitedOn}
                     onChange={(e) => set('visitedOn', e.target.value)}
                   />
@@ -116,9 +116,8 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
               </FormField>
               <FormField label="予定日">
                 {(c) => (
-                  <TextInput
+                  <DatePicker
                     {...c}
-                    type="date"
                     value={values.nextActionDate}
                     onChange={(e) => set('nextActionDate', e.target.value)}
                   />

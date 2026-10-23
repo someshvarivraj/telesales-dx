@@ -1,6 +1,7 @@
 import { HolidayKind } from '@telesales/shared';
 import { Download, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -85,9 +86,8 @@ export function CalendarAdminPage() {
         <div className="flex flex-wrap items-end gap-3">
           <FormField label="日付">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={holiday.date}
                 onChange={(e) => setHoliday({ ...holiday, date: e.target.value })}
               />

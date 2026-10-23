@@ -7,6 +7,7 @@ import {
 } from '@telesales/shared';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -175,9 +176,8 @@ function RuleDialog({ rule, onClose }: { rule?: AreaRuleDto; onClose: () => void
           </FormField>
           <FormField label="いつから" required>
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={values.validFrom}
                 onChange={(e) => setValues({ ...values, validFrom: e.target.value })}
               />
@@ -188,9 +188,8 @@ function RuleDialog({ rule, onClose }: { rule?: AreaRuleDto; onClose: () => void
             hint="担当が変わるときは、終わりの日を入れて新しい行を足します。"
           >
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={values.validTo}
                 onChange={(e) => setValues({ ...values, validTo: e.target.value })}
               />
