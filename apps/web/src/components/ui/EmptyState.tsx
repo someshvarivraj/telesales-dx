@@ -20,7 +20,7 @@ export function EmptyState({ children, mood = 'explain', icon, scene }: EmptySta
       ) : scene ? (
         <Scene name={scene} className="w-56 max-w-full" />
       ) : (
-        <MoraBot mood={mood} size={72} title="" />
+        <MoraBot mood={mood} size={104} title="" />
       )}
       <div>{children}</div>
     </div>

@@ -99,7 +99,7 @@ function MailEditor({
       {sent ? (
         <Alert tone="success">
           <span className="flex flex-wrap items-center gap-2">
-            <MoraBot mood="approved" size={32} title="" />
+            <MoraBot mood="approved" size={48} title="" />
             {email.sentAt && formatDateTime(email.sentAt)}
             に送信しました。同じメールは二度送られません。
             {kind === 'booking' && (

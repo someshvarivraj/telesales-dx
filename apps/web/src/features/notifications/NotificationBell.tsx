@@ -173,7 +173,7 @@ function ActivityPanel(props: {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!props.loading && shown.length === 0 && (
           <div className="flex flex-col items-center px-6 py-10 text-center">
-            <MoraBot mood="approved" size={72} title="" />
+            <MoraBot mood="approved" size={96} title="" />
             <p className="mt-3 text-sm text-ink-sub">
               {filter === 'unread' ? '未読のお知らせはありません。' : 'お知らせはありません。'}
             </p>

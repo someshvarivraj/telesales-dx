@@ -252,7 +252,7 @@ export function MoraBotProgress({ percent, label }: { percent?: number; label?: 
         >
           <MoraBot
             mood={known && p >= 100 ? 'approved' : 'writing'}
-            size={40}
+            size={52}
             animate={!known || p < 100}
             title=""
           />

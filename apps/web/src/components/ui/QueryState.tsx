@@ -17,7 +17,7 @@ export function QueryState<T>({ query, children }: QueryStateProps<T>) {
         role="status"
         className="flex flex-col items-center justify-center gap-2 py-10 text-sm text-ink-sub"
       >
-        <MoraBot mood="think" size={56} animate title="" />
+        <MoraBot mood="think" size={80} animate title="" />
         {ja.common.loading}
       </div>
     );
