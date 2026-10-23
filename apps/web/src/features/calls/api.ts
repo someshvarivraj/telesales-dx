@@ -45,6 +45,7 @@ export function useCompany(id: string) {
   return useQuery({
     queryKey: callsKeys.company(id),
     queryFn: ({ signal }) => apiClient.get<CompanyDetail>(`/companies/${id}`, signal),
+    enabled: Boolean(id),
   });
 }
 
@@ -76,6 +77,7 @@ export function useCallRecords(companyId: string) {
     queryKey: callsKeys.records(companyId),
     queryFn: ({ signal }) =>
       apiClient.get<CallRecordDto[]>(`/companies/${companyId}/call-records`, signal),
+    enabled: Boolean(companyId),
   });
 }
 
