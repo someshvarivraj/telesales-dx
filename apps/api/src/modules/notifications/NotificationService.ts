@@ -103,7 +103,10 @@ export class NotificationService {
     };
   }
 
-  async listFor(userId: string, query?: Partial<NotificationQuery>): Promise<NotificationListResponse> {
+  async listFor(
+    userId: string,
+    query?: Partial<NotificationQuery>,
+  ): Promise<NotificationListResponse> {
     const box = query?.box ?? 'inbox';
     const limit = query?.limit ?? 50;
     const q = query?.q?.trim();

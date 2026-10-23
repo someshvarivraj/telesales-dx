@@ -160,7 +160,12 @@ export function MonthView({
 
 /** Many people in one month: how many of each kind that day, coloured like the events. */
 function DayCounts({ events, dimmed }: { events: CalendarEvent[]; dimmed: boolean }) {
-  const short = { appointment: 'アポ', salesAppointment: '営業アポ', plan: '予定', timeoff: '休み' };
+  const short = {
+    appointment: 'アポ',
+    salesAppointment: '営業アポ',
+    plan: '予定',
+    timeoff: '休み',
+  };
   const kinds = (['appointment', 'salesAppointment', 'plan', 'timeoff'] as const)
     .map((kind) => ({ kind, count: events.filter((event) => event.kind === kind).length }))
     .filter((entry) => entry.count > 0);
