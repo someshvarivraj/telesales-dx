@@ -145,7 +145,8 @@ function BookingForm(props: BookingFormProps) {
     () =>
       original?.source ??
       (params.get('source') as Source | null) ??
-      (canTelema ? AppointmentSource.Manual : AppointmentSource.SalesBooked),
+      // Existing list: the telemarketing system's CSV is the usual way in (flow v4).
+      (canTelema ? AppointmentSource.File : AppointmentSource.SalesBooked),
   );
   const companyId = company?.id ?? null;
   const customerTypes = useOptionList(OptionCategory.CustomerType);
@@ -153,7 +154,15 @@ function BookingForm(props: BookingFormProps) {
   const lock = useSlotLock();
   const create = useCreateAppointment();
   const prefill = usePrefill();
-  const [findRep, setFindRep] = useState(false);
+  // Existing list without a rep yet: start by finding the rep from the area table (flow v4 §1).
+  const [findRep, setFindRep] = useState(
+    () =>
+      canTelema &&
+      !original &&
+      !company &&
+      !params.get('repId') &&
+      params.get('source') === AppointmentSource.File,
+  );
   const [confirming, setConfirming] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [prefilled, setPrefilled] = useState<AppointmentFilePrefill | null>(null);
