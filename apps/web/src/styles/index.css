@@ -226,7 +226,7 @@ img.morabot-idle {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-3%);
+    transform: translateY(-5%);
   }
 }
 @keyframes morabot-float {
@@ -235,7 +235,7 @@ img.morabot-idle {
     transform: translateY(0) rotate(0deg);
   }
   50% {
-    transform: translateY(-4%) rotate(-1.5deg);
+    transform: translateY(-6%) rotate(-2.5deg);
   }
 }
 @keyframes morabot-sway {
@@ -244,10 +244,10 @@ img.morabot-idle {
     transform: rotate(0deg);
   }
   30% {
-    transform: rotate(-2.5deg);
+    transform: rotate(-5deg);
   }
   70% {
-    transform: rotate(2deg);
+    transform: rotate(4deg);
   }
 }
 @keyframes morabot-blink {
@@ -277,7 +277,7 @@ img.morabot-idle {
     transform: rotate(0deg);
   }
   50% {
-    transform: rotate(8deg);
+    transform: rotate(14deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -309,7 +309,7 @@ img.morabot-idle {
 .morabot-track {
   position: relative;
   height: 8px;
-  margin: 44px 20px 0;
+  margin: 56px 26px 0;
   background: var(--color-line);
 }
 .morabot-bar {

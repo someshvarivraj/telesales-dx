@@ -56,7 +56,7 @@ export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLa
 
         <div className="w-full max-w-[420px] shrink-0 border border-t-4 border-line border-t-main bg-surface shadow-(--shadow-raised)">
           <header className="flex items-center gap-3 border-b border-line px-6 py-4 max-sm:px-5">
-            <MoraBot mood={mood} size={40} title="" />
+            <MoraBot mood={mood} size={56} title="" />
             <div className="min-w-0">
               <p className="truncate text-base leading-tight font-bold text-ink">{ja.app.name}</p>
               <p className="truncate text-[11px] leading-tight text-ink-sub">{ja.app.company}</p>
