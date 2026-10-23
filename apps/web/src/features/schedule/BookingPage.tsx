@@ -361,6 +361,11 @@ function BookingForm(props: BookingFormProps) {
                     hint="テレマシステムのCSV（Shift-JIS）と「営業さんへの伝達事項」のPDF。どちらか一方でも、両方でも。日時と担当営業は押さえた枠のまま変わりません。"
                     onFiles={(selected) => readFiles(selected)}
                     disabled={!held || prefill.isPending}
+                    disabledReason={
+                      prefill.isPending
+                        ? '読み込み中…'
+                        : '先に「1. 日時と担当営業」で「この枠を押さえる」を押してください'
+                    }
                   />
                   {files.length > 0 && (
                     <ul className="flex flex-wrap gap-2 text-sm">
