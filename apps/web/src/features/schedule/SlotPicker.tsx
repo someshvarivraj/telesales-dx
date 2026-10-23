@@ -1,13 +1,14 @@
 import { addDays, Role } from '@telesales/shared';
 import { ChevronLeft, ChevronRight, Lock, LockOpen } from 'lucide-react';
 import { useMemo } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { Select } from '@/components/ui/Select';
-import { TextInput } from '@/components/ui/TextInput';
+import { TimePicker } from '@/components/ui/TimePicker';
 import { usePeople } from '@/features/reference/useReference';
-import { defaultEndTime, formatDate, formatRange, timeOptions, toInstant } from '@/lib/format';
+import { defaultEndTime, formatDate, formatRange, toInstant } from '@/lib/format';
 import { useSchedule, useSlotCheck } from './api';
 import { DayView } from './DayView';
 import { buildEvents } from './events';
@@ -35,8 +36,6 @@ interface SlotPickerProps {
   /** The rep's own appointment: their テレマアポ停止 time is open to them. */
   salesBooked?: boolean;
 }
-
-const TIMES = timeOptions(7, 21).map((time) => ({ value: time, label: time }));
 
 /**
  * Check free/busy and hold a slot (spec §6): the rep's day, a 15-minute start, the
@@ -74,7 +73,7 @@ export function SlotPicker({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-[1fr_1fr_8rem_8rem]">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_8rem_10rem]">
         <FormField label="担当営業" required>
           {(c) => (
             <Select
@@ -97,9 +96,8 @@ export function SlotPicker({
                 onClick={() => set({ date: addDays(slot.date, -1) })}
                 icon={<ChevronLeft className="size-4" aria-hidden="true" />}
               />
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={slot.date}
                 disabled={held}
                 onChange={(e) => e.target.value && set({ date: e.target.value })}
@@ -116,22 +114,26 @@ export function SlotPicker({
         </FormField>
         <FormField label="開始" required>
           {(c) => (
-            <Select
+            <TimePicker
               {...c}
               value={slot.start}
               disabled={held}
-              options={TIMES}
+              fromHour={7}
+              toHour={21}
               onChange={(e) => set({ start: e.target.value, end: defaultEndTime(e.target.value) })}
             />
           )}
         </FormField>
         <FormField label="終了" required>
           {(c) => (
-            <Select
+            <TimePicker
               {...c}
               value={slot.end}
               disabled={held}
-              options={TIMES.filter((t) => t.value > slot.start)}
+              fromHour={7}
+              toHour={21}
+              after={slot.start}
+              durationFrom={slot.start}
               onChange={(e) => set({ end: e.target.value })}
             />
           )}
@@ -151,6 +153,8 @@ export function SlotPicker({
               held ? undefined : (_person, time) => set({ start: time, end: defaultEndTime(time) })
             }
             selection={{ personId: slot.repId, start: slot.start, end: slot.end }}
+            maxHeight="26rem"
+            bufferMinutes={schedule.data?.travelBufferMinutes}
           />
           <p className="text-xs text-ink-sub">
             空いている時間をクリックすると開始時刻が入ります（15分刻み・初期値は60分）。

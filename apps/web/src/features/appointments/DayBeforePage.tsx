@@ -2,13 +2,13 @@ import { DayBeforeResult, jstMinutesOfDay, Permission } from '@telesales/shared'
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryState } from '@/components/ui/QueryState';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { TextInput } from '@/components/ui/TextInput';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { errorMessageOf } from '@/lib/api/errorMessage';
@@ -37,8 +37,7 @@ export function DayBeforePage() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm font-bold">
           確認する日
-          <TextInput
-            type="date"
+          <DatePicker
             value={date}
             onChange={(e) => e.target.value && setDate(e.target.value)}
             className="w-48"

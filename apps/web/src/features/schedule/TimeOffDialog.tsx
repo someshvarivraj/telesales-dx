@@ -1,18 +1,18 @@
 import { addDays, type TimeOffKind, TimeOffKind as Kind } from '@telesales/shared';
 import { useState } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { FormField } from '@/components/ui/FormField';
 import { Select } from '@/components/ui/Select';
+import { TimePicker } from '@/components/ui/TimePicker';
 import { TextInput } from '@/components/ui/TextInput';
 import { usePeople } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
-import { timeOptions, toInstant } from '@/lib/format';
+import { toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useSaveTimeOff } from './api';
-
-const TIMES = timeOptions(6, 22).map((time) => ({ value: time, label: time }));
 
 /**
  * Time off, late start, early leave — also for other people who called in (spec §7) —
@@ -116,9 +116,8 @@ export function TimeOffDialog({
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label={allDay || stop ? '開始日' : '日付'} required>
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={values.date}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, date: e.target.value, endDate: e.target.value }))
@@ -132,9 +131,8 @@ export function TimeOffDialog({
               hint={stop ? '期間中は毎日、下の時間帯が営業枠になります。' : undefined}
             >
               {(c) => (
-                <TextInput
+                <DatePicker
                   {...c}
-                  type="date"
                   value={values.endDate}
                   min={values.date}
                   onChange={(e) => set('endDate', e.target.value)}
@@ -147,20 +145,24 @@ export function TimeOffDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="開始">
               {(c) => (
-                <Select
+                <TimePicker
                   {...c}
                   value={values.start}
-                  options={TIMES}
+                  fromHour={6}
+                  toHour={22}
                   onChange={(e) => set('start', e.target.value)}
                 />
               )}
             </FormField>
             <FormField label="終了">
               {(c) => (
-                <Select
+                <TimePicker
                   {...c}
                   value={values.end}
-                  options={TIMES.filter((t) => t.value > values.start)}
+                  fromHour={6}
+                  toHour={22}
+                  after={values.start}
+                  durationFrom={values.start}
                   onChange={(e) => set('end', e.target.value)}
                 />
               )}

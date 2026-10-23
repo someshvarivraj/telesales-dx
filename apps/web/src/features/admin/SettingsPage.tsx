@@ -7,12 +7,11 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { FormField } from '@/components/ui/FormField';
 import { QueryState } from '@/components/ui/QueryState';
 import { Select } from '@/components/ui/Select';
+import { TimePicker } from '@/components/ui/TimePicker';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
-import { timeOptions } from '@/lib/format';
 import { useAdminSettings, useSaveSettings } from './api';
 
-const RUN_TIMES = timeOptions(6, 12).map((time) => ({ value: time, label: time }));
 const REMINDER_MINUTES = [30, 60, 120, 180, 240, 480].map((minutes) => ({
   value: String(minutes),
   label: minutes < 60 ? `${minutes}分` : `${minutes / 60}時間`,
@@ -79,10 +78,11 @@ function SettingsForm({ initial }: { initial: AppSettingsDto }) {
             hint="営業日のこの時刻に、その日の割り振りの案を作ります。確定はリーダーが行います。"
           >
             {(c) => (
-              <Select
+              <TimePicker
                 {...c}
                 value={values.allocationRunTime}
-                options={RUN_TIMES}
+                fromHour={6}
+                toHour={12}
                 onChange={(e) => setValues({ ...values, allocationRunTime: e.target.value })}
               />
             )}

@@ -3,13 +3,13 @@ import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormField } from '@/components/ui/FormField';
 import { QueryState } from '@/components/ui/QueryState';
 import { Select } from '@/components/ui/Select';
-import { TextInput } from '@/components/ui/TextInput';
 import { formatDateTime, todayJst } from '@/lib/format';
 import { useAdminUsers, useAuditLog } from './api';
 
@@ -190,9 +190,8 @@ export function AuditPage() {
           </FormField>
           <FormField label="期間（から）">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={filter.from}
                 onChange={(e) => setFilter({ ...filter, from: e.target.value })}
               />
@@ -200,9 +199,8 @@ export function AuditPage() {
           </FormField>
           <FormField label="期間（まで）">
             {(c) => (
-              <TextInput
+              <DatePicker
                 {...c}
-                type="date"
                 value={filter.to}
                 onChange={(e) => setFilter({ ...filter, to: e.target.value })}
               />

@@ -2,13 +2,13 @@ import { ClipboardCheck, PhoneCall } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryState } from '@/components/ui/QueryState';
 import { Table, Td, Th } from '@/components/ui/Table';
-import { TextInput } from '@/components/ui/TextInput';
 import { useHomeSummary } from '@/features/dashboard/api';
 import { formatDate, todayJst } from '@/lib/format';
 import { useMyAssignments, useStaff } from './api';
@@ -36,8 +36,7 @@ export function TodayPage() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm font-bold">
           日付
-          <TextInput
-            type="date"
+          <DatePicker
             value={date}
             onChange={(e) => e.target.value && setDate(e.target.value)}
             className="w-48"
