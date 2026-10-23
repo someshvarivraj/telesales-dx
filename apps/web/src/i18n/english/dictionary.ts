@@ -521,6 +521,8 @@ export const EXACT: Readonly<Record<string, string>> = {
   自分で取ったアポの登録: 'Register my own appointment',
   自分で取ったアポを登録: 'Register my own appointment',
   既存リストのアポを登録: 'Book an existing-list appointment',
+  '先に「1. 日時と担当営業」で「この枠を押さえる」を押してください':
+    'First press "Hold this slot" in "1. Date, time and rep"',
   '1. 日時と担当営業': '1. Date, time and rep',
   '2. 既存リストの読み込み': '2. Read the existing list',
   '2. 企業': '2. Company',
