@@ -55,7 +55,7 @@ export function FileDrop({
         disabled={disabled}
         className="sr-only"
         onChange={(event) => {
-          onFiles([...(event.target.files ?? [])]);
+          if (!disabled) onFiles([...(event.target.files ?? [])]);
           event.target.value = '';
         }}
       />
