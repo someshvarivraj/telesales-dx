@@ -1302,6 +1302,45 @@ export const EXACT: Readonly<Record<string, string>> = {
   未対応: 'Open',
   対応済み: 'Resolved',
   結果: 'Result',
+  // Notice settings
+  届き方: 'Delivery',
+  画面のお知らせ: 'On-screen notice',
+  'ベルとお知らせ画面に出ます（いつも）': 'Shown in the bell and notifications (always)',
+  下の宛先にメールも送ります: 'Also e-mails the recipients below',
+  主な宛先: 'Main recipients',
+  '写し（参考に送る人）': 'Copy (for reference)',
+  選んでください: 'Please choose',
+  '画面＋メール': 'Screen + e-mail',
+  画面のみ: 'Screen only',
+  停止中: 'Off',
+  メールあり: 'With e-mail',
+  通知名・宛先で探す: 'Find by notice or recipient',
+  通知の一覧: 'Notices',
+  宛先の種類: 'Recipient type',
+  '「その件の関係者」はアポごとに自動で決まります（例：担当営業）。':
+    '"People on the item" are decided per appointment (e.g. the rep).',
+  宛先なし: 'No recipients',
+  アポを登録したとき: 'When an appointment is registered',
+  'Webのアポを登録したとき（会議リンクの発行をお願いする）':
+    'When a web appointment is registered (asks for a meeting link)',
+  'アポの数日前の決まった時刻に、会議URLがまだ登録されていないとき':
+    'A few days before, at a set time, if no meeting URL yet',
+  '毎日決まった時刻に、翌日のアポをまとめて': "Daily at a set time, tomorrow's appointments",
+  アポの日時・担当が変わったとき: 'When the time or rep changes',
+  営業が変更依頼を出したとき: 'When a rep sends a change request',
+  アポを取り消したとき: 'When an appointment is cancelled',
+  予定の同席者に入れたとき: 'When added as an attendee',
+  予定を変えたとき: 'When a plan changes',
+  割り振りを確定したとき: 'When the allocation is confirmed',
+  '毎日決まった時刻に、前日確認が必要なアポがあるとき':
+    'Daily at a set time, if day-before checks are due',
+  変更依頼が決まった時間内に対応されないとき: 'When a change request is not handled in time',
+  前日確認の結果を営業へ送るとき: 'When the day-before result is sent to sales',
+  '決まった時刻に、仮予定が残っているとき': 'At a set time, if tentative plans remain',
+  打ち合わせ結果を入力したとき: 'When a meeting result is entered',
+  架電リストを取り込んだとき: 'When a call list is imported',
+  コメントが付いたとき: 'When a comment is added',
+  '毎日決まった時刻に、その日のアポ取得一覧': "Daily at a set time, the day's booked appointments",
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
@@ -1478,4 +1517,8 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['毎週 {0}回（同じ曜日・時刻）', 'Weekly, {0} times (same day and time)'],
   ['未読 {0}件', '{0} unread'],
   ['{0}件', '{0}'],
+  ['送るとき：{0}', 'Sent: {0}'],
+  ['{0}に追加', 'Add to {0}'],
+  ['すべて {0}', 'All {0}'],
+  ['宛先 {0}', '{0} recipients'],
 ];
