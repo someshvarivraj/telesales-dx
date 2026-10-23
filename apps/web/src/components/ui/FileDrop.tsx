@@ -8,10 +8,19 @@ interface FileDropProps {
   hint: string;
   onFiles: (files: File[]) => void;
   disabled?: boolean;
+  /** Shown instead of the prompt while disabled, so it is clear why nothing opens. */
+  disabledReason?: string;
 }
 
 /** Click or drop files. */
-export function FileDrop({ accept, multiple = false, hint, onFiles, disabled }: FileDropProps) {
+export function FileDrop({
+  accept,
+  multiple = false,
+  hint,
+  onFiles,
+  disabled,
+  disabledReason,
+}: FileDropProps) {
   const id = useId();
   const [over, setOver] = useState(false);
   return (
@@ -29,12 +38,14 @@ export function FileDrop({ accept, multiple = false, hint, onFiles, disabled }: 
       }}
       className={cn(
         'flex cursor-pointer flex-col items-center gap-2 rounded-(--radius-card) border-2 border-dashed px-4 py-8 text-center text-sm transition-colors',
-        over ? 'border-main bg-main-soft' : 'border-line bg-canvas hover:border-main/60',
-        disabled && 'cursor-not-allowed opacity-60',
+        over && !disabled ? 'border-main bg-main-soft' : 'border-line bg-canvas',
+        disabled ? 'cursor-not-allowed opacity-60' : 'hover:border-main/60',
       )}
     >
       <Upload aria-hidden="true" className="size-6 text-ink-sub" />
-      <span className="font-bold text-ink">ファイルを選択、またはここにドロップ</span>
+      <span className="font-bold text-ink">
+        {disabled && disabledReason ? disabledReason : 'ファイルを選択、またはここにドロップ'}
+      </span>
       <span className="text-ink-sub">{hint}</span>
       <input
         id={id}
@@ -44,7 +55,7 @@ export function FileDrop({ accept, multiple = false, hint, onFiles, disabled }: 
         disabled={disabled}
         className="sr-only"
         onChange={(event) => {
-          onFiles([...(event.target.files ?? [])]);
+          if (!disabled) onFiles([...(event.target.files ?? [])]);
           event.target.value = '';
         }}
       />
