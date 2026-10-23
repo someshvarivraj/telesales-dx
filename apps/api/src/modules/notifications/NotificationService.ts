@@ -1,6 +1,11 @@
-import type { NoticeCode, NotificationDto, NotificationListResponse } from '@telesales/shared';
+import type {
+  NoticeCode,
+  NotificationDto,
+  NotificationListResponse,
+  NotificationQuery,
+} from '@telesales/shared';
 import type { Logger } from 'pino';
-import type { PrismaClient } from '../../generated/prisma/client.js';
+import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { iso } from '../../http/mappers.js';
 import type { EmailService } from './EmailService.js';
 import type { NoticeContext, RecipientResolver } from './RecipientResolver.js';
@@ -98,31 +103,80 @@ export class NotificationService {
     };
   }
 
-  async listFor(userId: string, limit = 50): Promise<NotificationListResponse> {
-    const [rows, unreadCount] = await Promise.all([
+  async listFor(userId: string, query?: Partial<NotificationQuery>): Promise<NotificationListResponse> {
+    const box = query?.box ?? 'inbox';
+    const limit = query?.limit ?? 50;
+    const q = query?.q?.trim();
+    const where: Prisma.NotificationWhereInput = {
+      userId,
+      archivedAt: box === 'archived' ? { not: null } : null,
+      ...(box === 'unread' ? { readAt: null } : {}),
+      ...(query?.codes?.length ? { noticeCode: { in: query.codes } } : {}),
+      ...(query?.before ? { createdAt: { lt: new Date(query.before) } } : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: 'insensitive' as const } },
+              { body: { contains: q, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [rows, unreadCount, byCode] = await Promise.all([
       this.prisma.notification.findMany({
-        where: { userId },
+        where,
         orderBy: { createdAt: 'desc' },
-        take: limit,
+        take: limit + 1,
       }),
-      this.prisma.notification.count({ where: { userId, readAt: null } }),
+      this.prisma.notification.count({ where: { userId, readAt: null, archivedAt: null } }),
+      this.prisma.notification.groupBy({
+        by: ['noticeCode'],
+        where: { userId, readAt: null, archivedAt: null },
+        _count: { _all: true },
+      }),
     ]);
-    const items: NotificationDto[] = rows.map((row) => ({
+    const page = rows.slice(0, limit);
+    const items: NotificationDto[] = page.map((row) => ({
       id: row.id,
       noticeCode: row.noticeCode,
       title: row.title,
       body: row.body,
       linkPath: row.linkPath,
       readAt: iso(row.readAt),
+      archivedAt: iso(row.archivedAt),
       createdAt: iso(row.createdAt),
     }));
-    return { items, unreadCount };
+    return {
+      items,
+      unreadCount,
+      nextCursor: rows.length > limit ? iso(page[page.length - 1]?.createdAt) : null,
+      unreadByCode: Object.fromEntries(byCode.map((row) => [row.noticeCode, row._count._all])),
+    };
   }
 
   async markRead(userId: string, ids: string[] | 'all'): Promise<void> {
     await this.prisma.notification.updateMany({
       where: { userId, readAt: null, ...(ids === 'all' ? {} : { id: { in: ids } }) },
       data: { readAt: new Date() },
+    });
+  }
+
+  async markUnread(userId: string, ids: string[]): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: { userId, id: { in: ids } },
+      data: { readAt: null },
+    });
+  }
+
+  /** Archiving also marks as read, as in Teams; restoring puts it back in the inbox. */
+  async setArchived(userId: string, ids: string[] | 'read', archived: boolean): Promise<void> {
+    const now = new Date();
+    await this.prisma.notification.updateMany({
+      where: {
+        userId,
+        ...(ids === 'read' ? { readAt: { not: null }, archivedAt: null } : { id: { in: ids } }),
+      },
+      data: archived ? { archivedAt: now, readAt: now } : { archivedAt: null },
     });
   }
 }

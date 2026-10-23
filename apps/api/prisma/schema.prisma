@@ -251,6 +251,8 @@ model Notification {
   body       String?   @db.VarChar(500)
   linkPath   String?   @map("link_path") @db.VarChar(300)
   readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+  /// Archived notices leave the inbox but stay searchable.
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
   /// Scheduled reminders set this so a person gets the same reminder only once.
   dedupeKey  String?   @map("dedupe_key") @db.VarChar(120)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -259,6 +261,7 @@ model Notification {
 
   @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
+  @@index([userId, archivedAt, createdAt])
   @@map("notifications")
 }
 

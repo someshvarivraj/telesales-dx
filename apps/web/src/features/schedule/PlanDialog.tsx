@@ -86,7 +86,8 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
     save.mutate({ id: plan?.id, request }, { onSuccess: onClose });
   };
 
-  const others = (people.data ?? []).filter((person) => person.id !== values.ownerId);
+  // Attendees are sales reps (spec §6: 同席 is another rep joining the visit).
+  const others = (sales.data ?? []).filter((person) => person.id !== values.ownerId);
   const problems = (save.error as { details?: unknown } | null)?.details;
 
   const order = (people.data ?? []).map((person) => person.id);

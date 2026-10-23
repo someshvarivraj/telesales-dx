@@ -8,6 +8,8 @@ import { type CalendarEvent, EVENT_STYLE, eventsOn } from './events';
 
 const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
 const SHOWN = 3;
+/** With more people than this a day shows counts, not names. */
+const COUNT_FROM = 6;
 
 interface MonthViewProps {
   month: string;
@@ -40,6 +42,7 @@ export function MonthView({
   const ids = new Set(people.map((person) => person.id));
   const order = colorOrder ?? people.map((person) => person.id);
   const several = people.length > 1;
+  const counting = people.length >= COUNT_FROM;
 
   return (
     <div className="overflow-hidden border border-line bg-surface">
@@ -98,52 +101,79 @@ export function MonthView({
                     <span className="truncate text-[10px] text-sunday">{holiday.name}</span>
                   )}
                 </div>
-                <div className={cn('flex flex-col gap-0.5', !inMonth && 'opacity-60')}>
-                  {dayEvents.slice(0, SHOWN).map((event) => (
-                    <button
-                      key={event.key}
-                      type="button"
-                      onClick={() => onEvent(event)}
-                      {...peek?.(event)}
-                      className={cn(
-                        'flex w-full cursor-pointer items-center gap-1 truncate px-1 text-left text-[11px] leading-5',
-                        event.allDay ? EVENT_STYLE[event.kind].chip : 'hover:bg-column',
-                      )}
-                    >
-                      {!event.allDay && (
-                        <span
-                          aria-hidden="true"
-                          className={cn('size-2 shrink-0', !several && EVENT_STYLE[event.kind].dot)}
-                          style={
-                            several
-                              ? { backgroundColor: personColor(event.personId, order) }
-                              : undefined
-                          }
-                        />
-                      )}
-                      {!event.allDay && (
-                        <span className="shrink-0 text-ink-sub tabular-nums">
-                          {formatTime(event.startsAt)}
-                        </span>
-                      )}
-                      <span className="truncate max-sm:hidden">{event.title}</span>
-                    </button>
-                  ))}
-                  {dayEvents.length > SHOWN && (
-                    <button
-                      type="button"
-                      onClick={() => onDay(date)}
-                      className="cursor-pointer px-1 text-left text-[11px] font-bold text-link hover:underline"
-                    >
-                      ほか{dayEvents.length - SHOWN}件
-                    </button>
-                  )}
-                </div>
+                {counting ? (
+                  <DayCounts events={dayEvents} dimmed={!inMonth} />
+                ) : (
+                  <div className={cn('flex flex-col gap-0.5', !inMonth && 'opacity-60')}>
+                    {dayEvents.slice(0, SHOWN).map((event) => (
+                      <button
+                        key={event.key}
+                        type="button"
+                        onClick={() => onEvent(event)}
+                        {...peek?.(event)}
+                        className={cn(
+                          'flex w-full cursor-pointer items-center gap-1 truncate px-1 text-left text-[11px] leading-5',
+                          event.allDay ? EVENT_STYLE[event.kind].chip : 'hover:bg-column',
+                        )}
+                      >
+                        {!event.allDay && (
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'size-2 shrink-0',
+                              !several && EVENT_STYLE[event.kind].dot,
+                            )}
+                            style={
+                              several
+                                ? { backgroundColor: personColor(event.personId, order) }
+                                : undefined
+                            }
+                          />
+                        )}
+                        {!event.allDay && (
+                          <span className="shrink-0 text-ink-sub tabular-nums">
+                            {formatTime(event.startsAt)}
+                          </span>
+                        )}
+                        <span className="truncate max-sm:hidden">{event.title}</span>
+                      </button>
+                    ))}
+                    {dayEvents.length > SHOWN && (
+                      <button
+                        type="button"
+                        onClick={() => onDay(date)}
+                        className="cursor-pointer px-1 text-left text-[11px] font-bold text-link hover:underline"
+                      >
+                        ほか{dayEvents.length - SHOWN}件
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       ))}
     </div>
+  );
+}
+
+/** Many people in one month: how many of each kind that day, coloured like the events. */
+function DayCounts({ events, dimmed }: { events: CalendarEvent[]; dimmed: boolean }) {
+  const short = { appointment: 'アポ', salesAppointment: '営業アポ', plan: '予定', timeoff: '休み' };
+  const kinds = (['appointment', 'salesAppointment', 'plan', 'timeoff'] as const)
+    .map((kind) => ({ kind, count: events.filter((event) => event.kind === kind).length }))
+    .filter((entry) => entry.count > 0);
+  if (kinds.length === 0) return null;
+  return (
+    <ul className={cn('flex flex-col gap-0.5 text-[11px]', dimmed && 'opacity-60')}>
+      {kinds.map(({ kind, count }) => (
+        <li key={kind} className="flex items-center gap-1.5">
+          <span aria-hidden="true" className={cn('size-2 shrink-0', EVENT_STYLE[kind].dot)} />
+          <span className="min-w-0 truncate text-ink-sub">{short[kind]}</span>
+          <span className="ml-auto shrink-0 font-bold whitespace-nowrap tabular-nums">{count}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

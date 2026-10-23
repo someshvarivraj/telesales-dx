@@ -1,7 +1,8 @@
 import type { NotificationDto } from '@telesales/shared';
-import { Bell, CheckCheck, X } from 'lucide-react';
+import { ArrowRight, Bell, CheckCheck, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { paths } from '@/app/paths';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { cn } from '@/components/ui/cn';
 import { formatDateTime } from '@/lib/format';
@@ -192,6 +193,14 @@ function ActivityPanel(props: {
           </div>
         ))}
       </div>
+      <Link
+        to={paths.notifications}
+        onClick={props.onClose}
+        className="flex h-11 items-center justify-center gap-1.5 border-t border-line text-sm font-bold text-link hover:bg-hover"
+      >
+        すべてのお知らせ（検索・アーカイブ）
+        <ArrowRight aria-hidden="true" className="size-4" />
+      </Link>
     </section>
   );
 }

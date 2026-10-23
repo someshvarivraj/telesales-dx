@@ -23,6 +23,8 @@ interface WeekViewProps {
 }
 
 const CHIPS = 3;
+/** Bigger teams get shorter rows so more people fit on screen. */
+const COMPACT_FROM = 8;
 
 /**
  * The team's week: one row per person, one column per day (like a resource scheduler).
@@ -45,6 +47,8 @@ export function WeekView({
   const holidayName = (date: string) => holidays.find((holiday) => holiday.date === date)?.name;
   const today = todayJst();
   const order = colorOrder ?? people.map((person) => person.id);
+  const compact = people.length >= COMPACT_FROM;
+  const chips = compact ? 2 : CHIPS;
   const isAppointment = (event: CalendarEvent) =>
     event.kind === 'appointment' || event.kind === 'salesAppointment';
 
@@ -57,7 +61,7 @@ export function WeekView({
           {days.map((date) => (
             <col
               key={date}
-              style={{ width: isWeekend(date) || holidayName(date) ? '7%' : undefined }}
+              style={{ width: isWeekend(date) || holidayName(date) ? '5.75rem' : undefined }}
             />
           ))}
         </colgroup>
@@ -88,7 +92,7 @@ export function WeekView({
                     type="button"
                     onClick={() => people[0] && onDay(people[0].id, date)}
                     aria-label={`${formatShortDate(date)}の日表示`}
-                    className="group flex w-full cursor-pointer items-end gap-1.5"
+                    className="group flex w-full cursor-pointer items-end gap-1.5 whitespace-nowrap"
                   >
                     <span
                       className={cn(
@@ -146,7 +150,8 @@ export function WeekView({
                     <td
                       key={date}
                       className={cn(
-                        'group/cell relative h-28 border-b border-l border-line p-1.5 align-top transition-colors',
+                        compact ? 'h-14' : 'h-24',
+                        'group/cell relative border-b border-l border-line p-1.5 align-top transition-colors',
                         off ? 'bg-weekend' : 'hover:bg-hover',
                         showFree && !off && free >= 60 && 'bg-free/60',
                       )}
@@ -186,7 +191,7 @@ export function WeekView({
                         </div>
                       )}
                       <div className="flex flex-col gap-0.5">
-                        {dayEvents.slice(0, CHIPS).map((event) => (
+                        {dayEvents.slice(0, chips).map((event) => (
                           <button
                             key={event.key}
                             type="button"
@@ -205,27 +210,31 @@ export function WeekView({
                             <span className="truncate">{event.title}</span>
                           </button>
                         ))}
-                        {dayEvents.length > CHIPS && (
+                        {dayEvents.length > chips && (
                           <button
                             type="button"
                             onClick={() => onDay(person.id, date)}
                             className="cursor-pointer text-left text-[11px] font-bold text-link hover:underline"
                           >
-                            ほか{dayEvents.length - CHIPS}件
+                            ほか{dayEvents.length - chips}件
                           </button>
                         )}
                       </div>
-                      <div className="absolute right-1.5 bottom-1 flex items-center gap-1">
-                        {!off && free > 0 && (showFree || dayEvents.length > 0) && (
-                          <span
-                            className={cn(
-                              'text-[10px] tabular-nums',
-                              free >= 60 ? 'font-bold text-free-ink' : 'text-ink-sub',
-                            )}
-                          >
-                            空き{hoursLabel(free)}
-                          </span>
-                        )}
+                      {!compact && (
+                        <div className="mt-1 flex justify-end">
+                          {!off && free > 0 && (showFree || dayEvents.length > 0) && (
+                            <span
+                              className={cn(
+                                'text-[10px] tabular-nums',
+                                free >= 60 ? 'font-bold text-free-ink' : 'text-ink-sub',
+                              )}
+                            >
+                              空き{hoursLabel(free)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="absolute top-1 right-1 flex items-center gap-1">
                         {onAdd && (
                           <button
                             type="button"

@@ -21,6 +21,7 @@ import { cn } from '@/components/ui/cn';
 import { Dialog } from '@/components/ui/Dialog';
 import { QueryState } from '@/components/ui/QueryState';
 import { Segmented } from '@/components/ui/Segmented';
+import { Select } from '@/components/ui/Select';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { formatTime, monthRange, startOfWeek, todayJst } from '@/lib/format';
@@ -30,7 +31,9 @@ import { useSchedule } from './api';
 import { existingListBookingHref } from './bookingLinks';
 import { Avatar } from './calendar/Avatar';
 import { useEventPeek } from './calendar/EventPeek';
-import { busyRanges, hoursLabel, WORK_END, WORK_START } from './calendar/layout';
+import { DayTimeline } from './calendar/DayTimeline';
+import { busyRanges, freeMinutes, hoursLabel, WORK_END, WORK_START } from './calendar/layout';
+import { MemberPicker, type SavedGroup } from './calendar/MemberPicker';
 import { MiniMonth } from './calendar/MiniMonth';
 import { personColor } from './calendar/people';
 import { TimeGrid, useNow } from './calendar/TimeGrid';
@@ -70,6 +73,8 @@ const KINDS: EventKind[] = [
 
 const ZOOMS = [0.75, 1, 1.4, 1.9];
 const LIST_DAYS = 14;
+/** More people than this and the day is drawn as rows (timeline) instead of columns. */
+const DAY_COLUMNS_MAX = 6;
 
 function rangeFor(view: View, date: string): { from: string; to: string } {
   if (view === 'day') return { from: date, to: date };
@@ -145,6 +150,9 @@ export function SchedulePage() {
   const [showFree, setShowFree] = usePref('free', false);
   const [hidden, setHidden] = usePref<EventKind[]>('hiddenKinds', []);
   const [railOpen, setRailOpen] = usePref('rail', true);
+  const [sort, setSort] = usePref<'name' | 'free' | 'busy'>('sort', 'name');
+  const [groups, setGroups] = usePref<SavedGroup[]>('groups', []);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [help, setHelp] = useState(false);
   const search = useRef<HTMLInputElement>(null);
   const peek = useEventPeek();
@@ -194,16 +202,28 @@ export function SchedulePage() {
   );
   const allPeople = schedule.data?.people ?? [];
   const order = allPeople.map((person) => person.id);
-  const people = chosen.length ? allPeople.filter((p) => chosen.includes(p.id)) : allPeople;
+  const picked = chosen.length ? allPeople.filter((p) => chosen.includes(p.id)) : allPeople;
+  // Sort by free time or appointments in the shown range, so a big team still reads well.
+  const rangeDays = Array.from(
+    { length: Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1 },
+    (_, index) => addDays(from, index),
+  ).filter((day) => !isWeekend(day));
+  const scoreOf = (id: string) =>
+    sort === 'free'
+      ? -rangeDays.reduce((sum, day) => sum + freeMinutes(eventsOn(allEvents, day, id), day), 0)
+      : -allEvents.filter(
+          (event) =>
+            event.personId === id &&
+            (event.kind === 'appointment' || event.kind === 'salesAppointment') &&
+            event.startsAt.slice(0, 10) >= from &&
+            event.startsAt.slice(0, 10) <= addDays(to, 1),
+        ).length;
+  const people =
+    sort === 'name' ? picked : [...picked].sort((a, b) => scoreOf(a.id) - scoreOf(b.id));
   const shownIds = new Set(people.map((person) => person.id));
+  const setChosen = (ids: string[]) =>
+    update({ people: ids.length === 0 || ids.length === allPeople.length ? '' : ids.join(',') });
   const holidays = schedule.data?.holidays ?? [];
-
-  const togglePerson = (id: string) => {
-    const base = chosen.length ? chosen : allPeople.map((person) => person.id);
-    const next = base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
-    update({ people: next.length === allPeople.length || next.length === 0 ? '' : next.join(',') });
-  };
-  const onlyPerson = (id: string) => update({ people: id });
 
   // Keyboard shortcuts, as in Google Calendar (not while typing or with a dialog open).
   useEffect(() => {
@@ -413,6 +433,20 @@ export function SchedulePage() {
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {(view === 'week' || view === 'day') && people.length > 1 && (
+            <Select
+              aria-label="並び順"
+              size="sm"
+              className="w-36"
+              value={sort}
+              options={[
+                { value: 'name', label: '並び：名前順' },
+                { value: 'free', label: '並び：空きが多い順' },
+                { value: 'busy', label: '並び：アポが多い順' },
+              ]}
+              onChange={(e) => setSort(e.target.value as 'name' | 'free' | 'busy')}
+            />
+          )}
           <button
             type="button"
             aria-pressed={showFree}
@@ -523,72 +557,15 @@ export function SchedulePage() {
           )}
 
           <section>
-            <div className="mb-1.5 flex items-center px-1">
-              <h2 className="flex-1 text-xs font-bold text-ink-sub">メンバー</h2>
-              <button
-                type="button"
-                onClick={() => update({ people: '' })}
-                className="cursor-pointer px-1 text-[11px] font-bold text-link hover:underline"
-              >
-                全員
-              </button>
-              {allPeople.some((person) => person.id === user.id) && (
-                <button
-                  type="button"
-                  onClick={() => onlyPerson(user.id)}
-                  className="cursor-pointer px-1 text-[11px] font-bold text-link hover:underline"
-                >
-                  自分だけ
-                </button>
-              )}
-            </div>
-            <ul className="flex flex-col">
-              {allPeople.map((person) => {
-                const on = shownIds.has(person.id);
-                const color = personColor(person.id, order);
-                return (
-                  <li key={person.id} className="group flex items-center">
-                    <label className="flex min-h-9 flex-1 cursor-pointer items-center gap-2 px-1 hover:bg-column">
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        onChange={() => togglePerson(person.id)}
-                        className="peer sr-only"
-                      />
-                      <span
-                        aria-hidden="true"
-                        className="flex size-4 items-center justify-center border-2 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-main-focus"
-                        style={{ borderColor: color, backgroundColor: on ? color : 'transparent' }}
-                      >
-                        {on && (
-                          <svg viewBox="0 0 12 12" className="size-3">
-                            <path
-                              d="M2.5 6.2 5 8.6l4.6-5"
-                              fill="none"
-                              stroke="white"
-                              strokeWidth="1.8"
-                            />
-                          </svg>
-                        )}
-                      </span>
-                      <span className={cn('truncate text-sm', !on && 'text-ink-sub')}>
-                        {person.name}
-                        {person.id === user.id && (
-                          <span className="ml-1 text-[11px] text-ink-sub">（自分）</span>
-                        )}
-                      </span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => onlyPerson(person.id)}
-                      className="cursor-pointer px-1.5 text-[11px] text-ink-sub opacity-0 group-hover:opacity-100 hover:text-ink focus:opacity-100"
-                    >
-                      だけ
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <h2 className="mb-1.5 px-1 text-xs font-bold text-ink-sub">メンバー</h2>
+            <MemberPicker
+              people={allPeople}
+              chosen={chosen}
+              meId={user.id}
+              onChange={setChosen}
+              groups={groups}
+              onGroups={setGroups}
+            />
           </section>
 
           <section>
@@ -645,33 +622,39 @@ export function SchedulePage() {
         </aside>
 
         <div className="min-w-0">
-          {/* Members on phones and when the rail is closed. */}
-          <div className={cn('mb-3 flex gap-1.5 overflow-x-auto pb-1', railOpen && 'lg:hidden')}>
-            {allPeople.map((person) => {
-              const on = shownIds.has(person.id);
-              return (
-                <button
-                  key={person.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => togglePerson(person.id)}
-                  className={cn(
-                    'flex h-8 shrink-0 cursor-pointer items-center gap-1.5 border pr-2.5 pl-1 text-xs font-bold transition-colors',
-                    on
-                      ? 'border-line-strong bg-surface text-ink'
-                      : 'border-line bg-canvas text-ink-disabled',
-                  )}
-                >
+          {/* Members on phones and when the rail is closed: one button, not 100 chips. */}
+          <div className={cn('relative mb-3', railOpen && 'lg:hidden')}>
+            <button
+              type="button"
+              aria-expanded={membersOpen}
+              onClick={() => setMembersOpen(!membersOpen)}
+              className="flex h-9 cursor-pointer items-center gap-2 border border-line-strong bg-surface px-3 text-sm font-bold hover:border-main-line"
+            >
+              <span className="flex -space-x-1">
+                {people.slice(0, 4).map((person) => (
                   <Avatar
+                    key={person.id}
                     size="sm"
                     name={person.name}
                     color={personColor(person.id, order)}
-                    className={cn(!on && 'opacity-40')}
+                    className="ring-2 ring-surface"
                   />
-                  {person.name}
-                </button>
-              );
-            })}
+                ))}
+              </span>
+              メンバー {chosen.length ? `${people.length}人` : `全員（${allPeople.length}人）`}
+            </button>
+            {membersOpen && (
+              <div className="pop-in absolute top-11 left-0 z-40 w-80 max-w-[calc(100vw-2rem)] border border-line bg-surface p-3 shadow-(--shadow-popover)">
+                <MemberPicker
+                  people={allPeople}
+                  chosen={chosen}
+                  meId={user.id}
+                  onChange={setChosen}
+                  groups={groups}
+                  onGroups={setGroups}
+                />
+              </div>
+            )}
           </div>
 
           <QueryState query={schedule}>
@@ -681,6 +664,27 @@ export function SchedulePage() {
                   <p className="border border-line bg-surface py-16 text-center text-sm text-ink-sub">
                     メンバーを1人以上選んでください。
                   </p>
+                );
+              }
+              if (view === 'day' && people.length > DAY_COLUMNS_MAX) {
+                const holiday = data.holidays.find((h) => h.date === date);
+                return (
+                  <DayTimeline
+                    date={date}
+                    people={people}
+                    events={events}
+                    off={isWeekend(date) || Boolean(holiday)}
+                    onEvent={setSelected}
+                    peek={peek.bind}
+                    showFree={showFree}
+                    pxPerMin={zoom}
+                    colorOrder={order}
+                    onRange={
+                      canWritePlans
+                        ? (ownerId, start, end) => openRange(ownerId, date, start, end)
+                        : undefined
+                    }
+                  />
                 );
               }
               if (view === 'day') {

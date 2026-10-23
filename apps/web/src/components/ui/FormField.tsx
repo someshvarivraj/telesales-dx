@@ -26,12 +26,10 @@ export function FormField({ label, required = false, hint, error, children }: Fo
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="flex items-center gap-2 text-sm font-bold text-ink">
+      <label htmlFor={id} className="flex items-baseline gap-1.5 text-[13px] font-bold text-ink">
         {label}
         {required && (
-          <span className="rounded-sm bg-danger-soft px-1.5 py-0.5 text-xs font-bold text-danger">
-            {ja.common.required}
-          </span>
+          <span className="text-[11px] font-bold text-danger">{ja.common.required}</span>
         )}
       </label>
       {children({

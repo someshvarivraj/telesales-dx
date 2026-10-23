@@ -3,6 +3,7 @@ export const paths = {
   login: '/login',
   changePassword: '/password',
   home: '/home',
+  notifications: '/notifications',
   calls: '/calls',
   callsImport: '/calls/import',
   callsImports: '/calls/imports',
