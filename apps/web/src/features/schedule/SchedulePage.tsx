@@ -1,5 +1,5 @@
 import { addDays, Permission } from '@telesales/shared';
-import { CalendarOff, ChevronLeft, ChevronRight, Plus, UserPlus } from 'lucide-react';
+import { CalendarOff, ChevronLeft, ChevronRight, FileUp, Plus, UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
@@ -13,6 +13,7 @@ import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { formatDate, monthRange, startOfWeek, todayJst } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useSchedule } from './api';
+import { existingListBookingHref } from './bookingLinks';
 import { DayView } from './DayView';
 import { WeekView } from './WeekView';
 import { EventDetailDialog } from './EventDetailDialog';
@@ -55,6 +56,7 @@ export function SchedulePage() {
   const canWritePlans = canPlans || isAdmin;
   const canTimeOff = canWritePlans || canShifts;
   const canSalesBook = usePermission(Permission.ManageSalesAppointments);
+  const canTelemaBook = usePermission(Permission.ManageTelemaAppointments);
 
   const { from, to } = rangeFor(view, date);
   const schedule = useSchedule(from, to, []);
@@ -109,6 +111,15 @@ export function SchedulePage() {
               >
                 休みを入力
               </Button>
+            )}
+            {canTelemaBook && (
+              <Link
+                to={existingListBookingHref(date, person)}
+                className="inline-flex h-10 items-center gap-2 rounded-(--radius-control) border border-line bg-surface px-4 text-sm font-bold hover:bg-column"
+              >
+                <FileUp className="size-4" aria-hidden="true" />
+                既存リストのアポを登録
+              </Link>
             )}
             {canSalesBook && (
               <Link

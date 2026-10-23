@@ -520,6 +520,7 @@ export const EXACT: Readonly<Record<string, string>> = {
   再アポの登録: 'Book a re-appointment',
   自分で取ったアポの登録: 'Register my own appointment',
   自分で取ったアポを登録: 'Register my own appointment',
+  既存リストのアポを登録: 'Book an existing-list appointment',
   '1. 日時と担当営業': '1. Date, time and rep',
   '2. 既存リストの読み込み': '2. Read the existing list',
   '2. 企業': '2. Company',
