@@ -29,13 +29,12 @@ import { ja } from '@/i18n/ja';
 import { AgendaView } from './AgendaView';
 import { useSchedule } from './api';
 import { existingListBookingHref } from './bookingLinks';
-import { Avatar } from './calendar/Avatar';
 import { useEventPeek } from './calendar/EventPeek';
 import { DayTimeline } from './calendar/DayTimeline';
 import { busyRanges, freeMinutes, hoursLabel, WORK_END, WORK_START } from './calendar/layout';
-import { MemberPicker, type SavedGroup } from './calendar/MemberPicker';
+import { MemberMenu, PAGE_SIZE } from './calendar/MemberMenu';
+import type { SavedGroup } from './calendar/MemberPicker';
 import { MiniMonth } from './calendar/MiniMonth';
-import { personColor } from './calendar/people';
 import { TimeGrid, useNow } from './calendar/TimeGrid';
 import { DayView } from './DayView';
 import { EventDetailDialog } from './EventDetailDialog';
@@ -152,7 +151,7 @@ export function SchedulePage() {
   const [railOpen, setRailOpen] = usePref('rail', true);
   const [sort, setSort] = usePref<'name' | 'free' | 'busy'>('sort', 'name');
   const [groups, setGroups] = usePref<SavedGroup[]>('groups', []);
-  const [membersOpen, setMembersOpen] = useState(false);
+  const [page, setPage] = useState(0);
   const [help, setHelp] = useState(false);
   const search = useRef<HTMLInputElement>(null);
   const peek = useEventPeek();
@@ -221,6 +220,24 @@ export function SchedulePage() {
   const people =
     sort === 'name' ? picked : [...picked].sort((a, b) => scoreOf(a.id) - scoreOf(b.id));
   const shownIds = new Set(people.map((person) => person.id));
+  // Ten people per page in the day and week views, so the grid fits on screen.
+  const pages = Math.max(1, Math.ceil(people.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pages - 1);
+  const visible = people.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const memberMenu = (paging: boolean) => (
+    <MemberMenu
+      people={allPeople}
+      chosen={chosen}
+      meId={user.id}
+      onChange={setChosen}
+      groups={groups}
+      onGroups={setGroups}
+      shown={people.length}
+      page={currentPage}
+      onPage={setPage}
+      paging={paging}
+    />
+  );
   const setChosen = (ids: string[]) =>
     update({ people: ids.length === 0 || ids.length === allPeople.length ? '' : ids.join(',') });
   const holidays = schedule.data?.holidays ?? [];
@@ -557,18 +574,6 @@ export function SchedulePage() {
           )}
 
           <section>
-            <h2 className="mb-1.5 px-1 text-xs font-bold text-ink-sub">メンバー</h2>
-            <MemberPicker
-              people={allPeople}
-              chosen={chosen}
-              meId={user.id}
-              onChange={setChosen}
-              groups={groups}
-              onGroups={setGroups}
-            />
-          </section>
-
-          <section>
             <h2 className="mb-1.5 px-1 text-xs font-bold text-ink-sub">表示する種類</h2>
             <ul className="flex flex-col">
               {KINDS.map((kind) => {
@@ -622,40 +627,10 @@ export function SchedulePage() {
         </aside>
 
         <div className="min-w-0">
-          {/* Members on phones and when the rail is closed: one button, not 100 chips. */}
-          <div className={cn('relative mb-3', railOpen && 'lg:hidden')}>
-            <button
-              type="button"
-              aria-expanded={membersOpen}
-              onClick={() => setMembersOpen(!membersOpen)}
-              className="flex h-9 cursor-pointer items-center gap-2 border border-line-strong bg-surface px-3 text-sm font-bold hover:border-main-line"
-            >
-              <span className="flex -space-x-1">
-                {people.slice(0, 4).map((person) => (
-                  <Avatar
-                    key={person.id}
-                    size="sm"
-                    name={person.name}
-                    color={personColor(person.id, order)}
-                    className="ring-2 ring-surface"
-                  />
-                ))}
-              </span>
-              メンバー {chosen.length ? `${people.length}人` : `全員（${allPeople.length}人）`}
-            </button>
-            {membersOpen && (
-              <div className="pop-in absolute top-11 left-0 z-40 w-80 max-w-[calc(100vw-2rem)] border border-line bg-surface p-3 shadow-(--shadow-popover)">
-                <MemberPicker
-                  people={allPeople}
-                  chosen={chosen}
-                  meId={user.id}
-                  onChange={setChosen}
-                  groups={groups}
-                  onGroups={setGroups}
-                />
-              </div>
+          {!(view === 'week' && visible.length > 1) &&
+            !(view === 'day' && visible.length > DAY_COLUMNS_MAX) && (
+              <div className="mb-2 w-64">{memberMenu(view === 'day' || view === 'week')}</div>
             )}
-          </div>
 
           <QueryState query={schedule}>
             {(data) => {
@@ -666,12 +641,13 @@ export function SchedulePage() {
                   </p>
                 );
               }
-              if (view === 'day' && people.length > DAY_COLUMNS_MAX) {
+              if (view === 'day' && visible.length > DAY_COLUMNS_MAX) {
                 const holiday = data.holidays.find((h) => h.date === date);
                 return (
                   <DayTimeline
+                    corner={memberMenu(true)}
                     date={date}
-                    people={people}
+                    people={visible}
                     events={events}
                     off={isWeekend(date) || Boolean(holiday)}
                     onEvent={setSelected}
@@ -691,7 +667,7 @@ export function SchedulePage() {
                 return (
                   <DayView
                     date={date}
-                    people={people}
+                    people={visible}
                     events={events}
                     holidays={data.holidays}
                     onEvent={setSelected}
@@ -764,8 +740,9 @@ export function SchedulePage() {
               if (view === 'week') {
                 return (
                   <WeekView
+                    corner={memberMenu(true)}
                     start={from}
-                    people={people}
+                    people={visible}
                     events={events}
                     holidays={data.holidays}
                     onEvent={setSelected}

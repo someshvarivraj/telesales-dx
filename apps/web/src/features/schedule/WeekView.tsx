@@ -1,6 +1,7 @@
 import type { CalendarDayDto, UserRef } from '@telesales/shared';
 import { addDays, dayOfWeek, isWeekend, weekdayJa } from '@telesales/shared';
 import { Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { cn } from '@/components/ui/cn';
 import { formatShortDate, formatTime, todayJst } from '@/lib/format';
 import { Avatar } from './calendar/Avatar';
@@ -20,6 +21,8 @@ interface WeekViewProps {
   peek?: PeekBinder;
   showFree?: boolean;
   colorOrder?: string[];
+  /** Top-left cell: who is shown and paging. */
+  corner?: ReactNode;
 }
 
 const CHIPS = 3;
@@ -42,6 +45,7 @@ export function WeekView({
   peek,
   showFree = false,
   colorOrder,
+  corner,
 }: WeekViewProps) {
   const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
   const holidayName = (date: string) => holidays.find((holiday) => holiday.date === date)?.name;
@@ -67,8 +71,8 @@ export function WeekView({
         </colgroup>
         <thead className="sticky top-0 z-10 bg-surface">
           <tr>
-            <th className="sticky left-0 z-10 w-44 border-b border-line bg-surface px-3 py-2 text-left align-bottom text-[11px] font-bold text-ink-sub">
-              メンバー
+            <th className="sticky left-0 z-10 w-44 border-b border-line bg-surface px-2 py-2 text-left align-bottom text-[11px] font-bold text-ink-sub">
+              {corner ?? 'メンバー'}
             </th>
             {days.map((date) => {
               const holiday = holidayName(date);
@@ -135,7 +139,7 @@ export function WeekView({
                     <Avatar name={person.name} color={color} />
                     <div className="min-w-0">
                       <p className="truncate text-sm leading-5 font-bold">{person.name}</p>
-                      <p className="text-[11px] leading-4 text-ink-sub">
+                      <p className="truncate text-[11px] leading-4 text-ink-sub">
                         アポ {weekAppointments} · 空き {hoursLabel(weekFree)}
                       </p>
                     </div>
@@ -149,8 +153,11 @@ export function WeekView({
                   return (
                     <td
                       key={date}
+                      // Rows share the screen height, so ten people fit without scrolling.
+                      style={{
+                        height: `max(${compact ? '3.5rem' : '5rem'}, calc((100dvh - 21rem) / ${people.length}))`,
+                      }}
                       className={cn(
-                        compact ? 'h-14' : 'h-24',
                         'group/cell relative border-b border-l border-line p-1.5 align-top transition-colors',
                         off ? 'bg-weekend' : 'hover:bg-hover',
                         showFree && !off && free >= 60 && 'bg-free/60',

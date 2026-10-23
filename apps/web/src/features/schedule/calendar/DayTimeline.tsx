@@ -1,6 +1,6 @@
 import type { UserRef } from '@telesales/shared';
 import { SLOT_MINUTES } from '@telesales/shared';
-import { type PointerEvent, useEffect, useRef, useState } from 'react';
+import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import { formatTime } from '@/lib/format';
 import { type CalendarEvent, EVENT_STYLE, eventsOn } from '../events';
@@ -34,6 +34,7 @@ interface DayTimelineProps {
   /** Horizontal zoom. */
   pxPerMin?: number;
   colorOrder: string[];
+  corner?: ReactNode;
 }
 
 /**
@@ -52,6 +53,7 @@ export function DayTimeline({
   showFree = false,
   pxPerMin = 1,
   colorOrder,
+  corner,
 }: DayTimelineProps) {
   const scale = 1.25 * pxPerMin;
   const width = (END - START) * scale;
@@ -82,12 +84,12 @@ export function DayTimeline({
         {/* Hour ruler */}
         <div className="sticky top-0 z-20 flex border-b border-line bg-surface/95 backdrop-blur-sm">
           <div
-            className="sticky left-0 z-10 flex items-end border-r border-line bg-surface px-3 pb-1.5 text-[11px] font-bold text-ink-sub"
+            className="sticky left-0 z-10 flex items-end border-r border-line bg-surface px-2 py-1.5 text-[11px] font-bold text-ink-sub"
             style={{ width: NAME_W, minWidth: NAME_W }}
           >
-            {people.length}人
+            {corner ?? `${people.length}人`}
           </div>
-          <div className="relative h-9" style={{ width }}>
+          <div className="relative self-stretch" style={{ width, minHeight: 36 }}>
             {hours.slice(0, -1).map((hour) => (
               <span
                 key={hour}
@@ -151,7 +153,10 @@ export function DayTimeline({
                   off ? 'bg-weekend' : '',
                   onRange && 'cursor-cell',
                 )}
-                style={{ width, height: rowH }}
+                style={{
+                  width,
+                  height: `max(${rowH}px, calc((100dvh - 22rem) / ${people.length}))`,
+                }}
                 onKeyDown={(event) => {
                   if (onRange && event.key === 'Enter') onRange(person.id, '10:00', '11:00');
                 }}
