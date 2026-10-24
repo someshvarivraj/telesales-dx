@@ -39,6 +39,7 @@ import { AuthController } from './modules/auth/AuthController.js';
 import { AuthService } from './modules/auth/AuthService.js';
 import { CalendarService } from './modules/calendar/CalendarService.js';
 import { PrismaCalendarRepository } from './modules/calendar/PrismaCalendarRepository.js';
+import { CallRecordExportService } from './modules/callRecords/CallRecordExportService.js';
 import { CallRecordService } from './modules/callRecords/CallRecordService.js';
 import { CommentService } from './modules/comments/CommentService.js';
 import { createCompaniesRouter } from './modules/companies/companiesRouter.js';
@@ -141,6 +142,7 @@ export class Container {
     const companies = new CompanyService(prisma, this.audit, this.clock);
     const listImports = new ListImportService(prisma, files, options, notifications, this.audit);
     const callRecords = new CallRecordService(prisma, policy, this.audit, this.clock);
+    const callExports = new CallRecordExportService(prisma, options, this.clock);
     const comments = new CommentService(prisma, notifications);
 
     // ② Schedule and appointments
@@ -236,6 +238,7 @@ export class Container {
         companies,
         imports: listImports,
         callRecords,
+        callExports,
         comments,
         area,
         files,

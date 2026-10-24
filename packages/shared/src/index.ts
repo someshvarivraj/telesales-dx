@@ -12,3 +12,4 @@ export * from './permissions.js';
 export * from './roles.js';
 export * from './time.js';
 export * from './prefectures.js';
+export * from './mailOperator.js';

@@ -1343,6 +1343,13 @@ export const EXACT: Readonly<Record<string, string>> = {
   架電リストを取り込んだとき: 'When a call list is imported',
   コメントが付いたとき: 'When a comment is added',
   '毎日決まった時刻に、その日のアポ取得一覧': "Daily at a set time, the day's booked appointments",
+  // Call results export
+  架電結果をExcelで出す: 'Export call results to Excel',
+  '期間中の架電を1件1行で出します（判定・結果の詳細・次回架電日と、架けた企業の情報）。':
+    'One row per call in the period (grade, details, next call date and the company called).',
+  '架電日（から）': 'Call date (from)',
+  '架電日（まで）': 'Call date (to)',
+  テレマ担当: 'Telemarketer',
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
@@ -1523,4 +1530,9 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['{0}に追加', 'Add to {0}'],
   ['すべて {0}', 'All {0}'],
   ['宛先 {0}', '{0} recipients'],
+  [
+    '送信すると、件名の最後に「{0}」が付きます。',
+    'When sent, "{0}" is added to the end of the subject.',
+  ],
+  ['送信すると、本文の最後に「{0}」が入ります。', 'When sent, "{0}" is added as the last line.'],
 ];

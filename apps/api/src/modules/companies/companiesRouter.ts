@@ -3,6 +3,7 @@ import {
   companySearchRequestSchema,
   createCallRecordRequestSchema,
   createCommentRequestSchema,
+  dateString,
   findRepRequestSchema,
   listImportRowsQuerySchema,
   Permission,
@@ -18,6 +19,7 @@ import { sendFile } from '../../http/sendFile.js';
 import { uploadSingleFile } from '../../http/upload.js';
 import { idParam, parseQuery, parseWith } from '../../http/validate.js';
 import type { AreaTableService } from '../area/AreaTableService.js';
+import type { CallRecordExportService } from '../callRecords/CallRecordExportService.js';
 import type { CallRecordService } from '../callRecords/CallRecordService.js';
 import type { CommentService } from '../comments/CommentService.js';
 import type { FileService } from '../files/FileService.js';
@@ -29,10 +31,18 @@ export interface CompaniesDeps {
   companies: CompanyService;
   imports: ListImportService;
   callRecords: CallRecordService;
+  callExports: CallRecordExportService;
   comments: CommentService;
   area: AreaTableService;
   files: FileService;
 }
+
+const callExportQuery = z.object({
+  from: dateString,
+  to: dateString,
+  telemarketerId: z.uuid().optional(),
+  listName: z.string().trim().max(200).optional(),
+});
 
 const commentQuery = z.object({
   appointmentId: z.uuid().optional(),
@@ -99,6 +109,17 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
     },
   );
 
+  router.get('/call-records/export.xlsx', view, async (req, res) => {
+    const file = await deps.callExports.build(parseQuery(callExportQuery, req));
+    sendFile(
+      res,
+      {
+        originalName: file.fileName,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      file.content,
+    );
+  });
   router.get('/companies/:id/call-records', view, async (req, res) => {
     res.json(await deps.callRecords.listForCompany(currentUserOf(req), idParam(req)));
   });
