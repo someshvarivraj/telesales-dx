@@ -1,4 +1,4 @@
-import type { EmailDraftDto } from '@telesales/shared';
+import { type EmailDraftDto, familyName, operatorRoleLabel } from '@telesales/shared';
 import { RefreshCw, Send } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
@@ -11,6 +11,7 @@ import { FormField } from '@/components/ui/FormField';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { QueryState } from '@/components/ui/QueryState';
 import { Textarea } from '@/components/ui/Textarea';
+import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDateTime } from '@/lib/format';
@@ -77,6 +78,10 @@ function MailEditor({
     body: email.body,
   });
   const sent = email.status === 'SENT';
+  // The server adds the sender when sending (Sano 10/24 No.6); show it here first.
+  const user = useCurrentUser();
+  const senderTag = `【担当：${familyName(user.name)}】`;
+  const senderLine = `送信者：${user.name}（${operatorRoleLabel(user.roles)}）`;
   const error =
     actions.save.error ?? actions.send.error ?? actions.regenerate.error ?? actions.resend.error;
 
@@ -142,7 +147,15 @@ function MailEditor({
               />
             )}
           </FormField>
-          <FormField label="件名" required>
+          <FormField
+            label="件名"
+            required
+            hint={
+              sent || form.subject.includes('【担当：')
+                ? undefined
+                : `送信すると、件名の最後に「${senderTag}」が付きます。`
+            }
+          >
             {(c) => (
               <TextInput
                 {...c}
@@ -152,7 +165,15 @@ function MailEditor({
               />
             )}
           </FormField>
-          <FormField label="本文" required>
+          <FormField
+            label="本文"
+            required
+            hint={
+              sent || form.body.includes('送信者：')
+                ? undefined
+                : `送信すると、本文の最後に「${senderLine}」が入ります。`
+            }
+          >
             {(c) => (
               <Textarea
                 {...c}
