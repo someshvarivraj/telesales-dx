@@ -4,7 +4,7 @@ import { Scene, type SceneName } from '@/components/illustrations/Scenes';
 
 interface EmptyStateProps {
   children: ReactNode;
-  /** MoraBot explains by default; `think` for no search results. */
+  /** MoraBot guides by default; `think` for no search results. */
   mood?: MoraBotMood;
   /** Small icon instead of MoraBot, for tight spaces. */
   icon?: ReactNode;
@@ -12,7 +12,7 @@ interface EmptyStateProps {
   scene?: SceneName;
 }
 
-export function EmptyState({ children, mood = 'explain', icon, scene }: EmptyStateProps) {
+export function EmptyState({ children, mood = 'guide', icon, scene }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-3 px-4 py-8 text-center text-sm text-ink-sub">
       {icon ? (

@@ -11,13 +11,34 @@ import { cn } from '@/components/ui/cn';
  *   happy    喜ぶ       — something finished
  *   trouble  困る       — an error, a page that does not exist
  *   think    考える     — loading, no search results
- *   explain  説明する   — empty screens and guidance
  *
- * Three poses are Sano-san's own artwork, used as images so the details stay
- * exactly as drawn: approved（できた）, checking（確認中）, writing（作成中）.
+ * The poses are Sano-san's artwork (10/26), used as images so the details stay
+ * exactly as drawn. They share one canvas, so swapping poses keeps MoraBot in place:
+ *
+ *   guide      案内する   — empty screens and guidance (also `explain`)
+ *   report     報告する   — checking numbers (also `checking`)
+ *   call       架電中
+ *   callHappy  架電できた
+ *   booked     アポ確定
+ *   schedule   予定を書く — something being made (also `writing`)
+ *   done       済み       — all done (also `approved`)
  */
 export type MoraBotMood =
-  'default' | 'happy' | 'trouble' | 'think' | 'explain' | 'approved' | 'checking' | 'writing';
+  | 'default'
+  | 'happy'
+  | 'trouble'
+  | 'think'
+  | 'explain'
+  | 'approved'
+  | 'checking'
+  | 'writing'
+  | 'guide'
+  | 'report'
+  | 'call'
+  | 'callHappy'
+  | 'booked'
+  | 'schedule'
+  | 'done';
 
 const C = {
   blue: '#2150B8',
@@ -38,14 +59,30 @@ const LABELS: Record<MoraBotMood, string> = {
   approved: 'モラボット（できた）',
   checking: 'モラボット（確認中）',
   writing: 'モラボット（作成中）',
+  guide: 'モラボット（説明する）',
+  report: 'モラボット（確認中）',
+  call: 'モラボット（架電中）',
+  callHappy: 'モラボット（架電中）',
+  booked: 'モラボット（アポ確定）',
+  schedule: 'モラボット（作成中）',
+  done: 'モラボット（できた）',
 };
 
-/** Artwork poses: file and width/height ratio. */
-const ART: Partial<Record<MoraBotMood, { file: string; ratio: number }>> = {
-  approved: { file: 'morabot/approved.png', ratio: 473 / 480 },
-  checking: { file: 'morabot/checking.png', ratio: 501 / 480 },
-  writing: { file: 'morabot/writing.png', ratio: 429 / 480 },
+/** Artwork poses (files in public/morabot, all on the same canvas). */
+const ART: Partial<Record<MoraBotMood, string>> = {
+  guide: 'guide',
+  explain: 'guide',
+  report: 'report',
+  checking: 'report',
+  call: 'call',
+  callHappy: 'call-happy',
+  booked: 'booked',
+  schedule: 'schedule',
+  writing: 'schedule',
+  done: 'done',
+  approved: 'done',
 };
+const ART_RATIO = 466 / 560;
 
 /** A per-instance delay (0–3.9 s) from the React id, so the beat is stable across renders. */
 function idleBeat(id: string): CSSProperties {
@@ -163,18 +200,34 @@ export function MoraBot({
 
   const art = headOnly ? undefined : ART[mood];
   if (art) {
-    const width = Math.round(size * art.ratio);
+    const width = Math.round(size * ART_RATIO);
+    // A floor shadow that shrinks as MoraBot rises; a new pose hops in (keyed image).
     return (
-      <img
-        src={`${import.meta.env.BASE_URL}${art.file}`}
-        width={width}
-        height={size}
-        style={{ width, height: size, objectFit: 'contain', ...beat }}
-        alt={label}
+      <span
+        role={label ? 'img' : undefined}
+        aria-label={label || undefined}
         aria-hidden={label ? undefined : true}
-        className={classes}
-        draggable={false}
-      />
+        className={cn(
+          'morabot morabot-art',
+          animate ? 'morabot-art-busy' : !still && 'morabot-art-idle',
+          `morabot-${mood}`,
+          className,
+        )}
+        style={{ width, height: size, ...beat }}
+      >
+        <span className="morabot-shadow" />
+        <span className="morabot-body">
+          <img
+            key={art}
+            src={`${import.meta.env.BASE_URL}morabot/${art}.webp`}
+            width={width}
+            height={size}
+            alt=""
+            className="morabot-pose"
+            draggable={false}
+          />
+        </span>
+      </span>
     );
   }
 
@@ -251,7 +304,7 @@ export function MoraBotProgress({ percent, label }: { percent?: number; label?: 
           style={known ? { left: `${p}%` } : undefined}
         >
           <MoraBot
-            mood={known && p >= 100 ? 'approved' : 'writing'}
+            mood={known && p >= 100 ? 'done' : 'schedule'}
             size={52}
             animate={!known || p < 100}
             title=""

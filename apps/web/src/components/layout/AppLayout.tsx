@@ -40,7 +40,7 @@ export function AppLayout() {
 function MaintenanceNotice() {
   return (
     <section className="flex flex-col items-center px-4 py-16 text-center">
-      <MoraBot mood="writing" size={140} className="mb-6" title="" animate />
+      <MoraBot mood="schedule" size={140} className="mb-6" title="" animate />
       <h1 className="text-xl font-bold">ただいまメンテナンス中です</h1>
       <p className="mt-2 text-ink-sub">
         終わると自動でもとの画面に戻ります。しばらくお待ちください。

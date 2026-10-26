@@ -210,7 +210,7 @@ export function HomePage() {
   return (
     <div className="flex flex-col gap-10">
       <div className="flex items-center gap-4 overflow-hidden border border-line bg-surface px-6 py-5 shadow-(--shadow-card) max-sm:px-4">
-        <MoraBot mood={data && open === 0 ? 'approved' : 'checking'} size={96} title="" />
+        <MoraBot mood={data && open === 0 ? 'done' : 'report'} size={96} title="" />
         <div className="min-w-0 flex-1">
           <p className="text-lg font-bold">{name}さん、おつかれさまです。</p>
           <p className="text-sm text-ink-sub">

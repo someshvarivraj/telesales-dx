@@ -270,7 +270,7 @@ export function ActivityPage() {
             )}
             {!feed.isPending && items.length === 0 && (
               <div className="flex flex-col items-center px-6 py-14 text-center">
-                <MoraBot mood="approved" size={96} title="" />
+                <MoraBot mood="done" size={96} title="" />
                 <p className="mt-3 text-sm text-ink-sub">
                   {q || category
                     ? '条件に合うお知らせはありません。'

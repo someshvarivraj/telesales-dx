@@ -71,7 +71,7 @@ export function ListImportPage() {
     return (
       <Card>
         <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <MoraBot mood="approved" size={128} title="" />
+          <MoraBot mood="done" size={128} title="" />
           <p className="text-lg font-bold">「{done.listName}」を取り込みました。</p>
           <p className="text-sm text-ink-sub">
             登録 {done.createdCount}件（重複 {done.duplicateCount}件・要確認 {done.checkCount}件）／

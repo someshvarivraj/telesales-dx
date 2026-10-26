@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
-import { FlowScene } from '@/components/illustrations/Scenes';
+import { MoraBotStory, type StoryStep } from '@/components/brand/MoraBotStory';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
 
@@ -14,14 +14,29 @@ interface AuthLayoutProps {
 }
 
 /** The work the app covers, in the spec's order (架電 → アポ → 打ち合わせ・結果). */
-const STEPS = [
-  { title: '架電', text: 'リストから電話をかけ、結果を記録' },
-  { title: 'アポ', text: '営業の空き枠を押さえて登録、すぐ共有' },
-  { title: '打ち合わせ・結果', text: '準備・結果・次回アクションまで一か所に' },
+const STEPS: StoryStep[] = [
+  {
+    title: '架電',
+    text: 'リストから電話をかけ、結果を記録',
+    line: '架電の結果、記録しました！',
+    mood: 'callHappy',
+  },
+  {
+    title: 'アポ',
+    text: '営業の空き枠を押さえて登録、すぐ共有',
+    line: 'アポ確定、営業に共有しました！',
+    mood: 'booked',
+  },
+  {
+    title: '打ち合わせ・結果',
+    text: '準備・結果・次回アクションまで一か所に',
+    line: '結果まで入力済みです！',
+    mood: 'done',
+  },
 ];
 
 /**
- * Signed-out screens: the app's flow (picture and three points) and a compact sign-in
+ * Signed-out screens: the app's flow (MoraBot acting out three steps) and a compact sign-in
  * box side by side in the middle of the grid — one group, the page is not divided.
  * The box is classic: accent bar on top, the brand as its header, the form, and the
  * notes in a grey foot. Phones and tablets show the box alone.
@@ -34,24 +49,11 @@ export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLa
 
       <div className="flex w-full max-w-[960px] items-center justify-center gap-16">
         <section className="max-w-md flex-1 max-lg:hidden">
-          <FlowScene />
-          <p className="mt-6 text-2xl leading-snug font-bold text-ink">
+          <p className="text-2xl leading-snug font-bold text-ink">
             架電からアポ、打ち合わせの結果まで。
           </p>
-          <p className="mt-1 text-sm text-ink-sub">テレマと営業が、同じ情報で動けます。</p>
-          <ol className="mt-6 flex flex-col gap-3">
-            {STEPS.map((step, index) => (
-              <li key={step.title} className="flex items-start gap-3">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full! bg-main text-xs font-bold text-white">
-                  {index + 1}
-                </span>
-                <span className="text-sm">
-                  <span className="font-bold text-ink">{step.title}</span>
-                  <span className="block text-ink-sub">{step.text}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
+          <p className="mt-1 mb-4 text-sm text-ink-sub">テレマと営業が、同じ情報で動けます。</p>
+          <MoraBotStory steps={STEPS} />
         </section>
 
         <div className="w-full max-w-[420px] shrink-0 border border-t-4 border-line border-t-main bg-surface shadow-(--shadow-raised)">

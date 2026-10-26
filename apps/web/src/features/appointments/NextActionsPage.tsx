@@ -36,7 +36,7 @@ export function NextActionsPage() {
         {(items) =>
           items.length === 0 ? (
             <Card>
-              <EmptyState mood="approved">次回アクションはありません。</EmptyState>
+              <EmptyState mood="done">次回アクションはありません。</EmptyState>
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">
