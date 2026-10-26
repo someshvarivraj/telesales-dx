@@ -395,6 +395,18 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
 .morabot-art-busy .morabot-shadow {
   animation: morabot-shadow 0.9s ease-in-out infinite;
 }
+/* Stacked poses (sign-in story): only the shown one is visible and hops in. */
+.morabot-stack {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: none;
+  transition: opacity 0.2s ease;
+}
+.morabot-stack-on {
+  opacity: 1;
+  animation: morabot-pose-in 0.55s var(--ease-out-soft) both;
+}
 @keyframes morabot-pose-in {
   0% {
     opacity: 0;
