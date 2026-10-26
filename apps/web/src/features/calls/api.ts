@@ -18,7 +18,7 @@ import type {
   UpdateCompanyRequest,
 } from '@telesales/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient, toQuery } from '@/lib/api/ApiClient';
+import { apiClient, saveFile, toQuery } from '@/lib/api/ApiClient';
 
 export const callsKeys = {
   search: (request: unknown) => ['companies', 'search', request] as const,
@@ -184,4 +184,24 @@ export function useAddComment() {
       if (request.callRecordId) void client.invalidateQueries({ queryKey: ['companies'] });
     },
   });
+}
+
+/** 架電結果のExcel (Sano 10/24 No.7). */
+export async function downloadCallResults(filter: {
+  from: string;
+  to: string;
+  telemarketerId: string;
+  listName: string;
+}): Promise<void> {
+  saveFile(
+    await apiClient.download(
+      `/call-records/export.xlsx${toQuery({
+        from: filter.from,
+        to: filter.to,
+        telemarketerId: filter.telemarketerId || undefined,
+        listName: filter.listName || undefined,
+      })}`,
+      '架電結果.xlsx',
+    ),
+  );
 }

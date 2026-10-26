@@ -1,4 +1,11 @@
-import { type EmailDraftDto, EmailStatus, type NoticeCode } from '@telesales/shared';
+import {
+  type EmailDraftDto,
+  EmailStatus,
+  type NoticeCode,
+  Role,
+  stampAutomatic,
+  stampOperator,
+} from '@telesales/shared';
 import type { Logger } from 'pino';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
@@ -129,7 +136,20 @@ export class EmailService {
     if (claimed.count === 0) {
       throw new InvalidStateError({ reason: 'already_sent' });
     }
-    const row = await this.prisma.outboundEmail.findUniqueOrThrow({ where: { id } });
+    // The sender address may be shared, so the e-mail says who sent it (Sano 10/24 No.6).
+    const draft = await this.prisma.outboundEmail.findUniqueOrThrow({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.id },
+      select: { name: true },
+    });
+    const stamped = stampOperator(draft, {
+      name: user?.name ?? '',
+      roles: Object.values(Role).filter((role) => actor.hasRole(role)),
+    });
+    const row = await this.prisma.outboundEmail.update({
+      where: { id },
+      data: { subject: stamped.subject, body: stamped.body },
+    });
     const attachments = await this.loadAttachments(row.attachmentIds);
     try {
       await this.mailer.send({
@@ -174,6 +194,11 @@ export class EmailService {
     if (input.to.length === 0 && input.cc.length === 0) {
       return false;
     }
+    // Sent right after someone's action (e.g. N6): name that person; scheduled: automatic.
+    const operator = input.createdById ? await this.operatorOf(input.createdById) : null;
+    const content = operator
+      ? stampOperator({ subject: input.subject, body: input.body }, operator)
+      : { subject: input.subject, body: stampAutomatic(input.body) };
     let row;
     try {
       row = await this.prisma.outboundEmail.create({
@@ -183,8 +208,8 @@ export class EmailService {
           appointmentId: input.appointmentId ?? null,
           to: input.to.length > 0 ? input.to : input.cc,
           cc: input.to.length > 0 ? input.cc : [],
-          subject: input.subject,
-          body: input.body,
+          subject: content.subject,
+          body: content.body,
           attachmentIds: (input.attachments ?? []).flatMap((file) =>
             file.fileId ? [file.fileId] : [],
           ),
@@ -222,6 +247,14 @@ export class EmailService {
       );
       return false;
     }
+  }
+
+  private async operatorOf(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, roles: { select: { role: true } } },
+    });
+    return user ? { name: user.name, roles: user.roles.map((row) => row.role) } : null;
   }
 
   private async loadAttachments(fileIds: string[]): Promise<MailAttachment[]> {
