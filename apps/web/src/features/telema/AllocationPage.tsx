@@ -296,7 +296,7 @@ function ItemList({ title, date, items, people, manages }: ItemListProps) {
         </div>
       )}
       {shown.length === 0 ? (
-        <EmptyState mood="approved">ありません。</EmptyState>
+        <EmptyState mood="done">ありません。</EmptyState>
       ) : (
         <Table>
           <thead>

@@ -70,7 +70,7 @@ export function DayBeforePage() {
           );
           return items.length === 0 ? (
             <Card>
-              <EmptyState mood="approved">確認するアポはありません。</EmptyState>
+              <EmptyState mood="booked">確認するアポはありません。</EmptyState>
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">

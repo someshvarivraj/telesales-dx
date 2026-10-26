@@ -25,7 +25,7 @@ export function DuplicatesPage() {
         {(items) =>
           items.length === 0 ? (
             <Card>
-              <EmptyState mood="approved">扱いを決める企業はありません。</EmptyState>
+              <EmptyState mood="done">扱いを決める企業はありません。</EmptyState>
             </Card>
           ) : (
             <ul className="flex flex-col gap-3">

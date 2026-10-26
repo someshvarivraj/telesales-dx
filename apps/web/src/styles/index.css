@@ -264,9 +264,6 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
   animation: morabot-breathe 3.6s ease-in-out infinite;
   animation-delay: var(--morabot-delay, 0s);
 }
-img.morabot-idle {
-  animation-name: morabot-float;
-}
 .morabot-idle .morabot-head {
   transform-box: fill-box;
   transform-origin: 50% 90%;
@@ -353,10 +350,138 @@ img.morabot-idle {
     transform: rotate(14deg);
   }
 }
+/*
+ * Artwork poses: MoraBot floats over a soft floor shadow that shrinks while it is up,
+ * hops when busy, and each new pose lands with a small squash (the image is keyed).
+ */
+.morabot-art {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+.morabot-shadow {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 0;
+  height: 6%;
+  border-radius: 50% !important;
+  background: radial-gradient(closest-side, rgb(30 37 48 / 0.22), transparent);
+}
+.morabot-body {
+  position: relative;
+  display: block;
+  height: 97%;
+}
+.morabot-pose {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 100%;
+  animation: morabot-pose-in 0.55s var(--ease-out-soft) both;
+}
+.morabot-art-idle .morabot-body {
+  animation: morabot-float 3.6s ease-in-out infinite;
+  animation-delay: var(--morabot-delay, 0s);
+}
+.morabot-art-idle .morabot-shadow {
+  animation: morabot-shadow 3.6s ease-in-out infinite;
+  animation-delay: var(--morabot-delay, 0s);
+}
+.morabot-art-busy .morabot-body {
+  animation: morabot-hop 0.9s ease-in-out infinite;
+}
+.morabot-art-busy .morabot-shadow {
+  animation: morabot-shadow 0.9s ease-in-out infinite;
+}
+@keyframes morabot-pose-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8%) scale(0.92, 0.88);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(-4%) scale(0.97, 1.04);
+  }
+  80% {
+    transform: translateY(0) scale(1.03, 0.97);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes morabot-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.02, 0.98);
+  }
+  50% {
+    transform: translateY(-9%) scale(0.98, 1.02);
+  }
+}
+@keyframes morabot-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(0.72);
+    opacity: 0.5;
+  }
+}
+/* Sign-in story: a soft orange glow behind MoraBot, the bubble pops, the step bar fills. */
+.morabot-stage-glow {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  width: 15rem;
+  height: 15rem;
+  translate: -50% 0;
+  border-radius: 50% !important;
+  background: radial-gradient(closest-side, rgb(255 154 51 / 0.18), transparent);
+}
+.morabot-bubble {
+  animation: morabot-bubble-in 0.4s var(--ease-out-soft) 0.2s both;
+  transform-origin: bottom left;
+}
+@keyframes morabot-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.85);
+  }
+}
+.morabot-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 18px;
+  width: 12px;
+  height: 12px;
+  rotate: 45deg;
+  border-right: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+.morabot-step-timer {
+  width: 100%;
+  transform-origin: left;
+  animation: morabot-step-fill linear both;
+}
+@keyframes morabot-step-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .morabot-idle,
   .morabot-idle *,
-  .morabot-busy {
+  .morabot-busy,
+  .morabot-art * {
     animation: none !important;
   }
 }

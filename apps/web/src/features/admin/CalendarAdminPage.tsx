@@ -121,7 +121,9 @@ export function CalendarAdminPage() {
         <QueryState query={days}>
           {(items) =>
             items.length === 0 ? (
-              <EmptyState>まだ休日が入っていません。祝日を取り込んでください。</EmptyState>
+              <EmptyState mood="schedule">
+                まだ休日が入っていません。祝日を取り込んでください。
+              </EmptyState>
             ) : (
               <Table>
                 <thead>
