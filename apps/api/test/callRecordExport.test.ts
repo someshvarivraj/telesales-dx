@@ -66,7 +66,7 @@ describe('CallRecordExportService', () => {
     expect(where[0]).toMatchObject({ company: { listName: '見本リスト' } });
 
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(file.content);
+    await workbook.xlsx.load(file.content as unknown as ExcelJS.Buffer);
     const sheet = workbook.getWorksheet('架電結果');
     expect(sheet?.getRow(1).getCell(1).value).toBe('架電日時');
     const row = sheet?.getRow(2);
