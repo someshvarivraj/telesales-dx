@@ -120,6 +120,8 @@ export const EXACT: Readonly<Record<string, string>> = {
   '架電の結果、記録しました！': 'Call result saved!',
   'アポ確定、営業に共有しました！': 'Appointment set and shared with sales!',
   '結果まで入力済みです！': 'Meeting results are in!',
+  動きを再開: 'Play animation',
+  動きを止める: 'Pause animation',
   'モラボット（作成中）': 'MoraBot (working)',
   'モラボット（喜ぶ）': 'MoraBot (happy)',
   'モラボット（困る）': 'MoraBot (trouble)',

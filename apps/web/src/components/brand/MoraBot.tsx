@@ -1,5 +1,6 @@
 import { type CSSProperties, type ReactNode, useId } from 'react';
 import { cn } from '@/components/ui/cn';
+import { ART, ART_RATIO, poseUrl } from './morabotArt';
 
 /**
  * モラボット — the company mascot, shared with the skill sheet system.
@@ -67,22 +68,6 @@ const LABELS: Record<MoraBotMood, string> = {
   schedule: 'モラボット（作成中）',
   done: 'モラボット（できた）',
 };
-
-/** Artwork poses (files in public/morabot, all on the same canvas). */
-const ART: Partial<Record<MoraBotMood, string>> = {
-  guide: 'guide',
-  explain: 'guide',
-  report: 'report',
-  checking: 'report',
-  call: 'call',
-  callHappy: 'call-happy',
-  booked: 'booked',
-  schedule: 'schedule',
-  writing: 'schedule',
-  done: 'done',
-  approved: 'done',
-};
-const ART_RATIO = 466 / 560;
 
 /** A per-instance delay (0–3.9 s) from the React id, so the beat is stable across renders. */
 function idleBeat(id: string): CSSProperties {
@@ -219,7 +204,7 @@ export function MoraBot({
         <span className="morabot-body">
           <img
             key={art}
-            src={`${import.meta.env.BASE_URL}morabot/${art}.webp`}
+            src={poseUrl(art)}
             width={width}
             height={size}
             alt=""
