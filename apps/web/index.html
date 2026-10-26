@@ -1,9 +1,15 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" translate="no">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
+    <!--
+      Browser page translation (e.g. Chrome's) rewrites the text React manages and
+      crashes the app ("insertBefore … not a child of this node"). English is offered
+      by the app's own language switch instead.
+    -->
+    <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>テレマ・営業DX</title>
   </head>
