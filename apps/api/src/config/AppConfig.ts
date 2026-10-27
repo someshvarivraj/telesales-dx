@@ -26,6 +26,20 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((value) => (value ? value : undefined)),
+  /**
+   * Comma-separated addresses or @domains that may receive real e-mail (e.g. on staging
+   * during a test). Other recipients are left out and the mail is kept in the outbox.
+   * Empty = no limit.
+   */
+  MAIL_ALLOWED_RECIPIENTS: z
+    .string()
+    .optional()
+    .transform((value) =>
+      (value ?? '')
+        .split(',')
+        .map((entry) => entry.trim().toLowerCase())
+        .filter(Boolean),
+    ),
   /** Run the scheduled jobs (N4, N19…) in this process. Enable on exactly one instance. */
   JOBS_ENABLED: z
     .enum(['true', 'false'])
@@ -52,6 +66,8 @@ export interface LoginPolicy {
 export interface MailConfig {
   readonly from: string;
   readonly smtpUrl: string | undefined;
+  /** Empty = anyone may receive mail. */
+  readonly allowedRecipients: readonly string[];
 }
 
 export interface SessionPolicy {
@@ -91,7 +107,11 @@ export class AppConfig {
     };
     this.fileStorageDir = values.FILE_STORAGE_DIR;
     this.appBaseUrl = values.APP_BASE_URL.replace(/\/$/, '');
-    this.mail = { from: values.MAIL_FROM, smtpUrl: values.SMTP_URL };
+    this.mail = {
+      from: values.MAIL_FROM,
+      smtpUrl: values.SMTP_URL,
+      allowedRecipients: values.MAIL_ALLOWED_RECIPIENTS,
+    };
     this.jobsEnabled = values.JOBS_ENABLED;
     this.slotLockTtlMs = values.SLOT_LOCK_TTL_SECONDS * 1000;
     this.holidayCsvUrl = values.HOLIDAY_CSV_URL;
