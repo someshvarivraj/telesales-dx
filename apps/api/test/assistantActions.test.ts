@@ -1,11 +1,15 @@
-import { type AssistantProposal, Permission } from '@telesales/shared';
+import { Permission } from '@telesales/shared';
 import pino from 'pino';
 import { describe, expect, it } from 'vitest';
 import type { AssistantConfig } from '../src/config/AppConfig.js';
 import type { Actor } from '../src/domain/access/AccessPolicy.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
 import type { AppointmentQueryService } from '../src/modules/appointments/AppointmentQueryService.js';
-import { AssistantActions } from '../src/modules/assistant/AssistantActions.js';
+import type { AreaTableService } from '../src/modules/area/AreaTableService.js';
+import {
+  AssistantActions,
+  type ProposedAction,
+} from '../src/modules/assistant/AssistantActions.js';
 import { AssistantService } from '../src/modules/assistant/AssistantService.js';
 import type { AssistantTools } from '../src/modules/assistant/AssistantTools.js';
 import type { SlotGuard } from '../src/modules/schedule/SlotGuard.js';
@@ -55,7 +59,13 @@ function guardWith(busyStartsUtc: string[] = []) {
 }
 
 const actions = (guard: SlotGuard) =>
-  new AssistantActions({ prisma, clock, guard, queries: {} as AppointmentQueryService });
+  new AssistantActions({
+    prisma,
+    clock,
+    guard,
+    queries: {} as AppointmentQueryService,
+    area: {} as AreaTableService,
+  });
 
 describe('MoraBot actions', () => {
   it('proposes a plan with JST times and saves nothing', async () => {
@@ -71,10 +81,9 @@ describe('MoraBot actions', () => {
         type: 'VISIT',
         title: '打ち合わせ',
       },
-    )) as { proposal: AssistantProposal };
+    )) as { proposal: ProposedAction };
     expect(result.proposal.kind).toBe('plan');
-    expect(result.proposal.request).toEqual({
-      path: '/plans',
+    expect(result.proposal.payload).toEqual({
       body: {
         ownerId: REP.id,
         type: 'VISIT',
@@ -118,8 +127,8 @@ describe('MoraBot actions', () => {
       actorWith(Permission.ManageTelemaAppointments),
       'propose_slot_hold',
       { person: '営業', date: '2026-11-03', start: '13:30', company: '試験工業' },
-    )) as { proposal: AssistantProposal };
-    expect(result.proposal.request).toBeNull();
+    )) as { proposal: ProposedAction };
+    expect(result.proposal.payload).toBeNull();
     const link = new URL(result.proposal.link, 'https://app.invalid');
     expect(link.pathname).toBe('/schedule/book');
     expect(Object.fromEntries(link.searchParams)).toMatchObject({
@@ -149,9 +158,9 @@ describe('MoraBot actions', () => {
       actorWith(Permission.WriteCallRecords),
       'propose_call_result',
       { company: '試験工業', grade: 'B', resultDetail: '来月また連絡' },
-    )) as { proposal: AssistantProposal };
-    expect(result.proposal.request).toEqual({
-      path: `/companies/${COMPANY.id}/call-records`,
+    )) as { proposal: ProposedAction };
+    expect(result.proposal.payload).toEqual({
+      companyId: COMPANY.id,
       body: { grade: 'B', resultDetail: '来月また連絡' },
     });
   });
@@ -166,13 +175,13 @@ describe('MoraBot proposals in the chat', () => {
       reasoningEffort: undefined,
       timeoutMs: 5000,
     };
-    const card: AssistantProposal = {
+    const card: ProposedAction = {
       id: 'p1',
       kind: 'plan',
       title: '予定を入れる',
       lines: [{ label: '件名', value: '打ち合わせ' }],
       warnings: [],
-      request: { path: '/plans', body: { ownerId: REP.id } },
+      payload: { body: { ownerId: REP.id } },
       link: '/schedule',
       confirmLabel: '確定して登録',
     };
@@ -213,6 +222,7 @@ describe('MoraBot proposals in the chat', () => {
       saved: false,
       shownToUserAsCard: '予定を入れる',
     });
-    expect(toolMessage).not.toContain('/plans');
+    expect(toolMessage).not.toContain(REP.id);
+    expect(result.steps).toEqual([{ text: '予定「」の内容をチェック', ok: true }]);
   });
 });

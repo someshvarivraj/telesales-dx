@@ -73,6 +73,8 @@ model User {
   shiftsEntered       Shift[]                  @relation("ShiftEnteredBy")
   allocations         Allocation[]             @relation("AllocationAssignee")
   allocationsConfirmed Allocation[]            @relation("AllocationConfirmer")
+  assistantChats       AssistantConversation[]
+  assistantActions     AssistantAction[]
   filesUploaded       StoredFile[]
   emails              OutboundEmail[]
 
@@ -971,4 +973,70 @@ model Allocation {
 
   @@index([date, kind, assigneeId])
   @@map("allocations")
+}
+
+/// MoraBot conversations, kept so people can look back at what they asked and what was done.
+model AssistantConversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AssistantMessage[]
+  actions  AssistantAction[]
+
+  @@index([userId, updatedAt])
+  @@map("assistant_conversations")
+}
+
+model AssistantMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  /// user | assistant | event (a card was confirmed or cancelled)
+  role           String   @db.VarChar(16)
+  content        String
+  /// What MoraBot did while answering: [{ text, ok }]
+  steps          Json?
+  /// A question with choices: { question, options: [{ label, description }] }
+  question       Json?
+  /// The screen MoraBot opened for the person.
+  openedPath     String?  @map("opened_path") @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  actions      AssistantAction[]
+
+  @@index([conversationId, createdAt])
+  @@map("assistant_messages")
+}
+
+/// A MoraBot proposal card. Its request is checked when proposed and run on the server
+/// only when its owner presses 確定; the browser never sends the request itself.
+model AssistantAction {
+  id             String    @id @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  messageId      String    @map("message_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  kind           String    @db.VarChar(24)
+  title          String    @db.VarChar(100)
+  lines          Json
+  warnings       Json
+  /// The checked request 確定 runs; null for a slot hold (確定 opens the booking screen).
+  payload        Json?
+  link           String    @db.VarChar(500)
+  confirmLabel   String    @map("confirm_label") @db.VarChar(40)
+  /// PROPOSED | DONE | DISMISSED
+  status         String    @default("PROPOSED") @db.VarChar(16)
+  resultLink     String?   @map("result_link") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  decidedAt      DateTime? @map("decided_at") @db.Timestamptz(6)
+
+  conversation AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message      AssistantMessage      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("assistant_actions")
 }

@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import {
-  type AssistantProposal,
+  type AssistantActionKind,
   addMinutes,
+  AppointmentSource,
   fromJst,
   jstDate,
   OptionCategory,
@@ -13,19 +14,35 @@ import type { Actor } from '../../domain/access/AccessPolicy.js';
 import type { Clock } from '../../domain/Clock.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
 import type { AppointmentQueryService } from '../appointments/AppointmentQueryService.js';
+import type { AreaTableService } from '../area/AreaTableService.js';
 import type { SlotGuard } from '../schedule/SlotGuard.js';
 import { findCompany, findPerson, isLookupError } from './lookup.js';
 
 /**
- * MoraBot's actions (phase 2). The model never saves anything: these tools check the
- * request (person, time, permissions) and return a proposal card; the person presses
- * 確定 and the browser sends it through the screens' own API.
+ * MoraBot's actions. The model never saves anything: these tools check the request
+ * (person, time, permissions) and return a proposal card with the checked payload. The
+ * payload stays on the server; when the person presses 確定, AssistantActionRunner runs
+ * it through the same services as the screens.
  */
 export interface ActionDeps {
   prisma: PrismaClient;
   clock: Clock;
   guard: SlotGuard;
   queries: AppointmentQueryService;
+  area: AreaTableService;
+}
+
+/** A card before it is stored: what the person sees, plus what 確定 will run. */
+export interface ProposedAction {
+  id: string;
+  kind: AssistantActionKind;
+  title: string;
+  lines: { label: string; value: string }[];
+  warnings: string[];
+  link: string;
+  confirmLabel: string;
+  /** Run on 確定 (see AssistantActionRunner); null for a slot hold. */
+  payload: Record<string, unknown> | null;
 }
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -109,6 +126,31 @@ export const ACTION_DEFINITIONS = [
   {
     type: 'function',
     function: {
+      name: 'propose_appointment',
+      description:
+        'アポを登録する提案カードを出す（新規リストの会社・テレマ、または営業が自分で取ったアポ）。担当営業を省くと営業担当表から自動で決める。「確定」で登録され、営業さんへのメール（N1）の確認画面が開く。会社名・日時・訪問形態がそろうまで ask_user で確認する。',
+      parameters: {
+        type: 'object',
+        properties: {
+          company: { type: 'string', description: '会社名（登録済みの会社）' },
+          date: { type: 'string', description: 'YYYY-MM-DD' },
+          start: { type: 'string', description: '開始 HH:MM（15分刻み）' },
+          end: { type: 'string', description: '終了 HH:MM。既定は開始の60分後' },
+          format: { type: 'string', enum: ['VISIT', 'ONLINE'], description: '訪問／オンライン' },
+          salesRep: { type: 'string', description: '担当営業の名前（省くと営業担当表で判定）' },
+          contactName: { type: 'string', description: '先方担当者' },
+          contactDepartment: { type: 'string', description: '先方の部署' },
+          contactPhone: { type: 'string', description: '先方の電話' },
+          visitAddress: { type: 'string', description: '訪問先住所（訪問のとき）' },
+          handoverNotes: { type: 'string', description: '営業さんへの伝達事項' },
+        },
+        required: ['company', 'date', 'start', 'format'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'propose_call_result',
       description:
         '架電結果の下書きカードを出す。「確定」を押したときだけ保存される。判定 A=アポ獲得 B=保留 C=不可 D=不通。',
@@ -169,6 +211,19 @@ const holdArgs = z.object({
   end: timeString.optional(),
   company: z.string().trim().max(200).optional(),
 });
+const appointmentArgs = z.object({
+  company: z.string().trim().min(1).max(200),
+  date: dateString,
+  start: timeString,
+  end: timeString.optional(),
+  format: z.enum(['VISIT', 'ONLINE']),
+  salesRep: z.string().trim().max(50).optional(),
+  contactName: z.string().trim().max(100).optional(),
+  contactDepartment: z.string().trim().max(100).optional(),
+  contactPhone: z.string().trim().max(64).optional(),
+  visitAddress: z.string().trim().max(300).optional(),
+  handoverNotes: z.string().trim().max(10_000).optional(),
+});
 const callArgs = z.object({
   company: z.string().trim().min(1).max(200),
   grade: z.enum(['A', 'B', 'C', 'D']),
@@ -227,6 +282,12 @@ export class AssistantActions {
       case 'propose_slot_hold': {
         const args = parse(holdArgs);
         return args.success ? this.proposeHold(actor, args.data) : { error: 'invalid_arguments' };
+      }
+      case 'propose_appointment': {
+        const args = parse(appointmentArgs);
+        return args.success
+          ? this.proposeAppointment(actor, args.data)
+          : { error: 'invalid_arguments' };
       }
       case 'propose_call_result': {
         const args = parse(callArgs);
@@ -307,8 +368,7 @@ export class AssistantActions {
         ...(args.note ? [{ label: 'メモ', value: args.note }] : []),
       ],
       warnings: check.warnings,
-      request: {
-        path: '/plans',
+      payload: {
         body: {
           ownerId: owner.id,
           type: args.type,
@@ -364,7 +424,7 @@ export class AssistantActions {
         ...(company ? [{ label: 'アポ先', value: company.name }] : []),
       ],
       warnings: check.warnings,
-      request: null,
+      payload: null,
       link: `/schedule/book?${params.toString()}`,
       confirmLabel: '枠を押さえて登録画面へ',
     });
@@ -398,7 +458,7 @@ export class AssistantActions {
         args.grade === 'A'
           ? ['保存のあと、企業のページで「担当営業を判定してアポを登録する」に進んでください。']
           : [],
-      request: { path: `/companies/${company.id}/call-records`, body },
+      payload: { companyId: company.id, body },
       link: `/companies/${company.id}`,
       confirmLabel: '確定して保存',
     });
@@ -445,16 +505,122 @@ export class AssistantActions {
         { label: '依頼の内容', value: args.message },
       ],
       warnings: ['送るとテレマ全員にお知らせが届きます。'],
-      request: {
-        path: `/appointments/${only.id}/change-requests`,
-        body: { message: args.message },
-      },
+      payload: { appointmentId: only.id, message: args.message },
       link: `/appointments/${only.id}`,
       confirmLabel: '確定して送る',
     });
   }
 
-  private proposal(card: Omit<AssistantProposal, 'id'>): { proposal: AssistantProposal } {
+  private async proposeAppointment(actor: Actor, args: z.infer<typeof appointmentArgs>) {
+    const telema = actor.can(Permission.ManageTelemaAppointments);
+    const sales = actor.can(Permission.ManageSalesAppointments);
+    const admin = actor.can(Permission.Administer);
+    if (!telema && !sales && !admin) {
+      return { error: 'not_allowed', reason: 'アポを登録できるのはテレマ・営業です' };
+    }
+    const found = await findCompany(this.deps.prisma, args.company);
+    if (isLookupError(found)) return found;
+    const company = await this.deps.prisma.company.findUnique({
+      where: { id: found.id },
+      select: { id: true, customerType: true, listName: true, department: true, address: true },
+    });
+    if (!company) return { error: 'company_not_found', name: args.company };
+
+    // Telemarketing books for the rep from the area table; sales book for themselves.
+    const source = telema || admin ? AppointmentSource.CallStatus : AppointmentSource.SalesBooked;
+    let rep: { id: string; name: string };
+    let repReason: string | null = null;
+    if (source === AppointmentSource.SalesBooked) {
+      const me = await findPerson(this.deps.prisma, actor.id, '自分');
+      if (isLookupError(me)) return me;
+      rep = me;
+    } else if (args.salesRep) {
+      const named = await findPerson(this.deps.prisma, actor.id, args.salesRep);
+      if (isLookupError(named)) return named;
+      rep = named;
+    } else {
+      const suggestion = await this.deps.area.findRep({ companyId: company.id });
+      if (!suggestion.rep) {
+        return { error: 'no_rep_in_area_table', hint: '担当営業の名前を聞いてください' };
+      }
+      rep = suggestion.rep;
+      repReason = suggestion.matchedBy;
+    }
+
+    const end = args.end ?? hhmm(minutesOf(args.start) + 60);
+    const startsAt = fromJst(args.date, args.start);
+    const endsAt = fromJst(args.date, end);
+    const check = await this.deps.guard.check({
+      salesRepId: rep.id,
+      startsAt,
+      endsAt,
+      actorId: actor.id,
+      kind: 'APPOINTMENT',
+      salesBooked: source === AppointmentSource.SalesBooked,
+    });
+    if (!check.ok) {
+      return { error: 'slot_unavailable', problems: check.problems.map(problemText) };
+    }
+
+    // Like the booking screen: the latest call record fills in the contact and the notes.
+    const latest = await this.deps.prisma.callRecord.findFirst({
+      where: { companyId: company.id },
+      orderBy: { calledAt: 'desc' },
+      select: { id: true, contactName: true, resultDetail: true, notes: true },
+    });
+    const contactName = args.contactName ?? latest?.contactName ?? undefined;
+    const handoverNotes =
+      args.handoverNotes ??
+      ([latest?.resultDetail, latest?.notes].filter(Boolean).join('\n') || undefined);
+    const visitAddress =
+      args.format === 'VISIT' ? (args.visitAddress ?? company.address ?? undefined) : undefined;
+    const contactDepartment = args.contactDepartment ?? company.department ?? undefined;
+    const body = {
+      source,
+      companyId: company.id,
+      sourceCallRecordId: source === AppointmentSource.CallStatus ? (latest?.id ?? null) : null,
+      salesRepId: rep.id,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      format: args.format,
+      visitAddress: visitAddress ?? null,
+      contactName: contactName ?? null,
+      contactDepartment: contactDepartment ?? null,
+      contactPhone: args.contactPhone ?? null,
+      handoverNotes: handoverNotes ?? null,
+      customerType: company.customerType,
+      listName: company.listName,
+    };
+    const optional = (label: string, value: string | null | undefined) =>
+      value ? [{ label, value }] : [];
+    return this.proposal({
+      kind: 'appointment',
+      title: 'アポを登録する',
+      lines: [
+        { label: 'アポ先', value: found.name },
+        { label: '日時', value: `${dayLabel(args.date)} ${args.start}〜${end}` },
+        { label: '訪問形態', value: args.format === 'VISIT' ? '訪問' : 'オンライン' },
+        {
+          label: '担当営業',
+          value: repReason ? `${rep.name}さん（営業担当表：${repReason}）` : `${rep.name}さん`,
+        },
+        ...optional('訪問先', visitAddress),
+        ...optional('先方担当者', contactName),
+        ...optional('先方の部署', contactDepartment),
+        ...optional('先方の電話', args.contactPhone),
+        ...optional('伝達事項', handoverNotes),
+      ],
+      warnings: [
+        ...check.warnings,
+        '登録すると担当営業にお知らせが届き、続けて営業さんへのメール（N1）の確認画面が開きます。',
+      ],
+      payload: { body },
+      link: `/companies/${company.id}`,
+      confirmLabel: '確定してアポを登録',
+    });
+  }
+
+  private proposal(card: Omit<ProposedAction, 'id'>): { proposal: ProposedAction } {
     return { proposal: { id: randomUUID(), ...card } };
   }
 }

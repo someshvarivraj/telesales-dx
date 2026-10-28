@@ -34,7 +34,9 @@ import { AppService } from './modules/apps/AppService.js';
 import { createSystemRouter } from './modules/apps/systemRouter.js';
 import { AreaTableService } from './modules/area/AreaTableService.js';
 import { createAssistantRouter } from './modules/assistant/assistantRouter.js';
+import { AssistantActionRunner } from './modules/assistant/AssistantActionRunner.js';
 import { AssistantActions } from './modules/assistant/AssistantActions.js';
+import { AssistantConversations } from './modules/assistant/AssistantConversations.js';
 import { AssistantService } from './modules/assistant/AssistantService.js';
 import { AssistantTools } from './modules/assistant/AssistantTools.js';
 import { AuditLogService } from './modules/audit/AuditLogService.js';
@@ -234,6 +236,19 @@ export class Container {
     );
 
     const authenticator = this.authenticator;
+    const assistant = new AssistantService(
+      config.assistant,
+      new AssistantTools({
+        prisma,
+        clock: this.clock,
+        dashboard,
+        schedule,
+        queries,
+        actions: new AssistantActions({ prisma, clock: this.clock, guard, queries, area }),
+      }),
+      this.clock,
+      this.logger,
+    );
     this.apiRouters = [
       createSystemRouter(apps),
       createReferenceRouter({ authenticator, options, users: adminUsers, calendar, settings }),
@@ -262,19 +277,14 @@ export class Container {
       createNotificationsRouter({ authenticator, notifications, dashboard }),
       createAssistantRouter({
         authenticator,
-        assistant: new AssistantService(
-          config.assistant,
-          new AssistantTools({
-            prisma,
-            clock: this.clock,
-            dashboard,
-            schedule,
-            queries,
-            actions: new AssistantActions({ prisma, clock: this.clock, guard, queries }),
-          }),
+        assistant,
+        conversations: new AssistantConversations(
+          prisma,
+          assistant,
+          new AssistantActionRunner({ schedule, callRecords, work, booking }),
           this.clock,
-          this.logger,
         ),
+        logger: this.logger,
       }),
     ];
     const adminRouter = createAdminRouter({

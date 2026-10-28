@@ -499,6 +499,55 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
   }
 }
 
+/* MoraBot workspace: slides in from the right; new lines rise in; steps tick in one by one. */
+.assistant-shell {
+  animation: assistant-slide 0.28s var(--ease-out-soft) both;
+}
+.assistant-header {
+  background: linear-gradient(115deg, var(--color-main-soft) 0%, var(--color-surface) 70%);
+}
+.assistant-in {
+  animation: assistant-rise 0.32s var(--ease-out-soft) both;
+}
+.assistant-step {
+  animation: assistant-rise 0.25s var(--ease-out-soft) both;
+}
+.assistant-card {
+  animation: assistant-card 0.4s var(--ease-out-soft) both;
+}
+@keyframes assistant-slide {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes assistant-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes assistant-card {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+/* Docked beside the page on wide screens, so both can be used at once. */
+@media (min-width: 1280px) {
+  body[data-assistant='panel'] .app-main {
+    margin-right: 480px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-shell,
+  .assistant-in,
+  .assistant-step,
+  .assistant-card {
+    animation: none;
+  }
+}
+
 /* MoraBot assistant launcher: a small wave every few seconds so it is noticed. */
 .assistant-launcher {
   animation: assistant-wave 6s ease-in-out 2s infinite;

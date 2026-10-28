@@ -108,7 +108,7 @@ describe('MoraBot assistant', () => {
         },
       ],
     };
-    const model = fakeModel([loop, loop, loop, loop, answer('まとめです。')]);
+    const model = fakeModel([loop, loop, loop, loop, loop, loop, answer('まとめです。')]);
     const tools = { run: async () => ({}) } as unknown as AssistantTools;
     const service = new AssistantService(config, tools, clock, silent, model.fetchImpl);
     const result = await service.chat(actor, user, [{ role: 'user', content: '調べて' }]);
@@ -125,5 +125,87 @@ describe('MoraBot assistant', () => {
     ).rejects.toMatchObject({
       details: { reason: 'assistant_unavailable' },
     });
+  });
+});
+
+describe('MoraBot working with the person', () => {
+  const toolCall = (name: string, args: object) => ({
+    choices: [
+      {
+        message: {
+          content: null,
+          tool_calls: [
+            { id: 'c1', type: 'function', function: { name, arguments: JSON.stringify(args) } },
+          ],
+        },
+      },
+    ],
+  });
+
+  it('asks with choices and waits for the answer', async () => {
+    const model = fakeModel([
+      toolCall('ask_user', {
+        question: 'どちらの会社ですか？',
+        options: [
+          { label: '試験工業（大阪）' },
+          { label: '試験工業（東京）', description: '本社' },
+        ],
+      }),
+    ]);
+    const service = new AssistantService(
+      config,
+      {} as AssistantTools,
+      clock,
+      silent,
+      model.fetchImpl,
+    );
+    const result = await service.chat(actor, user, [{ role: 'user', content: 'アポを取って' }]);
+    expect(model.bodies).toHaveLength(1);
+    expect(result.reply).toBe('どちらの会社ですか？');
+    expect(result.question).toEqual({
+      question: 'どちらの会社ですか？',
+      options: [{ label: '試験工業（大阪）' }, { label: '試験工業（東京）', description: '本社' }],
+    });
+  });
+
+  it('opens in-app screens only', async () => {
+    const model = fakeModel([
+      toolCall('open_screen', { path: 'https://evil.example/x' }),
+      toolCall('open_screen', { path: '/schedule?date=2026-11-04' }),
+      answer('予定表を開きました。'),
+    ]);
+    const steps: string[] = [];
+    const service = new AssistantService(
+      config,
+      {} as AssistantTools,
+      clock,
+      silent,
+      model.fetchImpl,
+    );
+    const result = await service.chat(actor, user, [{ role: 'user', content: '予定表を見せて' }], {
+      onStep: (step) => steps.push(`${step.ok ? 'ok' : 'ng'}:${step.text}`),
+    });
+    expect(result.openPath).toBe('/schedule?date=2026-11-04');
+    expect(steps).toEqual([
+      'ng:画面を開く（https://evil.example/x） → できませんでした',
+      'ok:画面を開く（/schedule?date=2026-11-04）',
+    ]);
+  });
+
+  it('tells the model which screen the person is on', async () => {
+    const model = fakeModel([answer('はい。')]);
+    const service = new AssistantService(
+      config,
+      {} as AssistantTools,
+      clock,
+      silent,
+      model.fetchImpl,
+    );
+    await service.chat(actor, user, [{ role: 'user', content: 'この会社は？' }], {
+      screen: '企業のページ（試験工業）',
+    });
+    expect(model.bodies[0]?.messages[0]?.content).toContain(
+      '開いている画面：企業のページ（試験工業）',
+    );
   });
 });
