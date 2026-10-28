@@ -21,18 +21,21 @@ const STEPS: StoryStep[] = [
     text: 'リストから電話をかけ、結果を記録',
     line: '架電の結果、記録しました！',
     mood: 'callHappy',
+    look: 'sakura',
   },
   {
     title: 'アポ',
     text: '営業の空き枠を押さえて登録、すぐ共有',
     line: 'アポ確定、営業に共有しました！',
     mood: 'booked',
+    look: 'sakura',
   },
   {
     title: '打ち合わせ・結果',
     text: '準備・結果・次回アクションまで一か所に',
     line: '結果まで入力済みです！',
     mood: 'done',
+    look: 'standard',
   },
 ];
 

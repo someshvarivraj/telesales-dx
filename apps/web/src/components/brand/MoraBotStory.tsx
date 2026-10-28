@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import type { MoraBotMood } from './MoraBot';
 import { ART, ART_RATIO, poseUrl } from './morabotArt';
-import { useTheme } from './theme';
+import { type Theme, useTheme } from './theme';
 
 export interface StoryStep {
   title: string;
@@ -11,6 +11,8 @@ export interface StoryStep {
   /** What MoraBot says while this step is shown. */
   line: string;
   mood: MoraBotMood;
+  /** Who acts this step: the girl MoraBot (telemarketing) or the blue one (sales). Default: the page's theme. */
+  look?: Theme;
 }
 
 const STEP_MS = 3200;
@@ -65,7 +67,7 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
                   file && (
                     <img
                       key={item.title}
-                      src={poseUrl(file, theme)}
+                      src={poseUrl(file, item.look ?? theme)}
                       width={width}
                       height={size}
                       alt=""
