@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { sessionQueryKey } from '../auth/hooks/useSession';
+import type * as AssistantApi from './api';
 import { AssistantWidget } from './AssistantWidget';
 
 const USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -31,7 +32,7 @@ const CONVERSATION: AssistantConversationDto = {
 };
 
 vi.mock('./api', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./api')>()),
+  ...(await importOriginal<typeof AssistantApi>()),
   useAssistantStatus: () => ({ data: { enabled: true } }),
   fetchConversation: async () => CONVERSATION,
 }));
