@@ -40,6 +40,23 @@ const envSchema = z.object({
         .map((entry) => entry.trim().toLowerCase())
         .filter(Boolean),
     ),
+  /**
+   * MoraBot assistant: an OpenAI-compatible chat endpoint (Google Gemini:
+   * https://generativelanguage.googleapis.com/v1beta/openai). Empty = assistant off.
+   * Sends questions and looked-up data outside AWS: needs the company's approval.
+   */
+  AI_BASE_URL: z
+    .string()
+    .optional()
+    .transform((value) => value || ''),
+  AI_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => value || ''),
+  AI_MODEL: z.string().min(1).default('gemini-pro-latest'),
+  /** Optional: low / medium / high, passed as reasoning_effort (faster, cheaper when low). */
+  AI_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).optional(),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(300000).default(60000),
   /** Run the scheduled jobs (N4, N19…) in this process. Enable on exactly one instance. */
   JOBS_ENABLED: z
     .enum(['true', 'false'])
@@ -61,6 +78,14 @@ const envSchema = z.object({
 export interface LoginPolicy {
   readonly maxFailedAttempts: number;
   readonly lockDurationMs: number;
+}
+
+export interface AssistantConfig {
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  readonly model: string;
+  readonly reasoningEffort: 'low' | 'medium' | 'high' | undefined;
+  readonly timeoutMs: number;
 }
 
 export interface MailConfig {
@@ -89,6 +114,7 @@ export class AppConfig {
   readonly fileStorageDir: string;
   readonly appBaseUrl: string;
   readonly mail: MailConfig;
+  readonly assistant: AssistantConfig;
   readonly jobsEnabled: boolean;
   readonly slotLockTtlMs: number;
   readonly holidayCsvUrl: string;
@@ -111,6 +137,13 @@ export class AppConfig {
       from: values.MAIL_FROM,
       smtpUrl: values.SMTP_URL,
       allowedRecipients: values.MAIL_ALLOWED_RECIPIENTS,
+    };
+    this.assistant = {
+      baseUrl: values.AI_BASE_URL,
+      apiKey: values.AI_API_KEY,
+      model: values.AI_MODEL,
+      reasoningEffort: values.AI_REASONING_EFFORT,
+      timeoutMs: values.AI_TIMEOUT_MS,
     };
     this.jobsEnabled = values.JOBS_ENABLED;
     this.slotLockTtlMs = values.SLOT_LOCK_TTL_SECONDS * 1000;

@@ -33,6 +33,9 @@ import { NextActionService } from './modules/appointments/NextActionService.js';
 import { AppService } from './modules/apps/AppService.js';
 import { createSystemRouter } from './modules/apps/systemRouter.js';
 import { AreaTableService } from './modules/area/AreaTableService.js';
+import { createAssistantRouter } from './modules/assistant/assistantRouter.js';
+import { AssistantService } from './modules/assistant/AssistantService.js';
+import { AssistantTools } from './modules/assistant/AssistantTools.js';
 import { AuditLogService } from './modules/audit/AuditLogService.js';
 import { PrismaAuditLogger } from './modules/audit/PrismaAuditLogger.js';
 import { AuthController } from './modules/auth/AuthController.js';
@@ -256,6 +259,15 @@ export class Container {
       }),
       createTelemaRouter({ authenticator, team, allocations }),
       createNotificationsRouter({ authenticator, notifications, dashboard }),
+      createAssistantRouter({
+        authenticator,
+        assistant: new AssistantService(
+          config.assistant,
+          new AssistantTools({ prisma, clock: this.clock, dashboard, schedule, queries }),
+          this.clock,
+          this.logger,
+        ),
+      }),
     ];
     const adminRouter = createAdminRouter({
       authenticator,
