@@ -134,6 +134,17 @@ export const EXACT: Readonly<Record<string, string>> = {
   '本日もどうぞよろしくお願いいたします。': 'Thank you in advance for your work today.',
   '午前中もどうぞよろしくお願いいたします。': 'Thank you for your work this morning.',
   'お昼の休憩もしっかりお取りください。': 'Please make sure to take your lunch break.',
+  'お昼ごはんはいかがでしたか？': 'How was your lunch?',
+  おいしかったです: 'It was good',
+  ふつうでした: 'It was OK',
+  まだです: 'Not yet',
+  'それはよかったです！午後もどうぞよろしくお願いいたします。':
+    "I'm glad to hear that! Thank you for your work this afternoon.",
+  'しっかり休めましたか？午後もご無理のないようにお願いいたします。':
+    'Did you get some rest? Please take it easy this afternoon.',
+  'お忙しいところおつかれさまです。少しでも休憩をお取りくださいね。':
+    'Thank you for your hard work. Please take a short break if you can.',
+  もぐもぐ: 'munch munch',
   '午後もどうぞよろしくお願いいたします。': 'Thank you for your work this afternoon.',
   '本日も一日、おつかれさまでした。': 'Thank you for all your work today.',
   'どうぞご無理のないようにお願いいたします。': 'Please take care not to overwork.',
