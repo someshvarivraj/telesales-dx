@@ -2,6 +2,7 @@ import { Permission } from '@telesales/shared';
 import { Outlet } from 'react-router';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
+import { ThemeProvider } from '@/components/brand/theme';
 import { Alert } from '@/components/ui/Alert';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useSystemStatus } from '@/features/system/useSystemStatus';
@@ -12,28 +13,30 @@ import { MobileNav } from './MobileNav';
 
 /** Left menu on tablets and wider; top bar + bottom tab bar on phones. */
 export function AppLayout() {
-  const { permissions } = useCurrentUser();
+  const { id, roles, permissions } = useCurrentUser();
   const status = useSystemStatus();
   const admin = permissions.includes(Permission.Administer);
   const maintenance = status.data?.maintenance === true;
   return (
-    <div className="min-h-dvh">
-      <GridBackdrop />
-      <AppSidebar />
-      <div className="app-main flex min-h-dvh min-w-0 flex-col">
-        <AppHeader />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-5 pb-24 sm:px-6 md:px-8 md:pt-7 md:pb-12">
-          {maintenance && admin && (
-            <Alert tone="warning" className="mb-5">
-              メンテナンス中です。いまは管理者だけが使えます（管理 ＞ {ja.admin.apps}{' '}
-              で終えられます）。
-            </Alert>
-          )}
-          {maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}
-        </main>
+    <ThemeProvider userId={id} roles={roles}>
+      <div className="min-h-dvh">
+        <GridBackdrop />
+        <AppSidebar />
+        <div className="app-main flex min-h-dvh min-w-0 flex-col">
+          <AppHeader />
+          <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-5 pb-24 sm:px-6 md:px-8 md:pt-7 md:pb-12">
+            {maintenance && admin && (
+              <Alert tone="warning" className="mb-5">
+                メンテナンス中です。いまは管理者だけが使えます（管理 ＞ {ja.admin.apps}{' '}
+                で終えられます）。
+              </Alert>
+            )}
+            {maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}
+          </main>
+        </div>
+        <MobileNav />
       </div>
-      <MobileNav />
-    </div>
+    </ThemeProvider>
   );
 }
 

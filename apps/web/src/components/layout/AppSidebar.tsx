@@ -3,7 +3,9 @@ import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
+import { useTheme } from '@/components/brand/theme';
 import { cn } from '@/components/ui/cn';
+import { Switch } from '@/components/ui/Switch';
 import { useCurrentUser, useLogout } from '@/features/auth/hooks/useSession';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
@@ -175,6 +177,7 @@ export function AppSidebar() {
         </div>
         <div className="sidebar-full mt-1.5 px-1.5">
           <LanguageSwitch className="w-full" />
+          <ThemeSwitch />
         </div>
         <button
           type="button"
@@ -209,5 +212,18 @@ function SideLink({ item, folded }: { item: NavItem; folded: boolean }) {
       <item.icon aria-hidden="true" className="size-[18px] shrink-0" strokeWidth={1.8} />
       <span className="nav-label truncate">{item.sideLabel}</span>
     </NavLink>
+  );
+}
+
+/** さくら (pink, girl MoraBot) or the standard look; remembered per person in this browser. */
+function ThemeSwitch() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <Switch
+      className="mt-1 min-h-9 px-1 text-xs text-ink-sub"
+      checked={theme === 'sakura'}
+      onChange={(on) => setTheme(on ? 'sakura' : 'standard')}
+      label="さくらテーマ"
+    />
   );
 }

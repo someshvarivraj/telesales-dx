@@ -1,5 +1,7 @@
 import { type CSSProperties, type ReactNode, useId } from 'react';
 import { cn } from '@/components/ui/cn';
+import { ART, ART_RATIO, poseUrl } from './morabotArt';
+import { useTheme } from './theme';
 
 /**
  * モラボット — the company mascot, shared with the skill sheet system.
@@ -47,6 +49,8 @@ const C = {
   green: '#148A0B',
   arm: '#4B78D6',
   bubble: '#8FB0EA',
+  pink: '#FF73AB',
+  bow: '#E8466E',
   white: '#FFFFFF',
 };
 
@@ -67,22 +71,6 @@ const LABELS: Record<MoraBotMood, string> = {
   schedule: 'モラボット（作成中）',
   done: 'モラボット（できた）',
 };
-
-/** Artwork poses (files in public/morabot, all on the same canvas). */
-const ART: Partial<Record<MoraBotMood, string>> = {
-  guide: 'guide',
-  explain: 'guide',
-  report: 'report',
-  checking: 'report',
-  call: 'call',
-  callHappy: 'call-happy',
-  booked: 'booked',
-  schedule: 'schedule',
-  writing: 'schedule',
-  done: 'done',
-  approved: 'done',
-};
-const ART_RATIO = 466 / 560;
 
 /** A per-instance delay (0–3.9 s) from the React id, so the beat is stable across renders. */
 function idleBeat(id: string): CSSProperties {
@@ -191,6 +179,9 @@ export function MoraBot({
   const label = title ?? LABELS[mood];
   // Each MoraBot breathes and blinks on its own beat, so several on a page look alive.
   const beat = idleBeat(useId());
+  // さくら theme: the girl MoraBot (pink head, bow) everywhere MoraBot appears.
+  const { theme } = useTheme();
+  const sakura = theme === 'sakura';
   const classes = cn(
     'morabot',
     animate ? 'morabot-busy' : !still && 'morabot-idle',
@@ -198,7 +189,9 @@ export function MoraBot({
     className,
   );
 
-  const art = headOnly ? undefined : ART[mood];
+  const art = headOnly
+    ? undefined
+    : (ART[mood] ?? (sakura && (mood === 'default' || mood === 'happy') ? 'girl' : undefined));
   if (art) {
     const width = Math.round(size * ART_RATIO);
     // A floor shadow that shrinks as MoraBot rises; a new pose hops in (keyed image).
@@ -218,8 +211,8 @@ export function MoraBot({
         <span className="morabot-shadow" />
         <span className="morabot-body">
           <img
-            key={art}
-            src={`${import.meta.env.BASE_URL}morabot/${art}.webp`}
+            key={`${theme}:${art}`}
+            src={poseUrl(art, theme)}
             width={width}
             height={size}
             alt=""
@@ -257,7 +250,14 @@ export function MoraBot({
         <circle className="morabot-antenna" cx={720} cy={263} r={42} fill={C.orange} />
         <rect x={330} y={540} width={60} height={144} rx={26} fill={C.orange} />
         <rect x={1050} y={540} width={60} height={144} rx={26} fill={C.orange} />
-        <rect x={390} y={372} width={660} height={528} rx={150} fill={C.blue} />
+        <rect x={390} y={372} width={660} height={528} rx={150} fill={sakura ? C.pink : C.blue} />
+        {sakura && (
+          <g fill={C.bow} stroke={C.navy} strokeWidth={10} strokeLinejoin="round">
+            <path d="M985 352 L915 312 Q900 352 915 396 Z" />
+            <path d="M985 352 L1055 312 Q1070 352 1055 396 Z" />
+            <circle cx={985} cy={352} r={22} />
+          </g>
+        )}
         <rect x={462} y={456} width={516} height={300} rx={110} fill={C.white} />
         <Face mood={mood} />
       </g>

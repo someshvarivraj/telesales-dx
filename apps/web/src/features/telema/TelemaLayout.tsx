@@ -22,7 +22,7 @@ export function TelemaLayout() {
   ];
   return (
     <>
-      <PageHeader eyebrow={ja.module.schedule} title={ja.module.telema} />
+      <PageHeader title={ja.module.telema} />
       <Tabs items={tabs} />
       <Outlet />
     </>

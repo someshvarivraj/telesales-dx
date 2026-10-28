@@ -24,6 +24,7 @@ import { formatShortDate, todayJst } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { MenuCard } from './MenuCard';
 import { adminMenu, mainMenu, type MenuItem, visibleItems } from './menus';
+import { greetingAt, jstHour } from './greeting';
 
 function MenuGrid({ items }: { items: MenuItem[] }) {
   return (
@@ -206,13 +207,27 @@ export function HomePage() {
     : [];
 
   const open = tasks.reduce((sum, task) => sum + task.count, 0);
+  const greeting = greetingAt(jstHour());
 
   return (
     <div className="flex flex-col gap-10">
       <div className="flex items-center gap-4 overflow-hidden border border-line bg-surface px-6 py-5 shadow-(--shadow-card) max-sm:px-4">
-        <MoraBot mood={data && open === 0 ? 'done' : 'report'} size={96} title="" />
+        <div className="morabot-cheer relative shrink-0">
+          <span aria-hidden="true" className="morabot-sparkles">
+            <i />
+            <i />
+            <i />
+          </span>
+          <MoraBot mood={data && open === 0 ? 'done' : 'report'} size={104} title="" />
+        </div>
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold">{name}さん、おつかれさまです。</p>
+          <p className="morabot-cheer-bubble mb-1.5 inline-block bg-main-soft px-2.5 py-1 text-xs font-bold text-main">
+            {greeting.cheer}
+          </p>
+          <p className="text-lg font-bold">
+            {name}
+            {greeting.suffix}
+          </p>
           <p className="text-sm text-ink-sub">
             {!data
               ? ja.common.loading

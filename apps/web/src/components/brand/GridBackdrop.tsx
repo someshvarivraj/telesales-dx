@@ -11,7 +11,10 @@ const RIPPLE_RADIUS = 240;
 const RIPPLE_BAND = 40;
 /** Line and cell colours: the page ink and the two accent colours, very faint. */
 const LINE = 'rgba(30, 37, 48, 0.055)';
-const ACCENTS = ['194, 65, 12', '47, 107, 168'];
+const ORANGE = ['194, 65, 12', '47, 107, 168'];
+const SAKURA = ['190, 24, 93', '236, 72, 153'];
+/** Accent colours of the current theme (read on each frame, so a switch shows at once). */
+const accents = () => (document.documentElement.dataset.theme === 'sakura' ? SAKURA : ORANGE);
 
 interface Ripple {
   x: number;
@@ -92,7 +95,7 @@ export function GridBackdrop() {
           const strength = isHome ? Math.max(ring, 1 - t * 2.5) : ring;
           if (strength <= 0) continue;
           const alpha = strength * fade;
-          const color = isHome ? ACCENTS[0] : ACCENTS[1];
+          const color = isHome ? accents()[0] : accents()[1];
           context.fillStyle = `rgba(${color}, ${alpha * (isHome ? 0.3 : 0.2)})`;
           context.fillRect(col * CELL + 1, row * CELL + 1, CELL - 1, CELL - 1);
           context.strokeStyle = `rgba(${color}, ${alpha * 0.45})`;
@@ -117,7 +120,7 @@ export function GridBackdrop() {
         row: Math.floor(Math.random() * Math.ceil(height / CELL)),
         born: now,
         life: 2600 + Math.random() * 3200,
-        color: ACCENTS[Math.random() < 0.7 ? 0 : 1] ?? '194, 65, 12',
+        color: accents()[Math.random() < 0.7 ? 0 : 1] ?? '194, 65, 12',
       });
     };
 
