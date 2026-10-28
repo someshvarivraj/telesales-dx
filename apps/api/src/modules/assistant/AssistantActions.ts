@@ -459,7 +459,7 @@ export class AssistantActions {
           ? ['保存のあと、企業のページで「担当営業を判定してアポを登録する」に進んでください。']
           : [],
       payload: { companyId: company.id, body },
-      link: `/companies/${company.id}`,
+      link: `/calls/companies/${company.id}`,
       confirmLabel: '確定して保存',
     });
   }
@@ -615,7 +615,7 @@ export class AssistantActions {
         '登録すると担当営業にお知らせが届き、続けて営業さんへのメール（N1）の確認画面が開きます。',
       ],
       payload: { body },
-      link: `/companies/${company.id}`,
+      link: `/calls/companies/${company.id}`,
       confirmLabel: '確定してアポを登録',
     });
   }

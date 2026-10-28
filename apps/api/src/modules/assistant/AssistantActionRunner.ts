@@ -50,7 +50,7 @@ export class AssistantActionRunner {
           companyId,
           parseWith(createCallRecordRequestSchema, body),
         );
-        return `/companies/${companyId}`;
+        return `/calls/companies/${companyId}`;
       }
       case 'changeRequest': {
         const { appointmentId, message } = parseWith(changePayload, action.payload);
