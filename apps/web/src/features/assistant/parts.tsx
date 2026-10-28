@@ -28,6 +28,7 @@ import { cn } from '@/components/ui/cn';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { slotProblemText } from '@/features/schedule/slotProblems';
+import { useLeave } from './leave';
 
 const SCREEN_NAMES: [RegExp, string][] = [
   [/^\/home/, 'ホーム'],
@@ -55,6 +56,7 @@ export function screenName(path: string): string {
 const LINK = /\[([^\]\n]{1,40})\]\((\/(?!\/)[\w\-/?=&.%]*)\)/g;
 
 export function Reply({ text }: { text: string }) {
+  const leave = useLeave();
   const parts: ReactNode[] = [];
   let last = 0;
   for (const match of text.matchAll(LINK)) {
@@ -64,6 +66,7 @@ export function Reply({ text }: { text: string }) {
       <Link
         key={`${match.index}-${to}`}
         to={to}
+        onClick={leave}
         className="mx-0.5 inline-flex items-center gap-1 border border-main-line bg-main-soft px-1.5 py-0.5 text-xs font-bold text-main hover:bg-main hover:text-white"
       >
         {label}
@@ -249,6 +252,7 @@ export function ActionCard({
   onConfirm: () => void;
   onDismiss: () => void;
 }) {
+  const leave = useLeave();
   const Icon = KIND_ICON[action.kind];
   const open = action.status === 'PROPOSED';
   return (
@@ -341,6 +345,7 @@ export function ActionCard({
         action.resultLink && (
           <Link
             to={action.resultLink}
+            onClick={leave}
             className="flex items-center justify-end gap-1 border-t border-line px-3.5 py-2 text-xs font-bold text-main hover:bg-main-soft"
           >
             {screenName(action.resultLink)}で見る
@@ -354,13 +359,15 @@ export function ActionCard({
 
 /** A screen MoraBot opened, so the person sees where they are now. */
 export function OpenedScreen({ path }: { path: string }) {
+  const leave = useLeave();
   return (
     <Link
       to={path}
+      onClick={leave}
       className="mt-3 flex items-center gap-2 border border-line bg-column px-3 py-2 text-xs font-bold text-ink-sub hover:border-main hover:text-main"
     >
-      <MonitorPlay aria-hidden="true" className="size-4 text-main" />「{screenName(path)}
-      」を開きました
+      <MonitorPlay aria-hidden="true" className="size-4 text-main" />
+      {`「${screenName(path)}」を開きました`}
       <ArrowRight aria-hidden="true" className="ml-auto size-3.5" />
     </Link>
   );
