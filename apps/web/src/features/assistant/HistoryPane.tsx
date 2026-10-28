@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/components/ui/cn';
 import { formatDateTime } from '@/lib/format';
 import { useActionHistory, useConversations, useDeleteConversation } from './api';
+import { useLeave } from './leave';
 import { screenName } from './parts';
 
 const DAY_MS = 86_400_000;
@@ -50,6 +51,7 @@ export function HistoryPane({
   const conversations = useConversations(tab === 'chats');
   const actions = useActionHistory(tab === 'actions');
   const remove = useDeleteConversation();
+  const leave = useLeave();
 
   return (
     <aside className={cn('flex min-h-0 flex-col bg-column', className)} aria-label="MoraBotの履歴">
@@ -204,6 +206,7 @@ export function HistoryPane({
                     {action.resultLink && (
                       <Link
                         to={action.resultLink}
+                        onClick={leave}
                         className="flex items-center gap-0.5 text-main hover:underline"
                       >
                         {screenName(action.resultLink)}

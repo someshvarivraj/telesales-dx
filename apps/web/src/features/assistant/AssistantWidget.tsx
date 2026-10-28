@@ -37,6 +37,7 @@ import {
   useRefreshHistory,
 } from './api';
 import { HistoryPane } from './HistoryPane';
+import { LeaveContext } from './leave';
 import {
   ActionCard,
   AssistantRow,
@@ -204,6 +205,15 @@ export function AssistantWidget() {
     setMode((current) => (current === 'full' ? 'panel' : current));
   };
 
+  /**
+   * The person follows a link to a screen: if the panel covers the page (narrower than
+   * the docked layout, or the full view), it folds into the launcher so the screen shows.
+   */
+  const leave = () => {
+    const docked = window.matchMedia('(min-width: 1280px)').matches;
+    setMode((current) => (docked && current === 'panel' ? current : docked ? 'panel' : 'closed'));
+  };
+
   const send = (text: string) => {
     const message = text.trim();
     if (!message || working) return;
@@ -289,7 +299,8 @@ export function AssistantWidget() {
             action.resultLink &&
             (action.kind === 'booking' || action.kind === 'appointment')
           ) {
-            goTo(action.resultLink);
+            void navigate(action.resultLink);
+            leave();
           }
         },
         onError: (failure) => setCardErrors((current) => ({ ...current, [actionId]: failure })),
@@ -530,76 +541,81 @@ export function AssistantWidget() {
       )}
 
       {open && (
-        <section
-          aria-label="MoraBot"
-          className={cn(
-            'assistant-shell fixed z-50 flex flex-col overflow-hidden bg-surface shadow-(--shadow-raised)',
-            mode === 'full'
-              ? 'inset-0 md:inset-4 md:border md:border-line'
-              : 'inset-y-0 right-0 w-full border-l border-line sm:w-[480px]',
-          )}
-        >
-          <header className="assistant-header relative flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
-            <div className="relative">
-              <MoraBot mood={working ? 'think' : 'guide'} size={52} animate={working} title="" />
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'absolute right-0 bottom-1 size-3 border-2 border-surface',
-                  working ? 'animate-pulse bg-warning' : 'bg-success',
+        <LeaveContext value={leave}>
+          <section
+            aria-label="MoraBot"
+            className={cn(
+              'assistant-shell fixed z-50 flex flex-col overflow-hidden bg-surface shadow-(--shadow-raised)',
+              mode === 'full'
+                ? 'inset-0 md:inset-4 md:border md:border-line'
+                : 'inset-y-0 right-0 w-full border-l border-line sm:w-[480px]',
+            )}
+          >
+            <header className="assistant-header relative flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+              <div className="relative">
+                <MoraBot mood={working ? 'think' : 'guide'} size={52} animate={working} title="" />
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'absolute right-0 bottom-1 size-3 border-2 border-surface',
+                    working ? 'animate-pulse bg-warning' : 'bg-success',
+                  )}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-bold">MoraBot</p>
+                <p
+                  className={cn(
+                    'truncate text-xs',
+                    working ? 'font-bold text-main' : 'text-ink-sub',
+                  )}
+                >
+                  {statusLine}
+                </p>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <HeaderButton label="新しい会話" onClick={startNew} icon={Plus} />
+                {mode === 'panel' && (
+                  <HeaderButton
+                    label="履歴"
+                    onClick={() => setShowHistory((value) => !value)}
+                    icon={History}
+                    active={showHistory}
+                  />
                 )}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-bold">MoraBot</p>
-              <p
-                className={cn('truncate text-xs', working ? 'font-bold text-main' : 'text-ink-sub')}
-              >
-                {statusLine}
-              </p>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <HeaderButton label="新しい会話" onClick={startNew} icon={Plus} />
-              {mode === 'panel' && (
                 <HeaderButton
-                  label="履歴"
-                  onClick={() => setShowHistory((value) => !value)}
-                  icon={History}
-                  active={showHistory}
+                  label={mode === 'full' ? '横に並べる' : '大きく開く'}
+                  onClick={() => setMode(mode === 'full' ? 'panel' : 'full')}
+                  icon={mode === 'full' ? Minimize2 : Maximize2}
+                  className="max-sm:hidden"
+                />
+                <HeaderButton label="閉じる（Ctrl+K）" onClick={() => setMode('closed')} icon={X} />
+              </div>
+            </header>
+
+            <div className="flex min-h-0 flex-1">
+              {mode === 'full' && (
+                <HistoryPane
+                  currentId={conversationId}
+                  onOpen={openConversation}
+                  onNew={startNew}
+                  className="w-72 shrink-0 border-r border-line max-md:hidden"
                 />
               )}
-              <HeaderButton
-                label={mode === 'full' ? '横に並べる' : '大きく開く'}
-                onClick={() => setMode(mode === 'full' ? 'panel' : 'full')}
-                icon={mode === 'full' ? Minimize2 : Maximize2}
-                className="max-sm:hidden"
-              />
-              <HeaderButton label="閉じる（Ctrl+K）" onClick={() => setMode('closed')} icon={X} />
+              {mode === 'panel' && showHistory ? (
+                <HistoryPane
+                  currentId={conversationId}
+                  onOpen={openConversation}
+                  onNew={startNew}
+                  onClose={() => setShowHistory(false)}
+                  className="flex-1"
+                />
+              ) : (
+                conversation
+              )}
             </div>
-          </header>
-
-          <div className="flex min-h-0 flex-1">
-            {mode === 'full' && (
-              <HistoryPane
-                currentId={conversationId}
-                onOpen={openConversation}
-                onNew={startNew}
-                className="w-72 shrink-0 border-r border-line max-md:hidden"
-              />
-            )}
-            {mode === 'panel' && showHistory ? (
-              <HistoryPane
-                currentId={conversationId}
-                onOpen={openConversation}
-                onNew={startNew}
-                onClose={() => setShowHistory(false)}
-                className="flex-1"
-              />
-            ) : (
-              conversation
-            )}
-          </div>
-        </section>
+          </section>
+        </LeaveContext>
       )}
     </>
   );
