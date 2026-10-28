@@ -206,13 +206,10 @@ export function AssistantWidget() {
   };
 
   /**
-   * The person follows a link to a screen: if the panel covers the page (narrower than
-   * the docked layout, or the full view), it folds into the launcher so the screen shows.
+   * The person follows a link to a screen: MoraBot steps aside so the screen is what they
+   * see (the conversation is kept; the launcher or Ctrl+K brings it back).
    */
-  const leave = () => {
-    const docked = window.matchMedia('(min-width: 1280px)').matches;
-    setMode((current) => (docked && current === 'panel' ? current : docked ? 'panel' : 'closed'));
-  };
+  const leave = () => setMode('closed');
 
   const send = (text: string) => {
     const message = text.trim();
