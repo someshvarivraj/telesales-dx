@@ -16,6 +16,7 @@ import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDateTime } from '@/lib/format';
 import { type MailKind, useMailActions, useMailDraft } from './api';
+import { BackBar, BackLink } from '@/components/ui/BackLink';
 
 const TITLE: Record<MailKind, string> = {
   booking: '営業さんへの伝達事項（N1）',
@@ -40,11 +41,7 @@ export function MailPage() {
   return (
     <>
       <PageHeader
-        eyebrow={
-          <Link to={paths.appointment(id)} className="hover:underline">
-            アポのページへ戻る
-          </Link>
-        }
+        eyebrow={<BackLink to={paths.appointment(id)}>アポのページへ戻る</BackLink>}
         title={TITLE[mailKind]}
       />
       <QueryState query={draft}>
@@ -216,6 +213,7 @@ function MailEditor({
           </Button>
         </div>
       )}
+      {sent && <BackBar to={paths.appointment(appointmentId)}>アポのページへ戻る</BackBar>}
     </div>
   );
 }

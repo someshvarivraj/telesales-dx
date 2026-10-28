@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import type { MoraBotMood } from './MoraBot';
 import { ART, ART_RATIO, poseUrl } from './morabotArt';
+import { useTheme } from './theme';
 
 export interface StoryStep {
   title: string;
@@ -30,6 +31,7 @@ function prefersStill() {
  */
 export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
   const [index, setIndex] = useState(0);
+  const { theme } = useTheme();
   const [still] = useState(prefersStill);
   const [paused, setPaused] = useState(still);
   const playing = !paused;
@@ -63,7 +65,7 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
                   file && (
                     <img
                       key={item.title}
-                      src={poseUrl(file)}
+                      src={poseUrl(file, theme)}
                       width={width}
                       height={size}
                       alt=""

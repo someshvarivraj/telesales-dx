@@ -35,8 +35,8 @@ export const ja = {
     [Role.Admin]: '管理者',
   },
   module: {
-    calls: '架電状況共有',
-    schedule: 'スケジュール管理',
+    calls: '架電状況',
+    schedule: 'スケジュール',
     appointments: 'アポ一覧',
     dashboard: 'ダッシュボード',
     telema: 'テレマ管理',

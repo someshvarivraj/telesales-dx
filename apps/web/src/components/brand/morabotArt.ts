@@ -1,4 +1,5 @@
 import type { MoraBotMood } from './MoraBot';
+import type { Theme } from './theme';
 
 /** Artwork poses (files in public/morabot, all on the same canvas). */
 export const ART: Partial<Record<MoraBotMood, string>> = {
@@ -16,6 +17,7 @@ export const ART: Partial<Record<MoraBotMood, string>> = {
 };
 export const ART_RATIO = 466 / 560;
 
-export function poseUrl(file: string): string {
-  return `${import.meta.env.BASE_URL}morabot/${file}.webp`;
+/** The pose image; the さくら theme has its own pink set with the same names. */
+export function poseUrl(file: string, theme: Theme = 'standard'): string {
+  return `${import.meta.env.BASE_URL}morabot/${theme === 'sakura' ? 'girl/' : ''}${file}.webp`;
 }

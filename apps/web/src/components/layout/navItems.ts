@@ -38,7 +38,7 @@ export const navItems: readonly NavItem[] = [
   {
     to: paths.calls,
     label: ja.nav.calls,
-    sideLabel: '架電状況',
+    sideLabel: ja.module.calls,
     group: 'work',
     icon: PhoneCall,
     anyOf: [Permission.ViewData],
@@ -46,7 +46,7 @@ export const navItems: readonly NavItem[] = [
   {
     to: paths.schedule,
     label: ja.nav.schedule,
-    sideLabel: 'スケジュール',
+    sideLabel: ja.module.schedule,
     group: 'work',
     icon: CalendarDays,
     anyOf: [Permission.ViewData],

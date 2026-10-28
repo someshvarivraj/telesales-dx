@@ -54,7 +54,7 @@
   --color-success: #1f6135;
   --color-success-soft: #e6f4ea;
 
-  /* Modules — ① 架電状況共有 (teal) / ② スケジュール管理 (blue) / アポ (amber) / 管理 (grey) */
+  /* Modules — ① 架電状況 (teal) / ② スケジュール (blue) / アポ (amber) / 管理 (grey) */
   --color-calls: #2e6f66;
   --color-calls-soft: #e5f0ee;
   --color-schedule: #2f6ba8;
@@ -200,6 +200,21 @@
 .scroll-quiet {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-strong) transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   さくら theme (telemarketing, 10/27 test): pink actions and a faint blush on the
+   page. White on main stays above 4.5:1. Status colours are left as they are.
+   --------------------------------------------------------------------------- */
+html[data-theme='sakura'] {
+  --color-main: #be185d;
+  --color-main-hover: #9d174d;
+  --color-main-soft: #fdf2f8;
+  --color-main-line: #fbcfe8;
+  --color-main-focus: #ec4899;
+  --color-canvas: #fdf7fa;
+  --color-column: #fffafc;
+  --color-hover: #fcf1f6;
 }
 
 /* ---------------------------------------------------------------------------
@@ -395,6 +410,95 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
 .morabot-art-busy .morabot-shadow {
   animation: morabot-shadow 0.9s ease-in-out infinite;
 }
+/*
+ * Home greeting: MoraBot hops in twice with a little wiggle, sparkles pop around
+ * it, and it hops again on hover. Off for reduced motion.
+ */
+.morabot-cheer {
+  animation: morabot-cheer 0.9s var(--ease-out-soft) 0.15s 2 both;
+}
+.morabot-cheer:hover {
+  animation: morabot-cheer-again 0.8s var(--ease-out-soft);
+}
+@keyframes morabot-cheer {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-16%) rotate(-6deg);
+  }
+  60% {
+    transform: translateY(0) rotate(4deg) scale(1.04, 0.96);
+  }
+  80% {
+    transform: translateY(-4%) rotate(-2deg);
+  }
+}
+@keyframes morabot-cheer-again {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  40% {
+    transform: translateY(-14%) rotate(6deg);
+  }
+  70% {
+    transform: translateY(0) scale(1.05, 0.95);
+  }
+}
+.morabot-sparkles i {
+  position: absolute;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  background: var(--color-main-focus);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: morabot-sparkle 2.4s ease-in-out infinite;
+}
+.morabot-sparkles i:nth-child(1) {
+  top: 6%;
+  left: -6%;
+}
+.morabot-sparkles i:nth-child(2) {
+  top: 0;
+  right: -4%;
+  animation-delay: 0.8s;
+}
+.morabot-sparkles i:nth-child(3) {
+  bottom: 22%;
+  right: -10%;
+  width: 7px;
+  height: 7px;
+  animation-delay: 1.6s;
+}
+@keyframes morabot-sparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.1) rotate(25deg);
+  }
+  45% {
+    opacity: 0;
+    transform: scale(0.5) rotate(60deg);
+  }
+}
+.morabot-cheer-bubble {
+  animation: morabot-bubble-in 0.45s var(--ease-out-soft) 0.5s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .morabot-cheer,
+  .morabot-cheer:hover,
+  .morabot-sparkles i,
+  .morabot-cheer-bubble {
+    animation: none !important;
+  }
+}
+
 /* Stacked poses (sign-in story): only the shown one is visible and hops in. */
 .morabot-stack {
   position: absolute;

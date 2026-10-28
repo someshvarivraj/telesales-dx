@@ -28,6 +28,7 @@ import { FlagBadge, GradeBadge } from './CallBadges';
 import { CallRecordForm } from './CallRecordForm';
 import { CompanyEditDialog } from './CompanyEditDialog';
 import { FindRepDialog } from './FindRepDialog';
+import { BackBar, BackLink } from '@/components/ui/BackLink';
 
 function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyId: string }) {
   const [editing, setEditing] = useState(false);
@@ -124,11 +125,7 @@ export function CompanyPage() {
       {(data) => (
         <>
           <PageHeader
-            eyebrow={
-              <Link to={paths.calls} className="hover:underline">
-                {ja.module.calls}
-              </Link>
-            }
+            eyebrow={<BackLink to={paths.calls}>{ja.module.calls}へ戻る</BackLink>}
             title={
               <span className="flex flex-wrap items-center gap-2">
                 {data.name}
@@ -327,6 +324,7 @@ export function CompanyPage() {
             companyId={id}
             onChoose={openSchedule}
           />
+          <BackBar to={paths.calls}>{ja.module.calls}へ戻る</BackBar>
         </>
       )}
     </QueryState>

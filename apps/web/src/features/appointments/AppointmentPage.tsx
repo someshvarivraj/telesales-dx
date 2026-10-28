@@ -46,6 +46,7 @@ import {
 import { PreparationSection } from './PreparationSection';
 import { ResultSection } from './ResultSection';
 import { TimelineSection } from './TimelineSection';
+import { BackBar, BackLink } from '@/components/ui/BackLink';
 
 type OpenDialog = 'reschedule' | 'cancel' | 'request' | 'edit' | null;
 
@@ -73,11 +74,7 @@ export function AppointmentPage() {
         return (
           <>
             <PageHeader
-              eyebrow={
-                <Link to={paths.appointments} className="hover:underline">
-                  {ja.module.appointments}
-                </Link>
-              }
+              eyebrow={<BackLink to={paths.appointments}>{ja.module.appointments}へ戻る</BackLink>}
               title={appointment.company.name}
               actions={
                 <>
@@ -409,6 +406,7 @@ export function AppointmentPage() {
             {dialog === 'edit' && (
               <EditDetailsDialog appointment={appointment} onClose={() => setDialog(null)} />
             )}
+            <BackBar to={paths.appointments}>{ja.module.appointments}へ戻る</BackBar>
           </>
         );
       }}
