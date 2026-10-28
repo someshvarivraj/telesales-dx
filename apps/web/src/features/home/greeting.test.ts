@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { greetingAt, jstHour } from './greeting';
 
 describe('home greeting', () => {
-  it('changes with the time of day', () => {
-    expect(greetingAt(7).suffix).toBe('さん、おはようございます！');
-    expect(greetingAt(11).suffix).toBe('さん、こんにちは！');
+  it('greets formally by the time of day', () => {
+    expect(greetingAt(7).suffix).toBe('さん、おはようございます。');
+    expect(greetingAt(11).suffix).toBe('さん、おつかれさまです。');
     expect(greetingAt(12).cheer).toContain('お昼');
-    expect(greetingAt(15).cheer).toContain('午後');
-    expect(greetingAt(18).suffix).toBe('さん、おつかれさまです。');
-    expect(greetingAt(2).suffix).toBe('さん、おつかれさまです。');
+    expect(greetingAt(15).cheer).toBe('午後もどうぞよろしくお願いいたします。');
+    expect(greetingAt(18).cheer).toBe('本日も一日、おつかれさまでした。');
+    expect(greetingAt(23).suffix).toBe('さん、遅くまでおつかれさまです。');
+    expect(greetingAt(2).suffix).toBe('さん、遅くまでおつかれさまです。');
   });
 
   it('uses Japan time', () => {
