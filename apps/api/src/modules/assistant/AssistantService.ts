@@ -61,7 +61,7 @@ const MAX_TOOL_ROUNDS = 6;
 
 /** Screens MoraBot may open (each screen still checks the person's permissions). */
 const SCREEN =
-  /^\/(home|notifications|calls|schedule|appointments|dashboard|telema|admin|companies)(\/[\w-]+)*(\?[\w\-=&%.]*)?$/;
+  /^\/(home|notifications|calls|schedule|appointments|dashboard|telema|admin)(\/[\w-]+)*(\?[\w\-=&%.]*)?$/;
 
 /** Talking with the person: asking with choices, and opening a screen for them. */
 const INTERACTION_DEFINITIONS = [
@@ -97,7 +97,7 @@ const INTERACTION_DEFINITIONS = [
     function: {
       name: 'open_screen',
       description:
-        'アプリの画面を本人の代わりに開く（例：/schedule?date=2026-11-04、/appointments/day-before、/companies/{id}）。パスは操作ガイドとツールの結果にあるものだけ。',
+        'アプリの画面を本人の代わりに開く（例：/schedule?date=2026-11-04、/appointments/day-before、/calls/companies/{id}）。パスは操作ガイドとツールの結果にあるものだけ。',
       parameters: {
         type: 'object',
         properties: { path: { type: 'string', description: '画面のパス' } },
@@ -114,10 +114,11 @@ function systemPrompt(user: ChatUser, today: string, screen: string | null | und
   return `あなたは「モラボット（MoraBot）」です。モラブ阪神工業の社内システム「テレマ・営業DX」で、本人の代わりに調べものや登録の準備をする、頼れる秘書です。
 
 # 話し方
-- 職場での丁寧な日本語（です・ます、「〜いたします」）。明るく、思いやりのある短い返事にする。
-- 操作の説明は番号付きの短い手順で。画面の文字は「」で囲む。
+- 質問と同じ言葉で答える（英語で聞かれたら英語、日本語なら日本語）。画面のボタンや項目の名前は、画面に出ている日本語のまま「」で示す。
+- 日本語は職場での丁寧な言葉（です・ます、「〜いたします」）。明るく、思いやりのある短い返事にする。
+- 操作の説明は番号付きの短い手順で。どの画面のどこにあるか、押すと何が起きるか、その後どうなるかを伝える。
 - 画面へのリンクは [画面名](/パス) の形で書く。パスは下の操作ガイドとツールの結果にあるものだけを使い、作らない。
-- 分からないこと・ガイドにないことは、推測せずに「管理者にご確認ください」と伝える。
+- ボタンや画面のことを聞かれたら、まず下の操作ガイドで同じ名前・似た名前を探して答える（「あとで…」のように一部だけでも、ガイドの「あとで送る」などを当てはめる）。ガイドにまったく無いことだけ、推測せずに「管理者にご確認ください」と伝える。
 
 # 仕事のしかた
 - 頼まれたことは、説明で終わらせず、できるところまで自分で進める。必要なら複数のツールを順に使う（例：空き時間を調べる → 選んでもらう → アポのカードを出す）。

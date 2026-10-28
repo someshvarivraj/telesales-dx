@@ -263,7 +263,7 @@ export class AssistantConversations {
   /** The screen in words, so 「この会社」「このアポ」 can be understood. */
   private async describeScreen(path: string | null | undefined): Promise<string | null> {
     if (!path) return null;
-    const company = new RegExp(`^/companies/(${UUID})`).exec(path)?.[1];
+    const company = new RegExp(`^/calls/companies/(${UUID})`).exec(path)?.[1];
     if (company) {
       const row = await this.prisma.company.findUnique({
         where: { id: company },

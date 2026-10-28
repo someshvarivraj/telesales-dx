@@ -58,6 +58,10 @@ describe('MoraBot assistant', () => {
     expect(system?.content).toContain('2026-10-28');
     expect(system?.content).toContain('試験 花子さん（テレマ）');
     expect(system?.content).toContain('/calls/import');
+    // Screen-by-screen: buttons such as 「あとで送る」 on the mail screen are explained.
+    expect(system?.content).toContain('「あとで送る」：送らずにアポのページへ戻る');
+    expect(system?.content).toContain('/calls/companies/{ID}');
+    expect(system?.content).toContain('質問と同じ言葉で答える');
   });
 
   it('runs a tool as the signed-in user and answers from its result', async () => {
