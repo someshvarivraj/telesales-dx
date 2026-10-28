@@ -13,7 +13,7 @@ import {
 } from '@telesales/shared';
 import { Check, FileSpreadsheet, FileText, PencilLine } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -170,14 +170,21 @@ function BookingForm(props: BookingFormProps) {
   const salesBooked = source === AppointmentSource.SalesBooked;
 
   const [slot, setSlot] = useState<Slot>(() => {
-    const start = '10:00';
+    const start = params.get('start') ?? '10:00';
     return {
       repId: original?.salesRep.id ?? params.get('repId') ?? (salesBooked ? user.id : ''),
       date: params.get('date') ?? todayJst(),
       start,
-      end: defaultEndTime(start),
+      end: params.get('end') ?? defaultEndTime(start),
     };
   });
+  // From MoraBot's 「枠を押さえて登録画面へ」: hold the proposed slot as soon as the page opens.
+  const autoHeld = useRef(false);
+  useEffect(() => {
+    if (autoHeld.current || params.get('hold') !== '1' || !slot.repId) return;
+    autoHeld.current = true;
+    void lock.acquire(slot.repId, toInstant(slot.date, slot.start), toInstant(slot.date, slot.end));
+  }, [params, slot, lock]);
   const [companyValues, setCompanyValues] = useState<CompanyValues>(emptyCompany);
   const [values, setValues] = useState<AppointmentValues>(() =>
     initialValues(params, props, source),
