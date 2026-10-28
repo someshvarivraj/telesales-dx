@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import type { MoraBotMood } from './MoraBot';
 import { ART, ART_RATIO, poseUrl } from './morabotArt';
+import { PokeEffects, usePoke } from './morabotPoke';
 import { type Theme, useTheme } from './theme';
 
 export interface StoryStep {
@@ -36,7 +37,9 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
   const { theme } = useTheme();
   const [still] = useState(prefersStill);
   const [paused, setPaused] = useState(still);
-  const playing = !paused;
+  // Click MoraBot for a reaction; the story waits while it plays.
+  const { reaction, poke } = usePoke();
+  const playing = !paused && !reaction;
   const size = 208;
   const width = Math.round(size * ART_RATIO);
 
@@ -56,8 +59,13 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
           <div className="morabot-stage-glow" aria-hidden="true" />
           <span
             aria-hidden="true"
-            className={cn('morabot morabot-art', !still && 'morabot-art-idle')}
+            className={cn(
+              'morabot morabot-art morabot-pokable',
+              !still && 'morabot-art-idle',
+              reaction && `morabot-poke-${reaction.kind}`,
+            )}
             style={{ width, height: size }}
+            onClick={poke}
           >
             <span className="morabot-shadow" />
             <span className="morabot-body">
@@ -75,13 +83,27 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
                       draggable={false}
                       className={cn(
                         'morabot-pose morabot-stack',
-                        i === index && 'morabot-stack-on',
+                        i === index && 'morabot-stack-on morabot-react',
                       )}
                     />
                   )
                 );
               })}
+              {reaction?.kind === 'split' && ART[step.mood] && (
+                <span className="morabot-split">
+                  {(['top', 'bottom'] as const).map((half) => (
+                    <img
+                      key={half}
+                      src={poseUrl(ART[step.mood] ?? '', step.look ?? theme)}
+                      alt=""
+                      draggable={false}
+                      className={`morabot-pose morabot-half-${half}`}
+                    />
+                  ))}
+                </span>
+              )}
             </span>
+            {reaction && <PokeEffects reaction={reaction} size={size} bubble={false} />}
           </span>
         </div>
         {!still && (
@@ -99,11 +121,11 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
           </button>
         )}
         <p
-          key={index}
+          key={reaction ? `poke-${reaction.id}` : index}
           aria-live="polite"
           className="morabot-bubble absolute top-6 left-[11.5rem] border border-line bg-surface px-3 py-2 text-sm font-bold whitespace-nowrap text-ink shadow-(--shadow-raised)"
         >
-          {step.line}
+          {reaction?.line ?? step.line}
         </p>
       </div>
 
