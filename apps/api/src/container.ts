@@ -34,6 +34,7 @@ import { AppService } from './modules/apps/AppService.js';
 import { createSystemRouter } from './modules/apps/systemRouter.js';
 import { AreaTableService } from './modules/area/AreaTableService.js';
 import { createAssistantRouter } from './modules/assistant/assistantRouter.js';
+import { AssistantActions } from './modules/assistant/AssistantActions.js';
 import { AssistantService } from './modules/assistant/AssistantService.js';
 import { AssistantTools } from './modules/assistant/AssistantTools.js';
 import { AuditLogService } from './modules/audit/AuditLogService.js';
@@ -263,7 +264,14 @@ export class Container {
         authenticator,
         assistant: new AssistantService(
           config.assistant,
-          new AssistantTools({ prisma, clock: this.clock, dashboard, schedule, queries }),
+          new AssistantTools({
+            prisma,
+            clock: this.clock,
+            dashboard,
+            schedule,
+            queries,
+            actions: new AssistantActions({ prisma, clock: this.clock, guard, queries }),
+          }),
           this.clock,
           this.logger,
         ),

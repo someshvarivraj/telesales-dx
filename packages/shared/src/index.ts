@@ -1,6 +1,7 @@
 export * from './auth.js';
 export * from './contracts/admin.js';
 export * from './contracts/appointments.js';
+export * from './contracts/assistant.js';
 export * from './contracts/common.js';
 export * from './contracts/companies.js';
 export * from './contracts/misc.js';

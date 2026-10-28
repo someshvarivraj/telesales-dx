@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import type { AssistantProposal, AssistantReply } from '@telesales/shared';
 import { ArrowRight, Send, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -8,16 +9,20 @@ import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { apiClient } from '@/lib/api/ApiClient';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { type CardState, ProposalCard } from './ProposalCard';
 
 interface Turn {
   role: 'user' | 'assistant';
   content: string;
+  /** Cards MoraBot offered with this reply (kept in the panel, never sent back). */
+  proposals?: AssistantProposal[];
 }
 
 const SUGGESTIONS = [
   '今日やることは？',
   '自分の今週の予定は？',
   '明日の前日確認は何件？',
+  '担当営業の明日の空き時間は？',
   'アポの登録のしかたを教えて',
   '新規リストの取り込み方は？',
 ];
@@ -89,15 +94,21 @@ export function AssistantWidget() {
   const { name } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [cards, setCards] = useState<Record<string, CardState>>({});
   const [draft, setDraft] = useState('');
   const bottom = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
 
   const ask = useMutation({
     mutationFn: (history: Turn[]) =>
-      apiClient.post<{ reply: string }>('/assistant/chat', { messages: history.slice(-HISTORY) }),
+      apiClient.post<AssistantReply>('/assistant/chat', {
+        messages: history.slice(-HISTORY).map(({ role, content }) => ({ role, content })),
+      }),
     onSuccess: (data) =>
-      setTurns((current) => [...current, { role: 'assistant', content: data.reply }]),
+      setTurns((current) => [
+        ...current,
+        { role: 'assistant', content: data.reply, proposals: data.proposals },
+      ]),
   });
 
   useEffect(() => {
@@ -108,6 +119,12 @@ export function AssistantWidget() {
   }, [open]);
 
   if (!status.data?.enabled) return null;
+
+  /** 確定 / やめる: the card stays as a record, and MoraBot hears what happened. */
+  const settle = (id: string, state: Exclude<CardState, 'open'>, note: string) => {
+    setCards((current) => ({ ...current, [id]: state }));
+    setTurns((current) => [...current, { role: 'assistant', content: note }]);
+  };
 
   const send = (text: string) => {
     const question = text.trim();
@@ -141,7 +158,7 @@ export function AssistantWidget() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold">MoraBot</p>
               <p className="truncate text-[11px] text-ink-sub">
-                使い方・予定・アポのことをお調べします
+                お調べ・予定の登録・枠の押さえをお手伝いします
               </p>
             </div>
             <button
@@ -158,7 +175,7 @@ export function AssistantWidget() {
             <div className="mb-3 bg-column px-3 py-2.5">
               <p className="text-sm leading-relaxed">
                 {name}
-                さん、おつかれさまです。使い方や、今日の予定・アポのことなど、お気軽にお聞きください。
+                さん、おつかれさまです。使い方や予定・アポのお調べのほか、予定の登録や枠の押さえもお手伝いします。登録の前には必ず内容をお見せし、「確定」を押していただいてから保存します。
               </p>
               {turns.length === 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -184,9 +201,19 @@ export function AssistantWidget() {
                     turn.role === 'user'
                       ? 'self-end bg-main text-sm whitespace-pre-wrap text-white'
                       : 'self-start border border-line bg-surface',
+                    turn.proposals?.length ? 'w-[88%]' : '',
                   )}
                 >
                   {turn.role === 'user' ? turn.content : <Reply text={turn.content} />}
+                  {turn.proposals?.map((proposal) => (
+                    <div key={proposal.id} className="mt-2">
+                      <ProposalCard
+                        proposal={proposal}
+                        state={cards[proposal.id] ?? 'open'}
+                        onSettled={(state, note) => settle(proposal.id, state, note)}
+                      />
+                    </div>
+                  ))}
                 </li>
               ))}
               {ask.isPending && (
@@ -224,7 +251,7 @@ export function AssistantWidget() {
                   send(draft);
                 }
               }}
-              placeholder="質問を入力（例：明日の千原さんの予定は？）"
+              placeholder="質問・お願いを入力（例：来週火曜10時に自分の予定を入れて）"
               aria-label="MoraBotへの質問"
               className="max-h-28 min-h-10 flex-1 resize-none border border-line-strong px-3 py-2 text-sm focus:border-main-focus focus:outline-none"
             />

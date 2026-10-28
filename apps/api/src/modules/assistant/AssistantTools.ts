@@ -6,6 +6,8 @@ import type { PrismaClient } from '../../generated/prisma/client.js';
 import type { AppointmentQueryService } from '../appointments/AppointmentQueryService.js';
 import type { DashboardService } from '../dashboard/DashboardService.js';
 import type { ScheduleService } from '../schedule/ScheduleService.js';
+import { ACTION_DEFINITIONS, ACTION_NAMES, type AssistantActions } from './AssistantActions.js';
+import { findPeople } from './lookup.js';
 
 /**
  * MoraBot's tools: read-only lookups that call the same services as the screens, as
@@ -18,6 +20,7 @@ export interface ToolDeps {
   dashboard: DashboardService;
   schedule: ScheduleService;
   queries: AppointmentQueryService;
+  actions: AssistantActions;
 }
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -32,8 +35,8 @@ const time = new Intl.DateTimeFormat('ja-JP', {
 });
 const at = (iso: string) => time.format(new Date(iso));
 
-/** Tool list in the OpenAI-compatible `tools` format (Gemini's endpoint accepts it). */
-export const TOOL_DEFINITIONS = [
+/** Read-only lookups in the OpenAI-compatible `tools` format (Gemini's endpoint accepts it). */
+const LOOKUP_DEFINITIONS = [
   {
     type: 'function',
     function: {
@@ -48,7 +51,7 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: 'get_schedule',
       description:
-        '営業などの予定・アポ・休みを期間で調べる。person は名前の一部（例「千原」）か「自分」。期間は最大31日。',
+        '営業などの予定・アポ・休みを期間で調べる。person は名前の一部（例「山田」）か「自分」。期間は最大31日。',
       parameters: {
         type: 'object',
         properties: {
@@ -87,7 +90,10 @@ export const TOOL_DEFINITIONS = [
   },
 ] as const;
 
-export type ToolName = (typeof TOOL_DEFINITIONS)[number]['function']['name'];
+/** Everything MoraBot can call: lookups, then the proposal tools (phase 2). */
+export const TOOL_DEFINITIONS = [...LOOKUP_DEFINITIONS, ...ACTION_DEFINITIONS];
+
+type ToolName = (typeof LOOKUP_DEFINITIONS)[number]['function']['name'];
 
 const scheduleArgs = z.object({
   person: z.string().trim().min(1).max(50),
@@ -106,6 +112,9 @@ export class AssistantTools {
 
   /** Runs one tool call; a bad argument or unknown person comes back as `{ error }`. */
   async run(actor: Actor, name: string, rawArgs: unknown): Promise<unknown> {
+    if (ACTION_NAMES.includes(name)) {
+      return this.deps.actions.run(actor, name, rawArgs);
+    }
     switch (name as ToolName) {
       case 'get_my_todos':
         return this.todos(actor);
@@ -129,28 +138,11 @@ export class AssistantTools {
     return { ...home, link: '/home' };
   }
 
-  /** Active users whose name contains the text (spaces ignored); 「自分」 = the signed-in user. */
-  private async findPeople(actor: Actor, person: string) {
-    if (['自分', '私', 'わたし', 'me'].includes(person)) {
-      const me = await this.deps.prisma.user.findUnique({
-        where: { id: actor.id },
-        select: { id: true, name: true },
-      });
-      return me ? [me] : [];
-    }
-    const needle = person.replace(/\s|さん|様/g, '');
-    const users = await this.deps.prisma.user.findMany({
-      where: { status: 'ACTIVE' },
-      select: { id: true, name: true },
-    });
-    return users.filter((user) => user.name.replace(/\s/g, '').includes(needle));
-  }
-
   private async scheduleFor(actor: Actor, args: z.infer<typeof scheduleArgs>) {
     if (args.to < args.from || addDays(args.from, 31) < args.to) {
       return { error: 'range_must_be_1_to_31_days' };
     }
-    const people = await this.findPeople(actor, args.person);
+    const people = await findPeople(this.deps.prisma, actor.id, args.person);
     if (people.length === 0) return { error: 'person_not_found', person: args.person };
     if (people.length > 1) {
       return { error: 'several_people_match', candidates: people.map((p) => p.name).slice(0, 10) };
