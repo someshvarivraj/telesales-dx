@@ -1,6 +1,7 @@
 import { type CSSProperties, type ReactNode, useId } from 'react';
 import { cn } from '@/components/ui/cn';
 import { ART, ART_RATIO, poseUrl } from './morabotArt';
+import { PokeEffects, usePoke } from './morabotPoke';
 import { useTheme } from './theme';
 
 /**
@@ -182,11 +183,13 @@ export function MoraBot({
   // さくら theme: the girl MoraBot (pink head, bow) everywhere MoraBot appears.
   const { theme } = useTheme();
   const sakura = theme === 'sakura';
+  // Click MoraBot for a little reaction (not the small head-only marks).
+  const { reaction, poke } = usePoke();
+  const poked = reaction && `morabot-poke-${reaction.kind}`;
   const classes = cn(
     'morabot',
     animate ? 'morabot-busy' : !still && 'morabot-idle',
     `morabot-${mood}`,
-    className,
   );
 
   const art = headOnly
@@ -201,25 +204,46 @@ export function MoraBot({
         aria-label={label || undefined}
         aria-hidden={label ? undefined : true}
         className={cn(
-          'morabot morabot-art',
+          'morabot morabot-art morabot-pokable',
           animate ? 'morabot-art-busy' : !still && 'morabot-art-idle',
           `morabot-${mood}`,
+          poked,
           className,
         )}
         style={{ width, height: size, ...beat }}
+        onClick={poke}
       >
         <span className="morabot-shadow" />
         <span className="morabot-body">
-          <img
-            key={`${theme}:${art}`}
-            src={poseUrl(art, theme)}
-            width={width}
-            height={size}
-            alt=""
-            className="morabot-pose"
-            draggable={false}
-          />
+          {reaction?.kind === 'split' ? (
+            // Head and body as two pieces that fly apart and click back together.
+            <>
+              <img
+                src={poseUrl(art, theme)}
+                alt=""
+                className="morabot-pose morabot-half-top"
+                draggable={false}
+              />
+              <img
+                src={poseUrl(art, theme)}
+                alt=""
+                className="morabot-pose morabot-half-bottom"
+                draggable={false}
+              />
+            </>
+          ) : (
+            <img
+              key={`${theme}:${art}`}
+              src={poseUrl(art, theme)}
+              width={width}
+              height={size}
+              alt=""
+              className="morabot-pose morabot-react"
+              draggable={false}
+            />
+          )}
         </span>
+        {reaction && <PokeEffects reaction={reaction} size={size} />}
       </span>
     );
   }
@@ -227,12 +251,12 @@ export function MoraBot({
   const viewBox = headOnly ? '320 210 800 700' : '300 190 840 1000';
   const [, , w = 1, h = 1] = viewBox.split(' ').map(Number);
 
-  return (
+  const drawing = (
     <svg
       viewBox={viewBox}
       height={size}
       width={(size * w) / h}
-      className={classes}
+      className={cn(classes, headOnly ? className : 'morabot-react')}
       style={beat}
       role={label ? 'img' : undefined}
       aria-label={label || undefined}
@@ -259,7 +283,11 @@ export function MoraBot({
           </g>
         )}
         <rect x={462} y={456} width={516} height={300} rx={110} fill={C.white} />
-        <Face mood={mood} />
+        <Face
+          mood={
+            reaction?.kind === 'annoyed' ? 'trouble' : reaction?.kind === 'giggle' ? 'happy' : mood
+          }
+        />
       </g>
       {!headOnly && (
         <>
@@ -272,6 +300,13 @@ export function MoraBot({
         </>
       )}
     </svg>
+  );
+  if (headOnly) return drawing;
+  return (
+    <span className={cn('morabot-wrap morabot-pokable', poked, className)} onClick={poke}>
+      {drawing}
+      {reaction && <PokeEffects reaction={reaction} size={size} />}
+    </span>
   );
 }
 
