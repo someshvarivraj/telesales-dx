@@ -526,6 +526,101 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
   }
 }
 
+/* Lunch (12–13): MoraBot munches an onigiri; after an answer, hearts float up. */
+.lunch-onigiri {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 46%;
+  width: 34px;
+  height: 32px;
+  translate: -50% 0;
+  transform-origin: 50% 100%;
+  animation: lunch-munch 1.6s ease-in-out infinite;
+}
+.lunch-mogu {
+  position: absolute;
+  left: 92%;
+  top: -40%;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-main);
+  animation: lunch-mogu 3.2s ease-in-out infinite;
+}
+@keyframes lunch-munch {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  15% {
+    transform: translateY(-38%) rotate(-8deg) scale(0.95, 1.05);
+  }
+  25% {
+    transform: translateY(-34%) rotate(6deg) scale(1.05, 0.92);
+  }
+  35% {
+    transform: translateY(-38%) rotate(-4deg) scale(0.97, 1.03);
+  }
+}
+@keyframes lunch-mogu {
+  0%,
+  10%,
+  60%,
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  20%,
+  45% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.lunch-hearts i {
+  position: absolute;
+  z-index: 2;
+  bottom: 40%;
+  font-style: normal;
+  font-size: 16px;
+  color: var(--color-main-focus);
+  animation: lunch-heart 1.6s ease-out both;
+}
+.lunch-hearts i:nth-child(1) {
+  left: 10%;
+}
+.lunch-hearts i:nth-child(2) {
+  left: 45%;
+  font-size: 20px;
+  animation-delay: 0.2s;
+}
+.lunch-hearts i:nth-child(3) {
+  left: 80%;
+  animation-delay: 0.4s;
+}
+@keyframes lunch-heart {
+  from {
+    opacity: 0;
+    transform: translateY(0) scale(0.4);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1.1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-70px) scale(0.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lunch-onigiri,
+  .lunch-mogu,
+  .lunch-hearts i {
+    animation: none !important;
+  }
+}
+
 /* Stacked poses (sign-in story): only the shown one is visible and hops in. */
 .morabot-stack {
   position: absolute;

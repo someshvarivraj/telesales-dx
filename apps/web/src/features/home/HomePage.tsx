@@ -13,6 +13,7 @@ import {
   PhoneCall,
   UserCheck,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { MoraBot } from '@/components/brand/MoraBot';
@@ -25,6 +26,7 @@ import { ja } from '@/i18n/ja';
 import { MenuCard } from './MenuCard';
 import { adminMenu, mainMenu, type MenuItem, visibleItems } from './menus';
 import { greetingAt, jstHour } from './greeting';
+import { Hearts, lunchPhase, LunchQuestion, Onigiri } from './LunchMoment';
 
 function MenuGrid({ items }: { items: MenuItem[] }) {
   return (
@@ -83,7 +85,9 @@ function sceneFor(roles: readonly string[]): SceneName {
 
 /** Home: what needs this person's attention, then the modules (decided by permissions). */
 export function HomePage() {
-  const { permissions, name, roles } = useCurrentUser();
+  const { id: userId, permissions, name, roles } = useCurrentUser();
+  // Lunch answer: replays MoraBot's hop (key) and shows hearts when it was good.
+  const [reaction, setReaction] = useState<{ n: number; happy: boolean }>({ n: 0, happy: false });
   const summary = useHomeSummary();
   const main = visibleItems(mainMenu, permissions);
   const admin = visibleItems(adminMenu, permissions);
@@ -207,23 +211,38 @@ export function HomePage() {
     : [];
 
   const open = tasks.reduce((sum, task) => sum + task.count, 0);
-  const greeting = greetingAt(jstHour());
+  const hour = jstHour();
+  const greeting = greetingAt(hour);
+  const lunch = lunchPhase(hour);
 
   return (
     <div className="flex flex-col gap-10">
       <div className="flex items-center gap-4 overflow-hidden border border-line bg-surface px-6 py-5 shadow-(--shadow-card) max-sm:px-4">
-        <div className="morabot-cheer relative shrink-0">
+        <div key={reaction.n} className="morabot-cheer relative shrink-0">
           <span aria-hidden="true" className="morabot-sparkles">
             <i />
             <i />
             <i />
           </span>
-          <MoraBot mood={data && open === 0 ? 'done' : 'report'} size={104} title="" />
+          <MoraBot
+            mood={reaction.happy || (data && open === 0) ? 'done' : lunch ? 'callHappy' : 'report'}
+            size={104}
+            title=""
+          />
+          {lunch === 'eating' && <Onigiri />}
+          {reaction.happy && <Hearts />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="morabot-cheer-bubble mb-1.5 inline-block bg-main-soft px-2.5 py-1 text-xs font-bold text-main">
-            {greeting.cheer}
-          </p>
+          {lunch === 'asking' ? (
+            <LunchQuestion
+              userId={userId}
+              onAnswer={(key) => setReaction((r) => ({ n: r.n + 1, happy: key !== 'notyet' }))}
+            />
+          ) : (
+            <p className="morabot-cheer-bubble mb-1.5 inline-block bg-main-soft px-2.5 py-1 text-xs font-bold text-main">
+              {greeting.cheer}
+            </p>
+          )}
           <p className="text-lg font-bold">
             {name}
             {greeting.suffix}
