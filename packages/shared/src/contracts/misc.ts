@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dateString, type UserRef } from './common.js';
+import type { UserRef } from './common.js';
 
 export interface NotificationDto {
   id: string;
@@ -34,37 +34,6 @@ export const notificationQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 export type NotificationQuery = z.infer<typeof notificationQuerySchema>;
-
-export const dashboardQuerySchema = z.object({
-  from: dateString,
-  to: dateString,
-  telemarketerId: z.uuid().optional(),
-  salesRepId: z.uuid().optional(),
-  listName: z.string().trim().max(200).optional(),
-  /** 業種 and 地域 (prefecture) of the company (Q-12, 10/20). */
-  industry: z.string().trim().max(100).optional(),
-  prefecture: z.string().trim().max(10).optional(),
-});
-export type DashboardQuery = z.input<typeof dashboardQuerySchema>;
-
-export interface DashboardResponse {
-  from: string;
-  to: string;
-  calls: number;
-  appointments: number;
-  /** appointments ÷ calls made in ① (new lists); null when there were no calls. */
-  appointmentRate: number | null;
-  meetings: {
-    scheduled: number;
-    completed: number;
-    cancelled: number;
-    awaitingResult: number;
-  };
-  byTelemarketer: { user: UserRef; calls: number; appointments: number }[];
-  bySalesRep: { user: UserRef; appointments: number; completed: number }[];
-  byList: { listName: string; calls: number; appointments: number }[];
-  byGrade: { grade: string; count: number }[];
-}
 
 /** Lightweight list for pickers (sales reps, telemarketers, everyone). */
 export interface PersonDto extends UserRef {

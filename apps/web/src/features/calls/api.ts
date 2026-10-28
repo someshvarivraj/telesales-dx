@@ -28,7 +28,6 @@ export const callsKeys = {
   importRows: (id: string, status: string) => ['list-imports', id, 'rows', status] as const,
   flagged: ['companies', 'flagged'] as const,
   listNames: ['companies', 'list-names'] as const,
-  industries: ['companies', 'industries'] as const,
   comments: (target: { appointmentId?: string; callRecordId?: string }) =>
     ['comments', target] as const,
 };
@@ -46,13 +45,6 @@ export function useCompany(id: string) {
     queryKey: callsKeys.company(id),
     queryFn: ({ signal }) => apiClient.get<CompanyDetail>(`/companies/${id}`, signal),
     enabled: Boolean(id),
-  });
-}
-
-export function useIndustries() {
-  return useQuery({
-    queryKey: callsKeys.industries,
-    queryFn: ({ signal }) => apiClient.get<string[]>('/companies/industries', signal),
   });
 }
 

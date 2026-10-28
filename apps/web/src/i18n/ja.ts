@@ -38,7 +38,6 @@ export const ja = {
     calls: '架電状況',
     schedule: 'スケジュール',
     appointments: 'アポ一覧',
-    dashboard: 'ダッシュボード',
     telema: 'テレマ管理',
   },
   nav: {
@@ -46,7 +45,6 @@ export const ja = {
     calls: '架電',
     schedule: '予定',
     appointments: 'アポ',
-    dashboard: '集計',
     telema: 'テレマ',
     admin: '管理',
     notifications: 'お知らせ',

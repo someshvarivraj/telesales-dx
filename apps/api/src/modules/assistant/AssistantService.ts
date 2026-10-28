@@ -61,7 +61,7 @@ const MAX_TOOL_ROUNDS = 6;
 
 /** Screens MoraBot may open (each screen still checks the person's permissions). */
 const SCREEN =
-  /^\/(home|notifications|calls|schedule|appointments|dashboard|telema|admin)(\/[\w-]+)*(\?[\w\-=&%.]*)?$/;
+  /^\/(home|notifications|calls|schedule|appointments|telema|admin)(\/[\w-]+)*(\?[\w\-=&%.]*)?$/;
 
 /** Talking with the person: asking with choices, and opening a screen for them. */
 const INTERACTION_DEFINITIONS = [

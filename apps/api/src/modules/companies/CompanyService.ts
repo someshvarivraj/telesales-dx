@@ -312,18 +312,6 @@ export class CompanyService {
     return rows.flatMap((row) => (row.listName ? [row.listName] : []));
   }
 
-  /** Industries in the register, for the dashboard filter. */
-  async industries(): Promise<string[]> {
-    const rows = await this.prisma.company.findMany({
-      where: { industry: { not: null } },
-      distinct: ['industry'],
-      select: { industry: true },
-      orderBy: { industry: 'asc' },
-      take: 500,
-    });
-    return rows.flatMap((row) => (row.industry ? [row.industry] : []));
-  }
-
   private toListItem(row: CompanyWithLastCall): CompanyListItem {
     const last = row.callRecords[0];
     return {

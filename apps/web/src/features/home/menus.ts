@@ -1,6 +1,5 @@
 import { Permission } from '@telesales/shared';
 import {
-  BarChart3,
   CalendarDays,
   SlidersHorizontal,
   CalendarOff,
@@ -54,14 +53,6 @@ export const mainMenu: readonly MenuItem[] = [
     title: ja.module.appointments,
     path: paths.appointments,
     icon: ClipboardList,
-    tone: 'appointments',
-    anyOf: [Permission.ViewData],
-  },
-  {
-    key: 'dashboard',
-    title: ja.module.dashboard,
-    path: paths.dashboard,
-    icon: BarChart3,
     tone: 'appointments',
     anyOf: [Permission.ViewData],
   },

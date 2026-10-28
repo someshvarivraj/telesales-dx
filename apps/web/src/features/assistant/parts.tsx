@@ -46,7 +46,6 @@ const SCREEN_NAMES: [RegExp, string][] = [
   [/^\/appointments\/[^/]+\/mail/, '営業さんへのメール'],
   [/^\/appointments\/./, 'アポのページ'],
   [/^\/appointments/, 'アポ一覧'],
-  [/^\/dashboard/, 'ダッシュボード'],
   [/^\/telema/, 'テレマ管理'],
   [/^\/admin/, '管理'],
 ];
