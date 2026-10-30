@@ -9,6 +9,8 @@ import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { currentUserOf } from '../../http/currentUser.js';
 import type { Authenticator } from '../../http/middleware/Authenticator.js';
+import { sendFile, uploadedFiles } from '../../http/sendFile.js';
+import { uploadFiles } from '../../http/upload.js';
 import { idParam, parseQuery, parseWith } from '../../http/validate.js';
 import type { FeedbackService } from './FeedbackService.js';
 
@@ -30,15 +32,27 @@ export function createFeedbackRouter(deps: {
     message: { error: { code: ErrorCode.RateLimited } },
   });
 
-  router.post('/feedback', view, perUser, async (req, res) => {
+  // multipart: the fields plus up to 5 files in `files` (screenshots, recordings, documents).
+  router.post('/feedback', view, perUser, uploadFiles, async (req, res) => {
     res
       .status(201)
       .json(
         await deps.feedback.create(
           currentUserOf(req),
-          parseWith(createFeedbackRequestSchema, req.body),
+          parseWith(createFeedbackRequestSchema, req.body ?? {}),
+          uploadedFiles(req.files),
         ),
       );
+  });
+  router.get('/feedback/:id/files/:fileId', view, async (req, res) => {
+    const { record, content } = await deps.feedback.file(
+      currentUserOf(req),
+      idParam(req),
+      idParam(req, 'fileId'),
+    );
+    sendFile(res, record, content, {
+      inline: record.contentType.startsWith('image/') || record.contentType === 'application/pdf',
+    });
   });
   router.get('/feedback/mine', view, async (req, res) => {
     res.json(await deps.feedback.mine(currentUserOf(req).id));

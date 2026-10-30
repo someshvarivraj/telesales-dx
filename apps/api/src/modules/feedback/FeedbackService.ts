@@ -1,5 +1,8 @@
 import {
   type CreateFeedbackRequest,
+  FEEDBACK_FILE_TYPES,
+  FEEDBACK_MAX_FILE_BYTES,
+  FEEDBACK_MAX_FILES,
   FEEDBACK_STATUS_LABEL,
   FEEDBACK_STATUSES,
   FEEDBACK_TYPE_LABEL,
@@ -9,16 +12,35 @@ import {
   type FeedbackType,
   formatJstDateTime,
   NoticeCode,
+  Permission,
   type UpdateFeedbackRequest,
 } from '@telesales/shared';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
-import { NotFoundError } from '../../http/errors/AppError.js';
+import {
+  FileTooLargeError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from '../../http/errors/AppError.js';
 import { iso, userRef, userRefSelect } from '../../http/mappers.js';
+import {
+  type FileService,
+  type StoredFileRecord,
+  toFileDto,
+  type UploadedFile,
+} from '../files/FileService.js';
 import type { NotificationService } from '../notifications/NotificationService.js';
 
-const include = { reporter: userRefSelect, handledBy: userRefSelect } as const;
+const include = {
+  reporter: userRefSelect,
+  handledBy: userRefSelect,
+  attachments: { include: { file: true }, orderBy: { createdAt: 'asc' } },
+} as const;
+const ALLOWED_TYPES = new Set<string>(FEEDBACK_FILE_TYPES);
+/** Attachments ride along in the mail up to this total; bigger ones stay in the app. */
+const MAIL_ATTACH_BYTES = 10 * 1024 * 1024;
 /** Only in-app paths are kept (never a full URL someone pasted). */
 const IN_APP_PATH = /^\/[\w\-./?=&%]*$/;
 
@@ -32,10 +54,30 @@ export class FeedbackService {
     private readonly prisma: PrismaClient,
     private readonly notifications: NotificationService,
     private readonly audit: AuditLogger,
+    private readonly files: FileService,
     private readonly appBaseUrl: string,
   ) {}
 
-  async create(actor: Actor, input: CreateFeedbackRequest): Promise<FeedbackDto> {
+  async create(
+    actor: Actor,
+    input: CreateFeedbackRequest,
+    uploads: UploadedFile[] = [],
+  ): Promise<FeedbackDto> {
+    if (uploads.length > FEEDBACK_MAX_FILES) {
+      throw new ValidationError({ files: ['too_many'] });
+    }
+    for (const upload of uploads) {
+      if (upload.size > FEEDBACK_MAX_FILE_BYTES) {
+        throw new FileTooLargeError();
+      }
+      if (!ALLOWED_TYPES.has(upload.mimetype)) {
+        throw new ValidationError({ files: ['unsupported_type'] });
+      }
+    }
+    const stored: StoredFileRecord[] = [];
+    for (const upload of uploads) {
+      stored.push(await this.files.store(upload, actor.id));
+    }
     const screenPath = IN_APP_PATH.test(input.screenPath) ? input.screenPath : '/';
     const row = await this.prisma.feedback.create({
       data: {
@@ -44,10 +86,12 @@ export class FeedbackService {
         body: input.body,
         screenPath,
         screenName: input.screenName || screenPath,
+        attachments: { create: stored.map((file) => ({ fileId: file.id })) },
       },
       include,
     });
     const type = FEEDBACK_TYPE_LABEL[row.type as FeedbackType];
+    const mailable = uploads.reduce((sum, upload) => sum + upload.size, 0) <= MAIL_ATTACH_BYTES;
     await this.notifications.notify({
       code: NoticeCode.Feedback,
       title: `${row.reporter.name}さんから${type}の報告（No.${row.number}）`,
@@ -68,10 +112,25 @@ export class FeedbackService {
           `送った人: ${row.reporter.name}`,
           `日時: ${formatJstDateTime(row.createdAt)}`,
           `画面: ${row.screenName}（${this.appBaseUrl}${row.screenPath}）`,
+          ...(stored.length > 0
+            ? [
+                `添付: ${stored.map((file) => file.originalName).join('、')}${
+                  mailable ? '' : '（サイズが大きいため、アプリでご確認ください）'
+                }`,
+              ]
+            : []),
           '',
           `対応状況: ${this.appBaseUrl}/admin/feedback?id=${row.id}`,
         ].join('\n'),
         dedupeKey: `feedback:${row.id}`,
+        attachments: mailable
+          ? stored.map((file, i) => ({
+              fileId: file.id,
+              filename: file.originalName,
+              contentType: file.contentType,
+              content: uploads[i]?.buffer ?? Buffer.alloc(0),
+            }))
+          : [],
       },
     });
     return toDto(row);
@@ -95,6 +154,25 @@ export class FeedbackService {
       counts[group.status as FeedbackStatus] = group._count._all;
     }
     return { items: rows.map(toDto), counts };
+  }
+
+  /** An attachment, for an admin or the person who sent it. */
+  async file(
+    actor: Actor,
+    id: string,
+    fileId: string,
+  ): Promise<Awaited<ReturnType<FileService['read']>>> {
+    const link = await this.prisma.feedbackAttachment.findFirst({
+      where: { feedbackId: id, fileId },
+      include: { feedback: { select: { reporterId: true } } },
+    });
+    if (!link) {
+      throw new NotFoundError();
+    }
+    if (link.feedback.reporterId !== actor.id && !actor.can(Permission.Administer)) {
+      throw new ForbiddenError();
+    }
+    return this.files.read(fileId);
   }
 
   /** Mine: what I sent and where it stands. */
@@ -186,6 +264,7 @@ interface Row {
   resolution: string | null;
   reporter: { id: string; name: string };
   handledBy: { id: string; name: string } | null;
+  attachments: { file: StoredFileRecord }[];
   createdAt: Date;
   updatedAt: Date;
   resolvedAt: Date | null;
@@ -204,6 +283,7 @@ function toDto(row: Row): FeedbackDto {
     resolution: row.resolution,
     reporter: userRef(row.reporter),
     handledBy: userRef(row.handledBy),
+    files: row.attachments.map((attachment) => toFileDto(attachment.file)),
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
     resolvedAt: iso(row.resolvedAt),

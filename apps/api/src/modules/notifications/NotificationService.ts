@@ -7,7 +7,7 @@ import type {
 import type { Logger } from 'pino';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { iso } from '../../http/mappers.js';
-import type { EmailService } from './EmailService.js';
+import type { DirectEmailInput, EmailService } from './EmailService.js';
 import type { NoticeContext, RecipientResolver } from './RecipientResolver.js';
 
 export interface NoticeEvent {
@@ -21,7 +21,13 @@ export interface NoticeEvent {
   /** Scheduled reminders: each person gets a notice with the same key only once. */
   dedupeKey?: string;
   /** Sent only when the notice is configured to also send e-mail. */
-  email?: { subject: string; text: string; dedupeKey: string; appointmentId?: string | null };
+  email?: {
+    subject: string;
+    text: string;
+    dedupeKey: string;
+    appointmentId?: string | null;
+    attachments?: DirectEmailInput['attachments'];
+  };
 }
 
 /**
@@ -58,6 +64,7 @@ export class NotificationService {
           cc: resolved.cc,
           subject: event.email.subject,
           body: event.email.text,
+          attachments: event.email.attachments,
           createdById: event.actorId ?? null,
         });
       }

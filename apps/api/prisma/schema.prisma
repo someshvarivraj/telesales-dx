@@ -317,6 +317,7 @@ model StoredFile {
   listImports  ListImport[]
   appointments AppointmentSourceFile[]
   attachments  PreparationAttachment[]
+  feedback     FeedbackAttachment[]
 
   @@index([sha256])
   @@map("stored_files")
@@ -1066,9 +1067,24 @@ model Feedback {
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(6)
 
-  reporter  User  @relation("FeedbackReporter", fields: [reporterId], references: [id])
-  handledBy User? @relation("FeedbackHandler", fields: [handledById], references: [id], onDelete: SetNull)
+  reporter    User                 @relation("FeedbackReporter", fields: [reporterId], references: [id])
+  handledBy   User?                @relation("FeedbackHandler", fields: [handledById], references: [id], onDelete: SetNull)
+  attachments FeedbackAttachment[]
 
   @@index([status, createdAt])
   @@map("feedback")
+}
+
+/// Screenshots and files sent with a ご意見・不具合の報告.
+model FeedbackAttachment {
+  id         String   @id @default(uuid()) @db.Uuid
+  feedbackId String   @map("feedback_id") @db.Uuid
+  fileId     String   @map("file_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  feedback Feedback   @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  file     StoredFile @relation(fields: [fileId], references: [id])
+
+  @@unique([feedbackId, fileId])
+  @@map("feedback_attachments")
 }

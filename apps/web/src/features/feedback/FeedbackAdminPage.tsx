@@ -5,7 +5,7 @@ import {
   type FeedbackDto,
   type FeedbackStatus,
 } from '@telesales/shared';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Paperclip } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Alert } from '@/components/ui/Alert';
@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDateTime } from '@/lib/format';
 import { useAdminFeedback, useUpdateFeedback } from './api';
-import { STATUS_TONE } from './FeedbackButton';
+import { FeedbackFiles, STATUS_TONE } from './FeedbackButton';
 
 type Filter = FeedbackStatus | 'ALL';
 
@@ -96,6 +96,12 @@ export function FeedbackAdminPage() {
                           <span className="line-clamp-2 text-sm whitespace-pre-wrap">
                             {item.body}
                           </span>
+                          {item.files.length > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-ink-sub">
+                              <Paperclip aria-hidden="true" className="size-3.5" />
+                              添付 {item.files.length}件
+                            </span>
+                          )}
                         </button>
                       </li>
                     ))}
@@ -176,6 +182,7 @@ function FeedbackDetail({ item, onClose }: { item: FeedbackDto; onClose: () => v
         <p className="border-l-4 border-main-line bg-column px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap">
           {item.body}
         </p>
+        <FeedbackFiles feedbackId={item.id} files={item.files} />
 
         <fieldset>
           <legend className="mb-1.5 text-[13px] font-bold">対応状況</legend>

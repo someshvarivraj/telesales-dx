@@ -533,10 +533,6 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
     transform: translateY(10px) scale(0.98);
   }
 }
-/* The feedback tab steps aside while the MoraBot panel is open. */
-body:is([data-assistant='panel'], [data-assistant='full']) .feedback-tab {
-  display: none;
-}
 /* Docked beside the page on wide screens, so both can be used at once. */
 @media (min-width: 1280px) {
   body[data-assistant='panel'] .app-main {

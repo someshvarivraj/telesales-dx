@@ -4,6 +4,58 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Feedback (ご意見・不具合の報告)
+  'ご意見・不具合の報告': 'Feedback / report an issue',
+  'ご意見・不具合': 'Feedback',
+  スクリーンショットも送れます: 'Screenshots welcome',
+  報告の種類: 'Type of report',
+  不具合: 'Bug',
+  '要望・提案': 'Request / idea',
+  修正依頼: 'Fix request',
+  '動かない・表示がおかしい': 'Something is broken or looks wrong',
+  'こうなると便利・新しい機能': 'Would be handy, or a new feature',
+  '文言・項目・動きを直してほしい': 'Change a wording, field or behaviour',
+  そのほか何でも: 'Anything else',
+  内容: 'Details',
+  'どの画面で、何をしたら、どうなったか（どうしてほしいか）を書いてください。':
+    'Which screen, what you did, and what happened (or what you would like).',
+  '添付（任意）': 'Attachments (optional)',
+  この画面を撮る: 'Capture this screen',
+  ファイルを選ぶ: 'Choose files',
+  'スクリーンショットはこの欄で Ctrl+V（Mac は ⌘+V）でも貼り付けられます。ファイルのドラッグ＆ドロップもできます。':
+    'Paste a screenshot here with Ctrl+V (⌘+V on Mac), or drag and drop files.',
+  ここにドロップして添付: 'Drop here to attach',
+  送信者: 'Sent by',
+  画面: 'Screen',
+  送った時刻が自動で記録されます: 'Recorded automatically when sent',
+  送る: 'Send',
+  続けて送る: 'Send another',
+  '担当者にメールで届きました。あなたにも控えのメールが届きます。':
+    'It was e-mailed to the team, and you get a copy.',
+  '対応したら、同じ宛先にメールでお知らせします。':
+    'When it is handled, everyone gets an e-mail about it.',
+  '種類を選んでください。': 'Choose a type.',
+  '内容を書いてください。': 'Please write the details.',
+  外す: 'Remove',
+  判断待ち: 'Waiting for decision',
+  対応状況: 'Status',
+  対応状況で絞り込む: 'Filter by status',
+  対応内容: 'What was done',
+  送った人: 'Sent by',
+  最後に対応した人: 'Last handled by',
+  '該当する報告はありません。': 'No reports.',
+  'メモ（社内向け・メールには載りません）': 'Note (internal, not e-mailed)',
+  対応済みにしてメールする: 'Mark resolved and e-mail',
+  '何をしたかを書いてください。': 'Please write what was done.',
+  '保存すると、報告を受け取った全員（送った本人を含む）にメールで届きます。':
+    'Saving e-mails everyone who received the report, including the sender.',
+  '判断する人の回答を待っている間はこの状態にします。何を決めてほしいかをメモに書いてください。':
+    'Use this while waiting for a decision. Write in the note what needs deciding.',
+  '各画面の「ご意見・不具合の報告」から届いたものです。メールの宛先は「通知の宛先」の N20 で変えられます（送った本人にも届きます）。「対応済み」にすると、対応内容が同じ宛先にメールされます。':
+    'Reports sent with "Feedback / report an issue" on any screen. Change who gets the e-mail under Notice recipients → N20 (the sender always gets it). Marking one resolved e-mails what was done to the same people.',
+  添付ファイル: 'Attachments',
+  '画面を撮れませんでした。Windows は PrtSc、Mac は ⌘+Shift+4 で撮って貼り付けてください。':
+    'Could not capture the screen. Take a screenshot (PrtSc on Windows, ⌘+Shift+4 on Mac) and paste it here.',
   // Operation history
   テレマアポ停止: 'Telemarketing stop',
   '休み・遅刻・早退・テレマアポ停止を入力':
@@ -1647,4 +1699,16 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
     'When sent, "{0}" is added to the end of the subject.',
   ],
   ['送信すると、本文の最後に「{0}」が入ります。', 'When sent, "{0}" is added as the last line.'],
+  ['送りました（No.{0}）', 'Sent (No.{0})'],
+  ['これまでに送った報告（{0}件）', 'Your earlier reports ({0})'],
+  ['{0}/{1}・1ファイル10MBまで', '{0}/{1} · up to 10 MB each'],
+  ['添付 {0}件', '{0} attached'],
+  ['画面：{0}', 'Screen: {0}'],
+  ['{0} を外す', 'Remove {0}'],
+  ['添付は{0}つまでです。', 'Up to {0} attachments.'],
+  ['「{0}」は大きすぎます（1ファイル10MBまで）。', '"{0}" is too large (10 MB per file).'],
+  [
+    '「{0}」は添付できない種類です（画像・動画・PDF・Excel・Word・テキスト）。',
+    '"{0}" cannot be attached (images, video, PDF, Excel, Word and text only).',
+  ],
 ];
