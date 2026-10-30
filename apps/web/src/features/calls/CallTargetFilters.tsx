@@ -59,7 +59,7 @@ interface CallTargetFiltersProps {
 }
 
 /**
- * The filter bar above the call target list: a name search, two on/off switches,
+ * The filter bar above the call target list: a keyword search, two on/off switches,
  * and the other conditions as tags you add from a menu. Results follow as you change it.
  */
 export function CallTargetFilters(props: CallTargetFiltersProps) {
@@ -85,8 +85,8 @@ export function CallTargetFilters(props: CallTargetFiltersProps) {
   return (
     <section aria-label="絞り込み" className="border border-line bg-surface shadow-(--shadow-card)">
       <div className="flex flex-wrap items-center gap-2 p-3">
-        <label className="relative w-full sm:w-80">
-          <span className="sr-only">会社名で探す</span>
+        <label className="relative w-full sm:w-[30rem]">
+          <span className="sr-only">キーワードで探す</span>
           <Search
             aria-hidden="true"
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-sub"
@@ -95,13 +95,14 @@ export function CallTargetFilters(props: CallTargetFiltersProps) {
             type="search"
             value={props.name}
             onChange={(e) => props.onName(e.target.value)}
-            placeholder="会社名で探す"
+            placeholder="キーワード（会社名・住所・電話番号・メモ など）"
+            title="スペースで区切ると、すべての言葉を含む企業を探します"
             className="h-10 w-full border border-line-strong bg-surface pr-9 pl-9 text-sm placeholder:text-ink-disabled focus:border-main-focus focus:outline-none [&::-webkit-search-cancel-button]:hidden"
           />
           {props.name && (
             <button
               type="button"
-              aria-label="会社名をクリア"
+              aria-label="キーワードをクリア"
               onClick={() => props.onName('')}
               className="absolute top-1/2 right-2 grid size-6 -translate-y-1/2 cursor-pointer place-items-center text-ink-sub hover:text-ink"
             >

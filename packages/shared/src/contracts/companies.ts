@@ -76,6 +76,8 @@ export const companyFilterConditionSchema = z.object({
 export type CompanyFilterCondition = z.infer<typeof companyFilterConditionSchema>;
 
 export const companySearchRequestSchema = z.object({
+  /** Words searched across every company field; all words must match (request 10/30). */
+  keyword: z.string().max(200).default(''),
   conditions: z.array(companyFilterConditionSchema).max(10).default([]),
   match: z.enum(['AND', 'OR']).default('AND'),
   callTargetsOnly: z.boolean().default(true),

@@ -572,8 +572,11 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
-  会社名で探す: 'Search by company name',
-  会社名をクリア: 'Clear company name',
+  キーワードで探す: 'Search by keyword',
+  'キーワード（会社名・住所・電話番号・メモ など）': 'Keyword (company, address, phone, notes…)',
+  'スペースで区切ると、すべての言葉を含む企業を探します':
+    'Separate words with spaces to find companies containing all of them',
+  キーワードをクリア: 'Clear keyword',
   この条件を外す: 'Remove this condition',
   'エリア・業種・判定などで絞り込めます': 'Filter by area, industry, grade and more',
   すべて満たす: 'Match all',

@@ -17,6 +17,7 @@ import type { Actor } from '../../domain/access/AccessPolicy.js';
 import type { Clock } from '../../domain/Clock.js';
 import { splitJapaneseAddress } from '../../domain/area/japaneseAddress.js';
 import { isSimilarNumber, normalizeCompanyName } from '../../domain/companies/duplicates.js';
+import { keywordWhere } from '../../domain/companies/keywordSearch.js';
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import {
   InvalidStateError,
@@ -111,6 +112,7 @@ export class CompanyService {
             }
           : {},
         filters.length === 0 ? {} : request.match === 'AND' ? { AND: filters } : { OR: filters },
+        keywordWhere(request.keyword) ?? {},
       ],
     };
     const [total, rows] = await Promise.all([

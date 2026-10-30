@@ -22,7 +22,7 @@ export function CallTargetsPage() {
   const [params] = useSearchParams();
   const initialList = params.get('list');
   const [name, setName] = useState('');
-  const [searchName, setSearchName] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [chips, setChips] = useState<FilterChip[]>(
     initialList ? [{ key: 1, field: 'listName', value: initialList }] : [],
   );
@@ -34,10 +34,10 @@ export function CallTargetsPage() {
   const grades = useOptionList(OptionCategory.CallGrade);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
 
-  // The list follows the name box shortly after typing stops.
+  // The list follows the keyword box shortly after typing stops.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearchName(name.trim());
+      setKeyword(name.trim());
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);
@@ -49,14 +49,12 @@ export function CallTargetsPage() {
       setPage(1);
     };
 
-  const conditions = [
-    ...(searchName ? [{ field: 'name' as const, value: searchName }] : []),
-    ...chips.map((chip) => ({
-      field: chip.field,
-      value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
-    })),
-  ];
+  const conditions = chips.map((chip) => ({
+    field: chip.field,
+    value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
+  }));
   const query = useCompanySearch({
+    keyword,
     conditions,
     match,
     callTargetsOnly: onlyTargets,
