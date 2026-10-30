@@ -169,6 +169,7 @@ describe('MoraBot actions', () => {
 describe('MoraBot proposals in the chat', () => {
   it('shows the card to the person and tells the model it is not saved', async () => {
     const config: AssistantConfig = {
+      enabled: true,
       baseUrl: 'https://example.invalid/v1',
       apiKey: 'test-key',
       model: 'test-model',

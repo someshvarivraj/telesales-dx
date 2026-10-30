@@ -6,6 +6,7 @@ import { AssistantService } from '../src/modules/assistant/AssistantService.js';
 import type { AssistantTools } from '../src/modules/assistant/AssistantTools.js';
 
 const config: AssistantConfig = {
+  enabled: true,
   baseUrl: 'https://example.invalid/v1',
   apiKey: 'test-key',
   model: 'test-model',

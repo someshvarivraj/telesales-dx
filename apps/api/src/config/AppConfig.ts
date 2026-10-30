@@ -45,6 +45,11 @@ const envSchema = z.object({
    * https://generativelanguage.googleapis.com/v1beta/openai). Empty = assistant off.
    * Sends questions and looked-up data outside AWS: needs the company's approval.
    */
+  /** On hold until the next phase (Sano-san, 10/30): the chat stays hidden unless 'true'. */
+  AI_ASSISTANT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   AI_BASE_URL: z
     .string()
     .optional()
@@ -81,6 +86,7 @@ export interface LoginPolicy {
 }
 
 export interface AssistantConfig {
+  readonly enabled: boolean;
   readonly baseUrl: string;
   readonly apiKey: string;
   readonly model: string;
@@ -139,6 +145,7 @@ export class AppConfig {
       allowedRecipients: values.MAIL_ALLOWED_RECIPIENTS,
     };
     this.assistant = {
+      enabled: values.AI_ASSISTANT_ENABLED,
       baseUrl: values.AI_BASE_URL,
       apiKey: values.AI_API_KEY,
       model: values.AI_MODEL,

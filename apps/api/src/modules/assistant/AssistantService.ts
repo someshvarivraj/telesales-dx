@@ -184,7 +184,7 @@ export class AssistantService {
   ) {}
 
   get enabled(): boolean {
-    return Boolean(this.config.baseUrl && this.config.apiKey);
+    return this.config.enabled && Boolean(this.config.baseUrl && this.config.apiKey);
   }
 
   async chat(
