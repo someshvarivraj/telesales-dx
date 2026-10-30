@@ -14,11 +14,11 @@ import {
 import { Check, FileSpreadsheet, FileText, PencilLine } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { BackLink } from '@/components/ui/BackLink';
-import { Button } from '@/components/ui/Button';
+import { Button, LinkButton } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { DescriptionList } from '@/components/ui/DescriptionList';
 import { Dialog } from '@/components/ui/Dialog';
@@ -410,14 +410,18 @@ function BookingForm(props: BookingFormProps) {
                       </Alert>
                     )}
                     {prefilled?.alreadyImportedAppointmentId && (
-                      <Alert tone="error">
+                      <Alert
+                        tone="error"
+                        action={
+                          <LinkButton
+                            size="sm"
+                            to={paths.appointment(prefilled.alreadyImportedAppointmentId)}
+                          >
+                            登録済みのアポを開く
+                          </LinkButton>
+                        }
+                      >
                         このファイルはすでにアポとして登録されています。
-                        <Link
-                          to={paths.appointment(prefilled.alreadyImportedAppointmentId)}
-                          className="ml-2 font-bold text-link hover:underline"
-                        >
-                          登録済みのアポを開く
-                        </Link>
                       </Alert>
                     )}
                     {prefilled && prefilled.csvRows.length > 1 && (
@@ -478,7 +482,16 @@ function BookingForm(props: BookingFormProps) {
           </StepCard>
 
           {createError && (
-            <Alert tone="error">
+            <Alert
+              tone="error"
+              action={
+                duplicateOf && (
+                  <LinkButton size="sm" to={paths.appointment(duplicateOf)}>
+                    登録済みのアポを開く
+                  </LinkButton>
+                )
+              }
+            >
               {errorMessageOf(createError)}
               {ApiError.isApiError(createError) && Array.isArray(createError.details) && (
                 <ul className="mt-1 list-inside list-disc">
@@ -486,14 +499,6 @@ function BookingForm(props: BookingFormProps) {
                     <li key={index}>{slotProblemText(problem)}</li>
                   ))}
                 </ul>
-              )}
-              {duplicateOf && (
-                <Link
-                  to={paths.appointment(duplicateOf)}
-                  className="ml-2 font-bold text-link hover:underline"
-                >
-                  登録済みのアポを開く
-                </Link>
               )}
             </Alert>
           )}

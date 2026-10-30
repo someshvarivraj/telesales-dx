@@ -1,9 +1,10 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { Link, type LinkProps } from 'react-router';
 import { cn } from './cn';
 import { Spinner } from './Spinner';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'text';
-type Size = 'md' | 'lg';
+type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -24,9 +25,21 @@ const variantClass: Record<Variant, string> = {
 };
 
 const sizeClass: Record<Size, string> = {
+  sm: 'h-8 px-3 text-[13px]',
   md: 'h-10 px-4 text-sm',
   lg: 'h-12 px-6 text-base',
 };
+
+function buttonClass(variant: Variant, size: Size, fullWidth: boolean, className?: string) {
+  return cn(
+    'inline-flex cursor-pointer items-center justify-center gap-2 font-medium whitespace-nowrap transition-colors duration-150 active:translate-y-px',
+    'disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0',
+    variantClass[variant],
+    sizeClass[size],
+    fullWidth && 'w-full',
+    className,
+  );
+}
 
 export function Button({
   variant = 'primary',
@@ -46,18 +59,36 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(
-        'inline-flex cursor-pointer items-center justify-center gap-2 font-medium whitespace-nowrap transition-colors duration-150 active:translate-y-px',
-        'disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0',
-        variantClass[variant],
-        sizeClass[size],
-        fullWidth && 'w-full',
-        className,
-      )}
+      className={buttonClass(variant, size, fullWidth, className)}
       {...rest}
     >
       {loading ? <Spinner /> : icon}
       {loading && loadingLabel ? loadingLabel : children}
     </button>
+  );
+}
+
+interface LinkButtonProps extends LinkProps {
+  variant?: Variant;
+  size?: Size;
+  icon?: ReactNode;
+  fullWidth?: boolean;
+}
+
+/** A link to another screen that looks and weighs like a button (never as plain text). */
+export function LinkButton({
+  variant = 'secondary',
+  size = 'md',
+  icon,
+  fullWidth = false,
+  className,
+  children,
+  ...rest
+}: LinkButtonProps) {
+  return (
+    <Link className={buttonClass(variant, size, fullWidth, className)} {...rest}>
+      {icon}
+      {children}
+    </Link>
   );
 }

@@ -159,7 +159,7 @@ export function MemberPicker({
             <button
               type="button"
               onClick={() => onChange([])}
-              className="ml-auto cursor-pointer font-bold text-link hover:underline"
+              className="ml-auto h-6 cursor-pointer px-1.5 font-bold text-ink-sub transition-colors hover:bg-hover hover:text-ink"
             >
               解除
             </button>
@@ -189,7 +189,7 @@ export function MemberPicker({
             <button
               type="button"
               onClick={() => setMore(!more)}
-              className="mt-1 cursor-pointer px-0.5 text-[11px] font-bold text-link hover:underline"
+              className="mt-1 h-7 w-full cursor-pointer px-1.5 text-left text-[11px] font-bold text-ink-sub transition-colors hover:bg-hover hover:text-ink"
             >
               {more ? '閉じる' : `ほか${chosenPeople.length - SHOWN_CHOSEN}人を表示`}
             </button>

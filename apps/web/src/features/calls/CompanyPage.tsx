@@ -7,12 +7,12 @@ import {
   OptionCategory,
   Permission,
 } from '@telesales/shared';
-import { CalendarPlus, MessageSquare, Pencil } from 'lucide-react';
+import { Building2, CalendarPlus, MessageSquare, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
-import { Button } from '@/components/ui/Button';
+import { Button, LinkButton } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DescriptionList } from '@/components/ui/DescriptionList';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -173,45 +173,28 @@ export function CompanyPage() {
           <div className="mb-5 flex flex-col gap-2">
             {data.similarNumbers.length > 0 && (
               <Alert tone="warning">
-                同じ会社の近い番号があります：
-                {data.similarNumbers.map((other) => (
-                  <Link
-                    key={other.id}
-                    to={paths.company(other.id)}
-                    className="ml-2 font-bold text-link hover:underline"
-                  >
-                    {other.name}（{other.phone}）
-                  </Link>
-                ))}
-                。架電するか判断してください。
+                同じ会社の近い番号があります。架電するか判断してください。
+                <CompanyButtons companies={data.similarNumbers} />
               </Alert>
             )}
             {data.flagMatches.length > 0 && data.flag !== 'NONE' && (
               <Alert tone={data.flag === 'DUPLICATE' ? 'error' : 'warning'}>
                 {data.flag === 'DUPLICATE'
-                  ? '電話番号が同じ企業があります（リーダーが扱いを決めるまで架電対象から外れます）：'
-                  : '会社名が同じ企業があります：'}
-                {data.flagMatches.map((other) => (
-                  <Link
-                    key={other.id}
-                    to={paths.company(other.id)}
-                    className="ml-2 font-bold text-link hover:underline"
-                  >
-                    {other.name}
-                  </Link>
-                ))}
+                  ? '電話番号が同じ企業があります（リーダーが扱いを決めるまで架電対象から外れます）。'
+                  : '会社名が同じ企業があります。'}
+                <CompanyButtons companies={data.flagMatches} />
               </Alert>
             )}
             {justSavedA && canBook && (
-              <Alert tone="success">
+              <Alert
+                tone="success"
+                action={
+                  <Button size="sm" onClick={() => setRepOpen(true)}>
+                    担当営業を判定してアポを登録する
+                  </Button>
+                }
+              >
                 アポ獲得で保存しました。
-                <button
-                  type="button"
-                  onClick={() => setRepOpen(true)}
-                  className="ml-2 cursor-pointer font-bold text-link hover:underline"
-                >
-                  担当営業を判定してアポを登録する
-                </button>
               </Alert>
             )}
           </div>
@@ -400,5 +383,29 @@ function TelemaMemoCard({ company, canWrite }: { company: CompanyDetail; canWrit
         <p className="text-sm text-ink-sub">メモはありません。</p>
       )}
     </Card>
+  );
+}
+
+/** Other companies named in a warning, each as a small button to open it. */
+function CompanyButtons({
+  companies,
+}: {
+  companies: { id: string; name: string; phone: string | null }[];
+}) {
+  return (
+    <span className="mt-2 flex flex-wrap gap-2">
+      {companies.map((other) => (
+        <LinkButton
+          key={other.id}
+          size="sm"
+          to={paths.company(other.id)}
+          className="h-auto min-h-8 max-w-full flex-wrap justify-start gap-x-2 gap-y-0 py-1 text-left whitespace-normal"
+          icon={<Building2 aria-hidden="true" className="size-3.5 text-ink-sub" />}
+        >
+          {other.name}
+          {other.phone && <span className="text-ink-sub tabular-nums">{other.phone}</span>}
+        </LinkButton>
+      ))}
+    </span>
   );
 }

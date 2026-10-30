@@ -7,13 +7,14 @@ import {
   MessageSquareWarning,
   Pencil,
   RotateCcw,
+  Send,
   XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
-import { Button } from '@/components/ui/Button';
+import { Button, LinkButton } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DescriptionList } from '@/components/ui/DescriptionList';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -156,50 +157,65 @@ export function AppointmentPage() {
                 <Alert tone="error">{errorMessageOf(confirm.error ?? dayBefore.error)}</Alert>
               )}
               {abilities.sendBookingMail && !sent && appointment.status !== 'CANCELLED' && (
-                <Alert tone="warning">
+                <Alert
+                  tone="warning"
+                  action={
+                    <LinkButton
+                      variant="primary"
+                      size="sm"
+                      to={paths.appointmentMail(appointment.id, 'booking')}
+                      icon={<Send aria-hidden="true" className="size-3.5" />}
+                    >
+                      確認して送る
+                    </LinkButton>
+                  }
+                >
                   営業さんへのメール（N1）はまだ送っていません。
-                  <Link
-                    to={paths.appointmentMail(appointment.id, 'booking')}
-                    className="ml-2 font-bold text-link hover:underline"
-                  >
-                    確認して送る
-                  </Link>
                 </Alert>
               )}
               {appointment.status === 'CANCELLED' && (
-                <Alert tone="info">
+                <Alert
+                  tone="info"
+                  action={
+                    abilities.rebook && (
+                      <LinkButton
+                        variant="primary"
+                        size="sm"
+                        to={paths.appointmentMail(appointment.id, 'cancellation')}
+                        icon={<Send aria-hidden="true" className="size-3.5" />}
+                      >
+                        取り消しのお知らせ（N8）を送る
+                      </LinkButton>
+                    )
+                  }
+                >
                   {appointment.cancelledAt &&
                     `${formatDateTime(appointment.cancelledAt)}に${appointment.cancelledBy?.name ?? ''}さんが取り消しました。`}
-                  {abilities.rebook && (
-                    <Link
-                      to={paths.appointmentMail(appointment.id, 'cancellation')}
-                      className="ml-2 font-bold text-link hover:underline"
-                    >
-                      取り消しのお知らせ（N8）を確認して送る
-                    </Link>
-                  )}
                 </Alert>
               )}
               {appointment.originalAppointmentId && (
-                <Alert tone="info">
+                <Alert
+                  tone="info"
+                  action={
+                    <LinkButton size="sm" to={paths.appointment(appointment.originalAppointmentId)}>
+                      元のアポを開く
+                    </LinkButton>
+                  }
+                >
                   取り消したアポの再アポです。
-                  <Link
-                    to={paths.appointment(appointment.originalAppointmentId)}
-                    className="ml-2 font-bold text-link hover:underline"
-                  >
-                    元のアポ
-                  </Link>
                 </Alert>
               )}
               {appointment.rebookingIds.map((rebookingId) => (
-                <Alert key={rebookingId} tone="info">
+                <Alert
+                  key={rebookingId}
+                  tone="info"
+                  action={
+                    <LinkButton size="sm" to={paths.appointment(rebookingId)}>
+                      再アポを開く
+                    </LinkButton>
+                  }
+                >
                   このアポの再アポがあります。
-                  <Link
-                    to={paths.appointment(rebookingId)}
-                    className="ml-2 font-bold text-link hover:underline"
-                  >
-                    再アポを開く
-                  </Link>
                 </Alert>
               ))}
               {abilities.dayBeforeCheck && (
@@ -221,12 +237,14 @@ export function AppointmentPage() {
                       </Button>
                     ))}
                     {appointment.dayBeforeResult && (
-                      <Link
+                      <LinkButton
+                        variant="primary"
                         to={paths.appointmentMail(appointment.id, 'dayBefore')}
-                        className="ml-auto text-sm font-bold text-link hover:underline"
+                        icon={<Send aria-hidden="true" className="size-4" />}
+                        className="ml-auto"
                       >
                         確認結果を営業へ送る（N14）
-                      </Link>
+                      </LinkButton>
                     )}
                   </div>
                 </Card>
@@ -350,12 +368,14 @@ export function AppointmentPage() {
                     ))}
                   </ul>
                   {abilities.sendBookingMail && (
-                    <Link
+                    <LinkButton
+                      size="sm"
                       to={paths.appointmentMail(appointment.id, 'booking')}
-                      className="mt-3 inline-block text-sm font-bold text-link hover:underline"
+                      icon={<Mail aria-hidden="true" className="size-3.5" />}
+                      className="mt-3"
                     >
                       営業さんへのメール（N1）を開く
-                    </Link>
+                    </LinkButton>
                   )}
                 </Card>
                 {appointment.sourceFiles.length > 0 && (
@@ -372,9 +392,9 @@ export function AppointmentPage() {
                                 source.file.originalName,
                               )
                             }
-                            className="flex cursor-pointer items-center gap-1.5 text-sm text-link hover:underline"
+                            className="flex h-8 cursor-pointer items-center gap-1.5 border border-line-strong bg-surface px-3 text-[13px] font-medium text-ink transition-colors hover:border-main-line hover:bg-main-soft"
                           >
-                            <FileText className="size-4" aria-hidden="true" />
+                            <FileText className="size-4 text-ink-sub" aria-hidden="true" />
                             {source.file.originalName}
                           </button>
                           <span className="text-xs text-ink-sub">

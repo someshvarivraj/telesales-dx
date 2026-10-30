@@ -192,8 +192,9 @@ export function CallTargetFilters(props: CallTargetFiltersProps) {
           <button
             type="button"
             onClick={() => onChips([])}
-            className="ml-auto cursor-pointer text-xs font-bold text-link hover:underline"
+            className="ml-auto inline-flex h-8 cursor-pointer items-center gap-1 px-2 text-xs font-bold text-ink-sub transition-colors hover:bg-surface hover:text-ink"
           >
+            <X aria-hidden="true" className="size-3.5" />
             条件をすべて外す
           </button>
         )}

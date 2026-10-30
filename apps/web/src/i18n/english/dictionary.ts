@@ -618,6 +618,13 @@ export const EXACT: Readonly<Record<string, string>> = {
   旧社名: 'Former name',
   '社名を変えると、前の名前は旧社名として残ります。':
     'If you rename the company, the old name is kept as a former name.',
+  '会社名が同じ企業があります。': 'There are companies with the same name.',
+  '同じ会社の近い番号があります。架電するか判断してください。':
+    'The same company has a similar number. Decide whether to call.',
+  '電話番号が同じ企業があります（リーダーが扱いを決めるまで架電対象から外れます）。':
+    'Companies share this phone number (not called until a leader decides).',
+  元のアポを開く: 'Open the original appointment',
+  '取り消しのお知らせ（N8）を送る': 'Send the cancellation notice (N8)',
   '会社名が同じ企業があります：': 'Companies with the same name: ',
   '同じ会社の近い番号があります：': 'Same company with a similar number: ',
   '。架電するか判断してください。': '. Decide whether to call.',
