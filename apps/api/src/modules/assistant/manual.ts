@@ -12,7 +12,6 @@ export const MANUAL = `
 - 架電状況（/calls）：タブ「架電対象」「リスト取り込み」（/calls/import）「取り込み履歴」（/calls/imports）「重複・要確認」（/calls/duplicates）。企業のページは /calls/companies/{企業ID}。
 - スケジュール（/schedule）：営業の予定表。アポ登録の画面は /schedule/book。
 - アポ一覧（/appointments）：タブ「前日確認」（/appointments/day-before）「変更依頼」（/appointments/change-requests）「次回アクション」（/appointments/next-actions）。アポのページは /appointments/{アポID}。
-- ダッシュボード（/dashboard）：集計。
 - テレマ管理（/telema）：今日（/telema）、シフト（/telema/shifts）、割り振り（/telema/allocation）、メンバー（/telema/people）。
 - 管理（/admin）：管理者だけ。ユーザー・役割（/admin/users）、営業担当表（/admin/area-table）、祝日・会社の休日（/admin/calendar）、選択肢（/admin/options）、通知の宛先（/admin/notices）、押さえ中の枠（/admin/locks）、設定（/admin/settings）、アプリ（/admin/apps）、操作履歴（/admin/audit）。
 - 左下：言語（日本語 / English。英語表示は画面の文字を置き換える一時的なもの）、「さくらテーマ」（ピンクの見た目と女の子のMoraBotに切り替え。人ごとに保存）。
@@ -116,9 +115,6 @@ export const MANUAL = `
 
 ## 次回アクション（/appointments/next-actions）
 - 自分が入れた打ち合わせ結果と、自分が担当のアポの「次回アクション」。終わったら「済んだ」。「済んだものも表示」で全部。
-
-## ダッシュボード（/dashboard）
-- 期間・テレマ・担当営業・リスト・業種・地域（都道府県）で絞る。架電数・アポ数・アポ率・打ち合わせ予定・結果入力済み。テレマごと・営業ごと・リストごと・判定ごとの表。
 
 ## テレマ管理（/telema）
 - 今日（/telema）：今日の出勤の人と「あなたの今日の担当」（架電・前日確認の件数）。割り振りが確定していなければ「割り振りを確かめて確定する」（リーダー）。

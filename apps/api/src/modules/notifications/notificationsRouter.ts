@@ -1,4 +1,4 @@
-import { dashboardQuerySchema, notificationQuerySchema, Permission } from '@telesales/shared';
+import { notificationQuerySchema, Permission } from '@telesales/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import { currentUserOf } from '../../http/currentUser.js';
@@ -41,10 +41,6 @@ export function createNotificationsRouter(deps: {
   });
   router.get('/home', view, async (req, res) => {
     res.json(await deps.dashboard.home(currentUserOf(req)));
-  });
-  router.get('/dashboard', view, async (req, res) => {
-    const query = parseQuery(dashboardQuerySchema, req);
-    res.json(await deps.dashboard.summary(query));
   });
   return router;
 }

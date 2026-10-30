@@ -29,7 +29,6 @@ import { CompanyPage } from '@/features/calls/CompanyPage';
 import { DuplicatesPage } from '@/features/calls/DuplicatesPage';
 import { ImportHistoryPage } from '@/features/calls/ImportHistoryPage';
 import { ListImportPage } from '@/features/calls/ListImportPage';
-import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { HomePage } from '@/features/home/HomePage';
 import { ActivityPage } from '@/features/notifications/ActivityPage';
 import { adminMenu, visibleItems } from '@/features/home/menus';
@@ -124,7 +123,6 @@ export const routes: RouteObject[] = [
       },
       { path: '/appointments/:id', element: guard(view, <AppointmentPage />) },
       { path: '/appointments/:id/mail/:kind', element: guard(view, <MailPage />) },
-      { path: paths.dashboard, element: guard(view, <DashboardPage />) },
       {
         path: paths.telema,
         element: guard(view, <TelemaLayout />),

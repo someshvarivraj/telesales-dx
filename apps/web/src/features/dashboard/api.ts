@@ -1,16 +1,8 @@
-import type { DashboardQuery, DashboardResponse, HomeSummaryResponse } from '@telesales/shared';
+import type { HomeSummaryResponse } from '@telesales/shared';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, toQuery } from '@/lib/api/ApiClient';
+import { apiClient } from '@/lib/api/ApiClient';
 
-export function useDashboard(query: DashboardQuery) {
-  return useQuery({
-    queryKey: ['dashboard', query],
-    queryFn: ({ signal }) =>
-      apiClient.get<DashboardResponse>(`/dashboard${toQuery({ ...query })}`, signal),
-    placeholderData: (previous) => previous,
-  });
-}
-
+/** 今日やること: the counts on the home screen and the tabs' badges. */
 export function useHomeSummary() {
   return useQuery({
     queryKey: ['home'],

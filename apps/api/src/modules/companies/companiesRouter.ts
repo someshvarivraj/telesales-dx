@@ -63,9 +63,6 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       ),
     );
   });
-  router.get('/companies/industries', view, async (_req, res) => {
-    res.json(await deps.companies.industries());
-  });
   router.get('/companies/list-names', view, async (_req, res) => {
     res.json(await deps.companies.listNames());
   });

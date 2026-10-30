@@ -1,6 +1,5 @@
 import { Permission } from '@telesales/shared';
 import {
-  BarChart3,
   CalendarDays,
   ClipboardList,
   Home,
@@ -57,14 +56,6 @@ export const navItems: readonly NavItem[] = [
     sideLabel: ja.module.appointments,
     group: 'work',
     icon: ClipboardList,
-    anyOf: [Permission.ViewData],
-  },
-  {
-    to: paths.dashboard,
-    label: ja.nav.dashboard,
-    sideLabel: ja.module.dashboard,
-    group: 'work',
-    icon: BarChart3,
     anyOf: [Permission.ViewData],
   },
   {
