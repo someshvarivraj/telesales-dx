@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import ExcelJS from 'exceljs';
 import {
   CompanyFlag,
   type CommitListImportRequest,
@@ -12,6 +13,8 @@ import {
   OptionCategory,
   PHONE_DIGITS_PATTERN,
   phoneDigitsOf,
+  datedListName,
+  jstDate,
 } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
@@ -122,7 +125,9 @@ export class ListImportService {
     if (analysis.valid.length === 0) {
       throw new FileUnreadableError({ reason: 'no_valid_rows' });
     }
-    const customerTypes = await this.customerTypeCodes();
+    const listName = datedListName(input.listName, jstDate(new Date()));
+    const customerTypes = await this.optionCodes(OptionCategory.CustomerType);
+    const ranks = await this.optionCodes(OptionCategory.CompanyRank);
     const callRequest = input.purpose === ListImportPurpose.CallRequest;
 
     const created = await this.prisma.$transaction(
@@ -130,7 +135,8 @@ export class ListImportService {
         const listImport = await tx.listImport.create({
           data: {
             purpose: input.purpose,
-            listName: input.listName,
+            listName,
+            autoAllocate: callRequest && input.autoAllocate,
             fileId: record.id,
             importedById: actor.id,
             rowCount: analysis.rowCount,
@@ -143,7 +149,13 @@ export class ListImportService {
         });
         const companies = analysis.valid.map((row) => ({
           row,
-          data: this.toCompanyData(row, input, actor.id, customerTypes, callRequest),
+          data: this.toCompanyData(
+            row,
+            { ...input, listName },
+            actor.id,
+            { customerTypes, ranks },
+            callRequest,
+          ),
         }));
         await tx.company.createMany({ data: companies.map((company) => company.data) });
         await tx.listImportRow.createMany({
@@ -205,6 +217,85 @@ export class ListImportService {
     return rows.map((row) => this.toDto(row));
   }
 
+  /**
+   * 登録済リスト一覧 (request 10/29): every list imported, its size, how many rows came in,
+   * and the companies from it that got an appointment, with a link to the original file.
+   */
+  async registryWorkbook(appBaseUrl: string): Promise<{ fileName: string; content: Buffer }> {
+    const imports = await this.prisma.listImport.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        importedBy: userRefSelect,
+        file: { select: { originalName: true } },
+        rows: { where: { companyId: { not: null } }, select: { companyId: true, status: true } },
+      },
+    });
+    const companyIds = [
+      ...new Set(imports.flatMap((item) => item.rows.map((row) => row.companyId as string))),
+    ];
+    const appointments = await this.prisma.appointment.findMany({
+      where: { companyId: { in: companyIds } },
+      select: { companyId: true, createdAt: true, company: { select: { name: true } } },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'テレマ・営業DX';
+    const sheet = workbook.addWorksheet('登録済リスト一覧');
+    sheet.columns = [
+      { header: '取り込み日', width: 12 },
+      { header: 'リスト名', width: 34 },
+      { header: '目的', width: 12 },
+      { header: '自動割り振り', width: 12 },
+      { header: 'リスト総件数', width: 12 },
+      { header: '取り込み件数', width: 12 },
+      { header: '重複', width: 8 },
+      { header: '要確認', width: 8 },
+      { header: 'エラー', width: 8 },
+      { header: 'アポ取得件数', width: 12 },
+      { header: 'アポ取得企業名', width: 50 },
+      { header: '取り込んだ人', width: 14 },
+      { header: 'Excelファイル', width: 36 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+    for (const item of imports) {
+      const ids = new Set(item.rows.map((row) => row.companyId));
+      // Appointments made after the list came in, for companies on it.
+      const won = [
+        ...new Set(
+          appointments
+            .filter((a) => ids.has(a.companyId) && a.createdAt >= item.createdAt)
+            .map((a) => a.company.name),
+        ),
+      ];
+      const added = sheet.addRow([
+        jstDate(item.createdAt),
+        item.listName,
+        item.purpose === 'CALL_REQUEST' ? '架電依頼' : '登録のみ',
+        item.purpose === 'CALL_REQUEST' ? (item.autoAllocate ? 'する' : 'しない') : '',
+        item.rowCount,
+        item.rows.filter((row) => row.status === 'IMPORTED').length,
+        item.duplicateCount,
+        item.checkCount,
+        item.errorCount,
+        won.length,
+        won.join('、'),
+        item.importedBy.name,
+        {
+          text: item.file.originalName,
+          hyperlink: `${appBaseUrl}/api/list-imports/${item.id}/file`,
+        },
+      ]);
+      added.getCell(13).font = { color: { argb: 'FF0563C1' }, underline: true };
+      added.getCell(11).alignment = { wrapText: true, vertical: 'top' };
+    }
+    const today = jstDate(new Date()).replaceAll('-', '');
+    return {
+      fileName: `登録済リスト一覧_${today}.xlsx`,
+      content: Buffer.from(await workbook.xlsx.writeBuffer()),
+    };
+  }
+
   /** The rows of one import as they were read and judged. */
   async rows(listImportId: string, query: ListImportRowsQuery): Promise<ListImportRowDto[]> {
     const exists = await this.prisma.listImport.count({ where: { id: listImportId } });
@@ -233,6 +324,7 @@ export class ListImportService {
       id: row.id,
       purpose: row.purpose,
       listName: row.listName,
+      autoAllocate: row.autoAllocate,
       fileName: row.file.originalName,
       fileId: row.fileId,
       importedBy: userRef(row.importedBy),
@@ -249,14 +341,15 @@ export class ListImportService {
     row: AnalyzedRow,
     input: CommitListImportRequest,
     actorId: string,
-    customerTypes: Map<string, string>,
+    codes: { customerTypes: Map<string, string>; ranks: Map<string, string> },
     callRequest: boolean,
   ): Prisma.CompanyCreateManyInput & { id: string } {
     const address = row.fields.address ?? null;
     const parts = splitJapaneseAddress(address);
     const customerType = row.fields.customerType
-      ? (customerTypes.get(row.fields.customerType) ?? null)
+      ? (codes.customerTypes.get(row.fields.customerType) ?? null)
       : null;
+    const rank = row.fields.companyRank ?? null;
     return {
       // Generated here so the import rows can point at the companies created in the same batch.
       id: randomUUID(),
@@ -274,19 +367,23 @@ export class ListImportService {
       industry: row.fields.industry ?? null,
       customerType,
       clientNo: row.fields.clientNo ?? null,
+      // An unknown rank is kept as written, so nothing in the list is lost.
+      companyRank: rank ? (codes.ranks.get(rank) ?? rank.slice(0, 48)) : null,
+      parentName: row.fields.parentName?.slice(0, 100) ?? null,
       listName: input.listName,
       flag: row.flag,
       flagMatchId: row.matchId,
       // Duplicates stay out of the call targets until a lead resolves them.
       isCallTarget: callRequest && row.flag !== CompanyFlag.Duplicate,
+      autoAllocate: input.autoAllocate,
       extra: Object.keys(row.extra).length > 0 ? row.extra : undefined,
       createdById: actorId,
     };
   }
 
   /** Label (新規) or code (NEW) → code. */
-  private async customerTypeCodes(): Promise<Map<string, string>> {
-    const labels = await this.options.labels(OptionCategory.CustomerType);
+  private async optionCodes(category: OptionCategory): Promise<Map<string, string>> {
+    const labels = await this.options.labels(category);
     const result = new Map<string, string>();
     labels.forEach((label, code) => {
       result.set(label, code);
@@ -323,7 +420,7 @@ export class ListImportService {
     const errors: { row: number; message: string }[] = [];
     const invalid: InvalidRow[] = [];
     const candidates: AnalyzedRow[] = [];
-    for (const { row, values } of table.rows) {
+    for (const { row, values, red } of table.rows) {
       const fields: Partial<Record<ListField, string>> = {};
       const extra: Record<string, string> = {};
       const raw: Record<string, string> = {};
@@ -339,6 +436,13 @@ export class ListImportService {
         } else if (value) {
           extra[column.header] = value;
         }
+      }
+      // 「NTT上系」 with NTT in red: the rank is 上系 and the parent company NTT.
+      const rankColumn = columns.find((column) => column.field === 'companyRank');
+      const parent = rankColumn ? red?.[rankColumn.header] : undefined;
+      if (parent && fields.companyRank) {
+        fields.companyRank = fields.companyRank.replace(parent, '').trim();
+        fields.parentName ??= parent;
       }
       const rowErrors = validateRow(fields);
       const phoneDigits = phoneDigitsOf(fields.phone);

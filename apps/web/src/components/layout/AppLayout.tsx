@@ -1,9 +1,11 @@
 import { Permission } from '@telesales/shared';
-import { Outlet } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
+import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
+import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useSystemStatus } from '@/features/system/useSystemStatus';
@@ -18,6 +20,8 @@ export function AppLayout() {
   const status = useSystemStatus();
   const admin = permissions.includes(Permission.Administer);
   const maintenance = status.data?.maintenance === true;
+  // The schedule uses the full width of the screen (request 10/29).
+  const wide = useLocation().pathname.startsWith(paths.schedule);
   return (
     <ThemeProvider userId={id} roles={roles}>
       <div className="min-h-dvh">
@@ -25,7 +29,12 @@ export function AppLayout() {
         <AppSidebar />
         <div className="app-main flex min-h-dvh min-w-0 flex-col">
           <AppHeader />
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-5 pb-24 sm:px-6 md:px-8 md:pt-7 md:pb-12">
+          <main
+            className={cn(
+              'mx-auto w-full flex-1 px-4 pt-5 pb-24 sm:px-6 md:px-8 md:pt-7 md:pb-12',
+              !wide && 'max-w-7xl',
+            )}
+          >
             {maintenance && admin && (
               <Alert tone="warning" className="mb-5">
                 メンテナンス中です。いまは管理者だけが使えます（管理 ＞ {ja.admin.apps}{' '}

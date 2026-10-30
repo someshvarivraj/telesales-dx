@@ -22,10 +22,10 @@ const FIELDS = [
   ['nearestStation', '最寄駅'],
   ['industry', '業種'],
   ['clientNo', 'クライアントNo'],
-  ['listingStatus', '上場区分'],
+  ['parentName', '親会社名'],
 ] as const;
 
-type Key = (typeof FIELDS)[number][0] | 'customerType';
+type Key = (typeof FIELDS)[number][0] | 'customerType' | 'companyRank';
 
 export function CompanyEditDialog({
   company,
@@ -38,17 +38,24 @@ export function CompanyEditDialog({
 }) {
   const update = useUpdateCompany(company.id);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
+  const ranks = useOptionList(OptionCategory.CompanyRank);
   const [values, setValues] = useState<Record<Key, string>>(() => {
     const initial = {} as Record<Key, string>;
     for (const [key] of FIELDS) initial[key] = company[key] ?? '';
     initial.customerType = company.customerType ?? '';
+    initial.companyRank = company.companyRank ?? '';
     return initial;
   });
   const set = (key: Key, value: string) => setValues((current) => ({ ...current, [key]: value }));
 
   const save = () =>
     update.mutate(
-      { ...values, companyGroupId: company.companyGroupId, expectedUpdatedAt: company.updatedAt },
+      {
+        ...values,
+        listingStatus: company.listingStatus,
+        companyGroupId: company.companyGroupId,
+        expectedUpdatedAt: company.updatedAt,
+      },
       { onSuccess: onClose },
     );
 
@@ -87,6 +94,23 @@ export function CompanyEditDialog({
             )}
           </FormField>
         ))}
+        <FormField label="企業ランク">
+          {(c) => (
+            <Select
+              {...c}
+              value={values.companyRank}
+              placeholder="―"
+              options={[
+                ...ranks.selectOptions,
+                // A rank imported as written (not one of the choices) stays selectable.
+                ...(values.companyRank && !ranks.items.some((r) => r.code === values.companyRank)
+                  ? [{ value: values.companyRank, label: values.companyRank }]
+                  : []),
+              ]}
+              onChange={(e) => set('companyRank', e.target.value)}
+            />
+          )}
+        </FormField>
         <FormField label="取引区分">
           {(c) => (
             <Select

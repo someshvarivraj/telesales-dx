@@ -183,6 +183,7 @@ export const OptionCategory = {
   CallGrade: 'call_grade',
   /** Detailed result under a grade; the code starts with the grade ("B-03"). */
   CallResult: 'call_result',
+  CompanyRank: 'company_rank',
   CustomerType: 'customer_type',
   PlanType: 'plan_type',
   InterestLevel: 'interest_level',
