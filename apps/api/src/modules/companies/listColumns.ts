@@ -11,7 +11,9 @@ export type ListField =
   | 'nearestStation'
   | 'industry'
   | 'customerType'
-  | 'clientNo';
+  | 'clientNo'
+  | 'companyRank'
+  | 'parentName';
 
 /**
  * Header names (after NFKC normalisation) for each field. Only name, phone and URL are
@@ -39,6 +41,8 @@ const HEADER_ALIASES: Record<ListField, readonly string[]> = {
   industry: ['業種', '業界'],
   customerType: ['取引区分'],
   clientNo: ['クライアントNo', 'クライアントNo.', 'クライアント番号', 'ｸﾗｲｱﾝﾄNo'],
+  companyRank: ['企業ランク', 'ランク', '上場区分'],
+  parentName: ['親会社名', '親会社'],
 };
 
 const lookup = new Map<string, ListField>();
@@ -67,4 +71,6 @@ export const LIST_FIELD_LABEL: Record<ListField, string> = {
   industry: '業種',
   customerType: '取引区分',
   clientNo: 'クライアントNo',
+  companyRank: '企業ランク',
+  parentName: '親会社名',
 };

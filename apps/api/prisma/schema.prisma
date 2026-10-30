@@ -414,6 +414,12 @@ model Company {
   listName       String?     @map("list_name") @db.VarChar(200)
   /// e.g. 上場 — split from the end of the address on the handover PDF
   listingStatus  String?     @map("listing_status") @db.VarChar(20)
+  /// 企業ランク: option code in "company_rank" (上場・上系・優良・非上場・中小企業・対象外)
+  companyRank    String?     @map("company_rank") @db.VarChar(48)
+  /// 親会社名 (e.g. NTT for 「NTT上系」; the red text in the list's rank column)
+  parentName     String?     @map("parent_name") @db.VarChar(100)
+  /// テレマメモ: 定休日・始業時間・就業時間・覚えておくこと
+  telemaMemo     String?     @map("telema_memo")
   flag           CompanyFlag @default(NONE)
   /// The existing company this one was flagged against on import
   flagMatchId    String?     @map("flag_match_id") @db.Uuid

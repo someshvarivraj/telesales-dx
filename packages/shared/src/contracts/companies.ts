@@ -32,8 +32,13 @@ export const companyFieldsSchema = z.object({
   customerType: optionalText(48),
   clientNo: optionalText(32),
   listingStatus: optionalText(20),
+  companyRank: optionalText(48),
+  parentName: optionalText(100),
   companyGroupId: z.uuid().nullish(),
 });
+
+/** テレマメモ: kept apart from the company fields so telemarketing can write it. */
+export const telemaMemoRequestSchema = z.object({ telemaMemo: optionalText(4000) });
 export type CompanyFields = z.infer<typeof companyFieldsSchema>;
 
 export const updateCompanyRequestSchema = companyFieldsSchema.extend({
@@ -105,6 +110,9 @@ export interface CompanyDetail extends CompanyListItem {
   clientNo: string | null;
   telemaIdNo: string | null;
   listingStatus: string | null;
+  companyRank: string | null;
+  parentName: string | null;
+  telemaMemo: string | null;
   companyGroupId: string | null;
   extra: Record<string, string> | null;
   formerNames: string[];

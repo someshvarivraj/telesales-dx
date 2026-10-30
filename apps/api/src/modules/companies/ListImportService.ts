@@ -122,7 +122,8 @@ export class ListImportService {
     if (analysis.valid.length === 0) {
       throw new FileUnreadableError({ reason: 'no_valid_rows' });
     }
-    const customerTypes = await this.customerTypeCodes();
+    const customerTypes = await this.optionCodes(OptionCategory.CustomerType);
+    const ranks = await this.optionCodes(OptionCategory.CompanyRank);
     const callRequest = input.purpose === ListImportPurpose.CallRequest;
 
     const created = await this.prisma.$transaction(
@@ -143,7 +144,7 @@ export class ListImportService {
         });
         const companies = analysis.valid.map((row) => ({
           row,
-          data: this.toCompanyData(row, input, actor.id, customerTypes, callRequest),
+          data: this.toCompanyData(row, input, actor.id, { customerTypes, ranks }, callRequest),
         }));
         await tx.company.createMany({ data: companies.map((company) => company.data) });
         await tx.listImportRow.createMany({
@@ -249,14 +250,15 @@ export class ListImportService {
     row: AnalyzedRow,
     input: CommitListImportRequest,
     actorId: string,
-    customerTypes: Map<string, string>,
+    codes: { customerTypes: Map<string, string>; ranks: Map<string, string> },
     callRequest: boolean,
   ): Prisma.CompanyCreateManyInput & { id: string } {
     const address = row.fields.address ?? null;
     const parts = splitJapaneseAddress(address);
     const customerType = row.fields.customerType
-      ? (customerTypes.get(row.fields.customerType) ?? null)
+      ? (codes.customerTypes.get(row.fields.customerType) ?? null)
       : null;
+    const rank = row.fields.companyRank ?? null;
     return {
       // Generated here so the import rows can point at the companies created in the same batch.
       id: randomUUID(),
@@ -274,6 +276,9 @@ export class ListImportService {
       industry: row.fields.industry ?? null,
       customerType,
       clientNo: row.fields.clientNo ?? null,
+      // An unknown rank is kept as written, so nothing in the list is lost.
+      companyRank: rank ? (codes.ranks.get(rank) ?? rank.slice(0, 48)) : null,
+      parentName: row.fields.parentName?.slice(0, 100) ?? null,
       listName: input.listName,
       flag: row.flag,
       flagMatchId: row.matchId,
@@ -285,8 +290,8 @@ export class ListImportService {
   }
 
   /** Label (新規) or code (NEW) → code. */
-  private async customerTypeCodes(): Promise<Map<string, string>> {
-    const labels = await this.options.labels(OptionCategory.CustomerType);
+  private async optionCodes(category: OptionCategory): Promise<Map<string, string>> {
+    const labels = await this.options.labels(category);
     const result = new Map<string, string>();
     labels.forEach((label, code) => {
       result.set(label, code);
@@ -323,7 +328,7 @@ export class ListImportService {
     const errors: { row: number; message: string }[] = [];
     const invalid: InvalidRow[] = [];
     const candidates: AnalyzedRow[] = [];
-    for (const { row, values } of table.rows) {
+    for (const { row, values, red } of table.rows) {
       const fields: Partial<Record<ListField, string>> = {};
       const extra: Record<string, string> = {};
       const raw: Record<string, string> = {};
@@ -339,6 +344,13 @@ export class ListImportService {
         } else if (value) {
           extra[column.header] = value;
         }
+      }
+      // 「NTT上系」 with NTT in red: the rank is 上系 and the parent company NTT.
+      const rankColumn = columns.find((column) => column.field === 'companyRank');
+      const parent = rankColumn ? red?.[rankColumn.header] : undefined;
+      if (parent && fields.companyRank) {
+        fields.companyRank = fields.companyRank.replace(parent, '').trim();
+        fields.parentName ??= parent;
       }
       const rowErrors = validateRow(fields);
       const phoneDigits = phoneDigitsOf(fields.phone);

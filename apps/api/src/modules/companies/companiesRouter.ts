@@ -8,6 +8,7 @@ import {
   listImportRowsQuerySchema,
   Permission,
   resolveFlagRequestSchema,
+  telemaMemoRequestSchema,
   updateCompanyRequestSchema,
 } from '@telesales/shared';
 import { Router } from 'express';
@@ -117,6 +118,16 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       file.content,
     );
   });
+  router.put(
+    '/companies/:id/telema-memo',
+    auth.requireAnyPermission(Permission.WriteCallRecords, Permission.EditCompanies),
+    async (req, res) => {
+      const { telemaMemo } = parseWith(telemaMemoRequestSchema, req.body);
+      res.json(
+        await deps.companies.updateTelemaMemo(currentUserOf(req), idParam(req), telemaMemo ?? null),
+      );
+    },
+  );
   router.get('/companies/:id/call-records', view, async (req, res) => {
     res.json(await deps.callRecords.listForCompany(currentUserOf(req), idParam(req)));
   });
