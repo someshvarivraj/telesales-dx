@@ -4,6 +4,9 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Schedule (request 10/29)
+  全画面: 'Full screen',
+  全画面を終了: 'Exit full screen',
   // List import (request 10/29)
   '自動割り振りする（毎朝の自動割り振りでテレマに配ります）':
     'Allocate automatically (handed out to telemarketing each morning)',

@@ -57,7 +57,7 @@ export function WeekView({
     event.kind === 'appointment' || event.kind === 'salesAppointment';
 
   return (
-    <div className="scroll-quiet overflow-x-auto border border-line bg-surface">
+    <div className="schedule-scroll overflow-x-auto border border-line bg-surface">
       <table className="w-full min-w-[880px] table-fixed border-collapse text-sm">
         {/* Weekends and holidays are narrower: nobody is booked there. */}
         <colgroup>
