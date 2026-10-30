@@ -4,6 +4,13 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // List import (request 10/29)
+  '自動割り振りする（毎朝の自動割り振りでテレマに配ります）':
+    'Allocate automatically (handed out to telemarketing each morning)',
+  '自動割り振りしない（架電対象にはなり、リーダーが手で割り振ります）':
+    'Do not allocate automatically (call targets; the lead hands them out)',
+  自動割り振りしない: 'Not auto-allocated',
+  登録済リスト一覧をExcelで出力: 'Export list registry to Excel',
   // Company page (request 10/29)
   テレマメモ: 'Telemarketing memo',
   メモを保存: 'Save memo',
@@ -1762,4 +1769,5 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['C架電回避目安：{0}（{1}から再開）', 'C: avoid for {0} (calls again from {1})'],
   ['B次回架電日：{0}', 'B next call date: {0}'],
   ['親会社名：{0}', 'Parent company: {0}'],
+  ['保存名：{0}（取り込み日が前に付きます）', 'Saved as: {0} (the import date goes in front)'],
 ];

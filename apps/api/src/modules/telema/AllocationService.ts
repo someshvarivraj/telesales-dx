@@ -343,6 +343,7 @@ export class AllocationService {
         LIMIT 1
       ) last_call ON true
       WHERE c.is_call_target
+        AND c.auto_allocate
         AND c.flag <> 'DUPLICATE'
         AND (c.prefecture IS NULL OR c.prefecture <> ALL(${territory}::text[]))
         AND NOT EXISTS (

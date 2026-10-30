@@ -36,6 +36,7 @@ export interface CompaniesDeps {
   comments: CommentService;
   area: AreaTableService;
   files: FileService;
+  appBaseUrl: string;
 }
 
 const callExportQuery = z.object({
@@ -191,6 +192,21 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
     auth.requireAnyPermission(Permission.ImportLists, Permission.ResolveDuplicates),
     async (req, res) => {
       res.json(await deps.imports.rows(idParam(req), parseQuery(listImportRowsQuerySchema, req)));
+    },
+  );
+  router.get(
+    '/list-imports/registry.xlsx',
+    auth.requireAnyPermission(Permission.ImportLists),
+    async (_req, res) => {
+      const file = await deps.imports.registryWorkbook(deps.appBaseUrl);
+      sendFile(
+        res,
+        {
+          originalName: file.fileName,
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+        file.content,
+      );
     },
   );
   router.get(
