@@ -50,6 +50,8 @@ function auditShape(company: Record<string, unknown>): Record<string, unknown> {
     'customerType',
     'clientNo',
     'listingStatus',
+    'companyRank',
+    'parentName',
     'companyGroupId',
   ];
   return Object.fromEntries(keys.map((key) => [key, company[key] ?? null]));
@@ -74,6 +76,8 @@ export function companyWriteData(fields: CompanyFields) {
     customerType: fields.customerType,
     clientNo: fields.clientNo,
     listingStatus: fields.listingStatus,
+    companyRank: fields.companyRank,
+    parentName: fields.parentName,
     companyGroupId: fields.companyGroupId ?? null,
   };
 }
@@ -158,6 +162,9 @@ export class CompanyService {
       clientNo: company.clientNo,
       telemaIdNo: company.telemaIdNo,
       listingStatus: company.listingStatus,
+      companyRank: company.companyRank,
+      parentName: company.parentName,
+      telemaMemo: company.telemaMemo,
       companyGroupId: company.companyGroupId,
       extra: (company.extra as Record<string, string> | null) ?? null,
       formerNames: company.formerNames.map((former) => former.name),
@@ -202,6 +209,30 @@ export class CompanyService {
       targetId: id,
       before: auditShape(before),
       after: auditShape({ ...before, ...data }),
+    });
+    return this.get(id);
+  }
+
+  async updateTelemaMemo(
+    actor: Actor,
+    id: string,
+    telemaMemo: string | null,
+  ): Promise<CompanyDetail> {
+    const before = await this.prisma.company.findUnique({
+      where: { id },
+      select: { telemaMemo: true },
+    });
+    if (!before) {
+      throw new NotFoundError();
+    }
+    await this.prisma.company.update({ where: { id }, data: { telemaMemo } });
+    await this.audit.record({
+      action: AuditAction.CompanyUpdated,
+      actorUserId: actor.id,
+      targetType: 'company',
+      targetId: id,
+      before: { telemaMemo: before.telemaMemo },
+      after: { telemaMemo },
     });
     return this.get(id);
   }

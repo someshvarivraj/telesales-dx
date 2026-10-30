@@ -4,6 +4,18 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Company page (request 10/29)
+  テレマメモ: 'Telemarketing memo',
+  メモを保存: 'Save memo',
+  'メモはありません。': 'No memo.',
+  保存しました: 'Saved',
+  企業ランク: 'Company rank',
+  親会社名: 'Parent company',
+  上系: 'Listed group',
+  優良: 'Excellent',
+  中小企業: 'SME',
+  '例：定休日 水曜／始業 9:00／就業 18:00／受付は総務の山田さん':
+    'e.g. Closed Wed / opens 9:00 / closes 18:00 / ask for Yamada in general affairs',
   // Call results (request 10/29)
   C架電回避目安: 'C: avoid calling for',
   '架電結果（詳細）': 'Call result (detail)',
@@ -1749,4 +1761,5 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['{0} から架電リストに戻ります', 'Back on the call list from {0}'],
   ['C架電回避目安：{0}（{1}から再開）', 'C: avoid for {0} (calls again from {1})'],
   ['B次回架電日：{0}', 'B next call date: {0}'],
+  ['親会社名：{0}', 'Parent company: {0}'],
 ];

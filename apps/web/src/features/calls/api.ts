@@ -64,6 +64,15 @@ export function useUpdateCompany(id: string) {
   });
 }
 
+export function useSaveTelemaMemo(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (telemaMemo: string | null) =>
+      apiClient.put<CompanyDetail>(`/companies/${id}/telema-memo`, { telemaMemo }),
+    onSuccess: (company) => client.setQueryData(callsKeys.company(id), company),
+  });
+}
+
 export function useCallRecords(companyId: string) {
   return useQuery({
     queryKey: callsKeys.records(companyId),
