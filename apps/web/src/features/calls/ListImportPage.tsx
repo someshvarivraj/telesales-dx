@@ -1,4 +1,10 @@
-import { CompanyFlag, type ListImportPreview, ListImportPurpose } from '@telesales/shared';
+import {
+  CompanyFlag,
+  datedListName,
+  jstDate,
+  type ListImportPreview,
+  ListImportPurpose,
+} from '@telesales/shared';
 import { FileSpreadsheet } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -53,6 +59,8 @@ export function ListImportPage() {
   const [result, setResult] = useState<ListImportPreview | null>(null);
   const [purpose, setPurpose] = useState<ListImportPurpose>(ListImportPurpose.CallRequest);
   const [listName, setListName] = useState('');
+  const [autoAllocate, setAutoAllocate] = useState(true);
+  const savedName = datedListName(listName || 'リスト名', jstDate(new Date()));
 
   const onFiles = (files: File[]) => {
     const [file] = files;
@@ -219,13 +227,36 @@ export function ListImportPage() {
                   onChange={() => setPurpose(ListImportPurpose.RegisterOnly)}
                 />
               </fieldset>
-              <FormField label="リスト名" required>
+              {purpose === ListImportPurpose.CallRequest && (
+                <fieldset className="flex flex-col">
+                  <legend className="mb-1 text-sm font-bold">割り振り</legend>
+                  <Checkbox
+                    type="radio"
+                    name="autoAllocate"
+                    label="自動割り振りする（毎朝の自動割り振りでテレマに配ります）"
+                    checked={autoAllocate}
+                    onChange={() => setAutoAllocate(true)}
+                  />
+                  <Checkbox
+                    type="radio"
+                    name="autoAllocate"
+                    label="自動割り振りしない（架電対象にはなり、リーダーが手で割り振ります）"
+                    checked={!autoAllocate}
+                    onChange={() => setAutoAllocate(false)}
+                  />
+                </fieldset>
+              )}
+              <FormField
+                label="リスト名"
+                required
+                hint={`保存名：${savedName}（取り込み日が前に付きます）`}
+              >
                 {(c) => (
                   <TextInput
                     {...c}
                     value={listName}
                     onChange={(e) => setListName(e.target.value)}
-                    maxLength={200}
+                    maxLength={180}
                   />
                 )}
               </FormField>
@@ -236,7 +267,12 @@ export function ListImportPage() {
                   loading={commit.isPending}
                   disabled={!listName.trim() || result.validCount === 0}
                   onClick={() =>
-                    commit.mutate({ fileId: result.fileId, purpose, listName: listName.trim() })
+                    commit.mutate({
+                      fileId: result.fileId,
+                      purpose,
+                      listName: listName.trim(),
+                      autoAllocate,
+                    })
                   }
                 >
                   {result.validCount}件を取り込む

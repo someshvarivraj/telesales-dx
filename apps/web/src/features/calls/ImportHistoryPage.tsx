@@ -11,7 +11,7 @@ import { paths } from '@/app/paths';
 import { formatDateTime } from '@/lib/format';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { ja } from '@/i18n/ja';
-import { useListImports } from './api';
+import { downloadListRegistry, useListImports } from './api';
 import { ImportRowsDialog } from './ImportRowsDialog';
 
 /** Import log: when, who, purpose, counts and the original file (spec §5); each row on request. */
@@ -22,8 +22,27 @@ export function ImportHistoryPage() {
     permissions.includes(Permission.ImportLists) ||
     permissions.includes(Permission.ResolveDuplicates);
   const [open, setOpen] = useState<ListImportDto | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const canExport = permissions.includes(Permission.ImportLists);
   return (
-    <Card flush>
+    <Card
+      flush
+      title="取り込み履歴"
+      actions={
+        canExport ? (
+          <Button
+            variant="secondary"
+            loading={downloading}
+            onClick={() => {
+              setDownloading(true);
+              void downloadListRegistry().finally(() => setDownloading(false));
+            }}
+          >
+            登録済リスト一覧をExcelで出力
+          </Button>
+        ) : undefined
+      }
+    >
       {open && <ImportRowsDialog listImport={open} onClose={() => setOpen(null)} />}
       <QueryState query={query}>
         {(items) =>
@@ -58,6 +77,9 @@ export function ImportHistoryPage() {
                       <Badge tone={item.purpose === 'CALL_REQUEST' ? 'calls' : 'neutral'}>
                         {ja.listPurpose[item.purpose]}
                       </Badge>
+                      {item.purpose === 'CALL_REQUEST' && !item.autoAllocate && (
+                        <span className="mt-1 block text-xs text-ink-sub">自動割り振りしない</span>
+                      )}
                     </Td>
                     <Td className="text-xs whitespace-nowrap text-ink-sub">
                       登録 {item.createdCount} ／ 重複 {item.duplicateCount} ／ 要確認{' '}

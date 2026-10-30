@@ -187,6 +187,11 @@ export function useAddComment() {
   });
 }
 
+/** 登録済リスト一覧のExcel (request 10/29). */
+export async function downloadListRegistry(): Promise<void> {
+  saveFile(await apiClient.download('/list-imports/registry.xlsx', '登録済リスト一覧.xlsx'));
+}
+
 /** 架電結果のExcel (Sano 10/24 No.7). */
 export async function downloadCallResults(filter: {
   from: string;

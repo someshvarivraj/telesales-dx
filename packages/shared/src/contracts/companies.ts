@@ -196,14 +196,25 @@ export interface ListImportPreview {
 export const commitListImportRequestSchema = z.object({
   fileId: z.uuid(),
   purpose: z.enum(['CALL_REQUEST', 'REGISTER_ONLY']),
-  listName: requiredText(200),
+  /** Saved as 「YYYYMMDD_リスト名」 (the import date is added in front). */
+  listName: requiredText(180),
+  /** 「自動割り振りする」: the companies go into the morning automatic allocation. */
+  autoAllocate: z.boolean().default(true),
 });
+
+/** 「20261030_」: the import date put in front of every list name (request 10/29). */
+export function datedListName(listName: string, importDate: string): string {
+  const prefix = `${importDate.replaceAll('-', '')}_`;
+  const name = listName.trim();
+  return name.startsWith(prefix) ? name : `${prefix}${name}`;
+}
 export type CommitListImportRequest = z.infer<typeof commitListImportRequestSchema>;
 
 export interface ListImportDto {
   id: string;
   purpose: ListImportPurpose;
   listName: string;
+  autoAllocate: boolean;
   fileName: string;
   fileId: string;
   importedBy: UserRef;
