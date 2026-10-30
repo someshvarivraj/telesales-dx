@@ -39,6 +39,12 @@ export class ScreenTranslator {
     .sort((a, b) => b.length - a.length);
   private readonly cache = new Map<string, string>();
   private observer: MutationObserver | null = null;
+  /** What each changed text or attribute said in Japanese, to switch back without a reload. */
+  private readonly texts = new Map<Text, { japanese: string; english: string }>();
+  private readonly attributes = new Map<
+    Element,
+    Map<string, { japanese: string; english: string }>
+  >();
 
   start(root: HTMLElement): void {
     this.translateTree(root);
@@ -65,6 +71,23 @@ export class ScreenTranslator {
   stop(): void {
     this.observer?.disconnect();
     this.observer = null;
+  }
+
+  /** Stops and puts the Japanese back wherever the English is still showing. */
+  restore(): void {
+    this.stop();
+    for (const [node, text] of this.texts) {
+      if (node.isConnected && node.data === text.english) node.data = text.japanese;
+    }
+    for (const [element, names] of this.attributes) {
+      for (const [name, text] of names) {
+        if (element.isConnected && element.getAttribute(name) === text.english) {
+          element.setAttribute(name, text.japanese);
+        }
+      }
+    }
+    this.texts.clear();
+    this.attributes.clear();
   }
 
   /** English for one piece of Japanese text, or the text itself when unknown. */
@@ -135,6 +158,7 @@ export class ScreenTranslator {
     }
     const english = this.translate(value);
     if (english !== value) {
+      this.texts.set(node, { japanese: value, english });
       node.data = english;
     }
   }
@@ -146,6 +170,9 @@ export class ScreenTranslator {
     }
     const english = this.translate(value);
     if (english !== value) {
+      const names = this.attributes.get(element) ?? new Map();
+      names.set(name, { japanese: value, english });
+      this.attributes.set(element, names);
       element.setAttribute(name, english);
     }
   }

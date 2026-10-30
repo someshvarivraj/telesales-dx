@@ -88,7 +88,7 @@ export function WeekView({
                   key={date}
                   className={cn(
                     'border-b border-l border-line px-2 pt-1.5 pb-1 text-left font-normal',
-                    (isWeekend(date) || holiday) && 'bg-weekend',
+                    (isWeekend(date) || holiday) && 'bg-off',
                     date === today && 'shadow-[inset_0_2px_0_var(--color-main)]',
                   )}
                 >
@@ -159,7 +159,7 @@ export function WeekView({
                       }}
                       className={cn(
                         'group/cell relative border-b border-l border-line p-1.5 align-top transition-colors',
-                        off ? 'bg-weekend' : 'hover:bg-hover',
+                        off ? 'bg-off' : 'hover:bg-hover',
                         showFree && !off && free >= 60 && 'bg-free/60',
                       )}
                     >

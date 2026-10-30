@@ -57,14 +57,12 @@ export function placeEvents(events: CalendarEvent[], date: string): PlacedEvent[
   return placed;
 }
 
-/** Busy minutes of a day, merged (all-day time off fills the office hours). */
+/** Busy minutes of a day, merged (anything all-day — a plan or time off — fills the day). */
 export function busyRanges(events: CalendarEvent[], date: string): [number, number][] {
   const ranges = events
     .map((event): [number, number] =>
       event.allDay
-        ? event.kind === 'timeoff'
-          ? [0, 24 * 60]
-          : [0, 0]
+        ? [0, 24 * 60]
         : [minutesWithin(event.startsAt, date, 'start'), minutesWithin(event.endsAt, date, 'end')],
     )
     .filter(([start, end]) => end > start)

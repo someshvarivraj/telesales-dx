@@ -24,46 +24,50 @@ export interface CalendarEvent {
   lock?: SlotLockDto;
 }
 
-/** Colour per kind (spec §6: appointments, attendance and time off are colour-coded). */
+/**
+ * Colour per kind (spec §6: appointments, attendance and time off are colour-coded).
+ * Each kind has its own hue, never a lighter shade of another (feedback 10/30); tentative
+ * plans are also dashed, time off is plain grey.
+ */
 export const EVENT_STYLE: Record<
   EventKind,
   { label: string; chip: string; dot: string; bar: string }
 > = {
   appointment: {
     label: 'アポ（テレマ）',
-    chip: 'border-l-[3px] border-calls bg-calls-soft text-ink',
-    dot: 'bg-calls',
-    bar: 'bg-calls',
+    chip: 'border-l-[3px] border-ev-telema bg-ev-telema-soft text-ink',
+    dot: 'bg-ev-telema',
+    bar: 'bg-ev-telema',
   },
   salesAppointment: {
     label: 'アポ（営業）',
-    chip: 'border-l-[3px] border-calls/60 bg-calls-soft/70 text-ink',
-    dot: 'bg-calls/60',
-    bar: 'bg-calls/60',
+    chip: 'border-l-[3px] border-ev-sales bg-ev-sales-soft text-ink',
+    dot: 'bg-ev-sales',
+    bar: 'bg-ev-sales',
   },
   plan: {
     label: '予定',
-    chip: 'border-l-[3px] border-schedule bg-schedule-soft text-ink',
-    dot: 'bg-schedule',
-    bar: 'bg-schedule',
+    chip: 'border-l-[3px] border-ev-plan bg-ev-plan-soft text-ink',
+    dot: 'bg-ev-plan',
+    bar: 'bg-ev-plan',
   },
   tentative: {
     label: '仮予定',
-    chip: 'border border-dashed border-schedule bg-surface text-ink',
-    dot: 'border border-dashed border-schedule',
-    bar: 'bg-schedule/35',
+    chip: 'border-[1.5px] border-dashed border-ev-tentative bg-ev-tentative-soft text-ink',
+    dot: 'border-[1.5px] border-dashed border-ev-tentative bg-ev-tentative-soft',
+    bar: 'bg-ev-tentative',
   },
   attending: {
     label: '同席',
-    chip: 'border-l-[3px] border-success bg-success-soft text-ink',
-    dot: 'bg-success',
-    bar: 'bg-success',
+    chip: 'border-l-[3px] border-ev-attend bg-ev-attend-soft text-ink',
+    dot: 'bg-ev-attend',
+    bar: 'bg-ev-attend',
   },
   timeoff: {
     label: '休み',
-    chip: 'border-l-[3px] border-ink-sub bg-column text-ink-sub [background-image:repeating-linear-gradient(135deg,transparent_0_6px,rgb(0_0_0/0.04)_6px_12px)]',
+    chip: 'border-l-[3px] border-ink-sub bg-column text-ink-sub',
     dot: 'bg-ink-sub',
-    bar: 'bg-ink-sub/45',
+    bar: 'bg-ink-sub/60',
   },
   lock: {
     label: '編集中',
@@ -96,7 +100,8 @@ export function buildEvents(data: ScheduleResponse): CalendarEvent[] {
     for (const attendee of plan.attendees) {
       events.push({
         key: `${plan.id}:${attendee.id}`,
-        kind: 'attending',
+        // Joining a tentative plan is tentative too: same colour for everyone on it.
+        kind: kind === 'tentative' ? 'tentative' : 'attending',
         personId: attendee.id,
         startsAt: plan.startsAt,
         endsAt: plan.endsAt,

@@ -1,5 +1,5 @@
 import { Select, type SelectOption } from '@/components/ui/Select';
-import { currentLanguage, type Language, switchLanguage } from './language';
+import { type Language, switchLanguage, useLanguage } from './language';
 
 const OPTIONS: SelectOption[] = [
   {
@@ -30,14 +30,17 @@ const OPTIONS: SelectOption[] = [
 
 /** 日本語 / English (temporary, for the team; the labels themselves are never translated). */
 export function LanguageSwitch({ className }: { className?: string }) {
+  const language = useLanguage();
   return (
     <div data-no-translate className={className}>
       <Select
         size="sm"
         aria-label="Language / 言語"
         options={OPTIONS}
-        value={currentLanguage()}
-        onChange={(event) => switchLanguage(event.target.value as Language)}
+        value={language}
+        onChange={(event) => {
+          switchLanguage(event.target.value as Language);
+        }}
       />
     </div>
   );

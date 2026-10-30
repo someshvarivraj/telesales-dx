@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { ScreenTranslator } from './ScreenTranslator';
 
 export type Language = 'ja' | 'en';
@@ -13,23 +14,54 @@ export function currentLanguage(): Language {
   }
 }
 
-/** Saves the choice and reloads, so every screen starts in the new language. */
+let translator: ScreenTranslator | null = null;
+const listeners = new Set<() => void>();
+
+/** The language shown now; every switch on the page follows it. */
+export function useLanguage(): Language {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => shown,
+  );
+}
+let shown: Language = 'ja';
+let japaneseTitle = '';
+let screenRoot: HTMLElement | null = null;
+
+/**
+ * Saves the choice and switches the screen in place — no reload, so what is open or being
+ * typed stays as it is (feedback 10/30).
+ */
 export function switchLanguage(language: Language): void {
   try {
     localStorage.setItem(STORAGE_KEY, language);
   } catch {
     // Storage blocked (private window): the switch lasts for this page only.
   }
-  window.location.reload();
+  show(language);
 }
 
 /** Called once at start-up, before the app renders. */
 export function applyLanguage(root: HTMLElement): void {
-  const language = currentLanguage();
+  screenRoot = root;
+  show(currentLanguage());
+}
+
+function show(language: Language): void {
+  shown = language;
+  listeners.forEach((listener) => listener());
   document.documentElement.lang = language;
-  if (language === 'en') {
-    const translator = new ScreenTranslator();
+  if (language === 'en' && !translator && screenRoot) {
+    japaneseTitle = document.title;
+    translator = new ScreenTranslator();
     document.title = translator.translate(document.title);
-    translator.start(root);
+    translator.start(screenRoot);
+  } else if (language === 'ja' && translator) {
+    translator.restore();
+    translator = null;
+    document.title = japaneseTitle;
   }
 }

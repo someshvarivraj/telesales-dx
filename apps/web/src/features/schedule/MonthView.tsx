@@ -78,7 +78,7 @@ export function MonthView({
                 onKeyDown={() => undefined}
                 className={cn(
                   'group min-h-28 cursor-pointer border-t border-l border-line p-1.5 transition-colors first:border-l-0 hover:bg-hover',
-                  (isWeekend(date) || holiday) && 'bg-weekend',
+                  (isWeekend(date) || holiday) && 'bg-off',
                   !inMonth && 'bg-canvas/70',
                 )}
               >
