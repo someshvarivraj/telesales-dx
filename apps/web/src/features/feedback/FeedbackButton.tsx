@@ -12,7 +12,6 @@ import {
 } from '@telesales/shared';
 import {
   Bug,
-  Camera,
   CircleCheck,
   FileText,
   Film,
@@ -110,7 +109,7 @@ export function FeedbackButton({
           <MessageSquareText aria-hidden="true" className="size-5" />
         </button>
       )}
-      <FeedbackDialog open={open} onClose={() => setOpen(false)} onReopen={() => setOpen(true)} />
+      <FeedbackDialog open={open} onClose={() => setOpen(false)} />
     </>
   );
 }
@@ -127,39 +126,7 @@ function screenshotName(): string {
   return `screenshot-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.png`;
 }
 
-const canCapture = () =>
-  typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getDisplayMedia);
-
-/** Takes one picture of the screen the person picks (this tab is offered first). */
-async function captureScreen(stream: MediaStream): Promise<File | null> {
-  const video = document.createElement('video');
-  video.srcObject = stream;
-  video.muted = true;
-  try {
-    await video.play();
-    // Let the page repaint without the dialog before the picture is taken.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')?.drawImage(video, 0, 0);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-    return blob ? new File([blob], screenshotName(), { type: 'image/png' }) : null;
-  } finally {
-    stream.getTracks().forEach((track) => track.stop());
-    video.srcObject = null;
-  }
-}
-
-function FeedbackDialog({
-  open,
-  onClose,
-  onReopen,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onReopen: () => void;
-}) {
+function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const location = useLocation();
   const { name } = useCurrentUser();
   const send = useSendFeedback();
@@ -220,31 +187,6 @@ function FeedbackDialog({
       if (gone?.preview) URL.revokeObjectURL(gone.preview);
       return prev.filter((item) => item.key !== key);
     });
-
-  const takeScreenshot = async () => {
-    let stream: MediaStream;
-    try {
-      // Must start inside the click; the browser then asks which screen to share.
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: 'browser' },
-        audio: false,
-        preferCurrentTab: true,
-      } as DisplayMediaStreamOptions);
-    } catch {
-      return; // Cancelled in the browser's picker.
-    }
-    onClose();
-    try {
-      const shot = await captureScreen(stream);
-      if (shot) addFiles([shot]);
-    } catch {
-      setFileError(
-        '画面を撮れませんでした。Windows は PrtSc、Mac は ⌘+Shift+4 で撮って貼り付けてください。',
-      );
-    } finally {
-      onReopen();
-    }
-  };
 
   const reset = () => {
     files.forEach((item) => item.preview && URL.revokeObjectURL(item.preview));
@@ -418,16 +360,6 @@ function FeedbackDialog({
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {canCapture() && (
-                <Button
-                  variant="secondary"
-                  onClick={() => void takeScreenshot()}
-                  disabled={files.length >= FEEDBACK_MAX_FILES}
-                >
-                  <Camera aria-hidden="true" className="size-4" />
-                  この画面を撮る
-                </Button>
-              )}
               <Button
                 variant="secondary"
                 onClick={() => picker.current?.click()}
