@@ -629,10 +629,7 @@ export function SchedulePage() {
               })}
             </ul>
             <p className="mt-2 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
-              <span
-                className="inline-block size-3 bg-weekend ring-1 ring-line"
-                aria-hidden="true"
-              />
+              <span className="inline-block size-3 bg-off ring-1 ring-line" aria-hidden="true" />
               土日祝・会社の休日
             </p>
             <p className="mt-1 flex items-center gap-2 px-1 text-[11px] text-ink-sub">

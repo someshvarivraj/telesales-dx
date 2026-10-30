@@ -155,7 +155,7 @@ export function DayTimeline({
                   tabIndex={onRange ? 0 : undefined}
                   className={cn(
                     'relative select-none',
-                    off ? 'bg-weekend' : '',
+                    off ? 'bg-off' : '',
                     onRange && 'cursor-cell',
                   )}
                   style={{

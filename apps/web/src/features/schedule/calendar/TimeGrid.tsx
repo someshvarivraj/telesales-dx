@@ -225,7 +225,7 @@ export function TimeGrid({
                   aria-label={onRange ? columnLabel?.(column) : undefined}
                   className={cn(
                     'relative flex-1 border-l border-line select-none',
-                    column.off ? 'bg-weekend' : 'bg-surface',
+                    column.off ? 'bg-off' : 'bg-surface',
                     onRange && 'cursor-cell',
                   )}
                   style={{ height, minWidth: minColumnWidth }}

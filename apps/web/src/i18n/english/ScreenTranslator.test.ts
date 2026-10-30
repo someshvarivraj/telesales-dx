@@ -37,4 +37,16 @@ describe('ScreenTranslator', () => {
     expect(p.textContent).toBe('Notifications');
     live.stop();
   });
+
+  it('puts the Japanese back when switching back, without a reload (10/30)', () => {
+    document.body.innerHTML =
+      '<main><h1>ログアウト</h1><input placeholder="すべて" value="入力中の文字"></main>';
+    const live = new ScreenTranslator();
+    live.start(document.body);
+    expect(document.querySelector('h1')?.textContent).toBe('Log out');
+    live.restore();
+    expect(document.querySelector('h1')?.textContent).toBe('ログアウト');
+    expect(document.querySelector('input')?.getAttribute('placeholder')).toBe('すべて');
+    expect(document.querySelector('input')?.value).toBe('入力中の文字');
+  });
 });

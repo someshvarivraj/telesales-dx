@@ -86,7 +86,20 @@
 
   /* Calendar */
   --color-now: #e5484d;
-  --color-weekend: #fbf4f3;
+  /* 土日祝・会社の休日: grey with diagonal dashes, unlike anything that can be booked. */
+  --color-off: #eceef1;
+  --color-off-line: #cfd4db;
+  /* One distinct hue per kind of event (10/30: shades of one colour were confused). */
+  --color-ev-telema: #0f766e;
+  --color-ev-telema-soft: #ddf2ee;
+  --color-ev-sales: #b45309;
+  --color-ev-sales-soft: #fdefdc;
+  --color-ev-plan: #2f62b8;
+  --color-ev-plan-soft: #e3ecfb;
+  --color-ev-tentative: #6b46c1;
+  --color-ev-tentative-soft: #f2edfc;
+  --color-ev-attend: #b0346b;
+  --color-ev-attend-soft: #fbe8f0;
   --color-saturday: #2f6ba8;
   --color-sunday: #b42318;
   --color-free: #e9f5ee;
@@ -1436,4 +1449,15 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
 }
 .morabot-poke-split .morabot-stack-on {
   visibility: hidden;
+}
+
+/* A day nobody works: grey with dashed diagonal lines. */
+@utility bg-off {
+  background-color: var(--color-off);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 5px,
+    var(--color-off-line) 5px 6px,
+    transparent 6px 9px
+  );
 }

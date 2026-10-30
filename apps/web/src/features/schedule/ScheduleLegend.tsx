@@ -21,7 +21,7 @@ export function ScheduleLegend() {
         </li>
       ))}
       <li className="flex items-center gap-1.5">
-        <span className="inline-block size-3 rounded-sm bg-danger-soft" />
+        <span className="inline-block size-3 rounded-sm bg-off ring-1 ring-line" />
         土日祝・会社の休日
       </li>
     </ul>
