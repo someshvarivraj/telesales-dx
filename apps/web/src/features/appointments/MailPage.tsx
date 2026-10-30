@@ -1,5 +1,5 @@
 import { type EmailDraftDto, familyName, operatorRoleLabel } from '@telesales/shared';
-import { RefreshCw, Send } from 'lucide-react';
+import { RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { paths } from '@/app/paths';
@@ -105,13 +105,15 @@ function MailEditor({
             {email.sentAt && formatDateTime(email.sentAt)}
             に送信しました。同じメールは二度送られません。
             {kind === 'booking' && (
-              <button
-                type="button"
-                className="cursor-pointer font-bold text-link hover:underline"
+              <Button
+                size="sm"
+                variant="secondary"
+                className="ml-auto"
+                icon={<RotateCcw aria-hidden="true" className="size-3.5" />}
                 onClick={() => actions.resend.mutate()}
               >
                 内容を直して【再送】する
-              </button>
+              </Button>
             )}
           </span>
         </Alert>

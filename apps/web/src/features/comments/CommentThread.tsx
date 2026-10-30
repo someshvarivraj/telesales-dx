@@ -101,7 +101,7 @@ function CommentItem({
             <button
               type="button"
               onClick={() => setReplying(true)}
-              className="inline-flex cursor-pointer items-center gap-1 text-xs font-bold text-link hover:underline"
+              className="inline-flex h-7 cursor-pointer items-center gap-1 px-2 text-xs font-bold text-ink-sub transition-colors hover:bg-hover hover:text-ink"
             >
               <Reply aria-hidden="true" className="size-3.5" />
               返信

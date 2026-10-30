@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
+import { LinkButton } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -25,11 +26,15 @@ export function TodayPage() {
     <div className="flex flex-col gap-5">
       {writesShifts && <MyAssignments />}
       {manages && summary.data?.allocationToConfirm && (
-        <Alert tone="warning">
+        <Alert
+          tone="warning"
+          action={
+            <LinkButton variant="primary" size="sm" to={paths.telemaAllocation}>
+              割り振りを確かめて確定する
+            </LinkButton>
+          }
+        >
           今日の割り振りがまだ確定していません。
-          <Link to={paths.telemaAllocation} className="ml-2 font-bold text-link hover:underline">
-            割り振りを確かめて確定する
-          </Link>
         </Alert>
       )}
 
@@ -107,12 +112,13 @@ export function TodayPage() {
                 ) : (
                   <>
                     <p className="text-sm">{data.missing.map((user) => user.name).join('、')}</p>
-                    <Link
+                    <LinkButton
+                      size="sm"
                       to={`${paths.telemaShifts}?month=${date.slice(0, 7)}`}
-                      className="mt-2 inline-block text-sm font-bold text-link hover:underline"
+                      className="mt-3"
                     >
                       シフトを入れる
-                    </Link>
+                    </LinkButton>
                   </>
                 )}
               </Card>

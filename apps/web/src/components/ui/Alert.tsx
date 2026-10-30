@@ -26,19 +26,31 @@ const toneStyle: Record<Tone, { box: string; icon: ReactNode }> = {
 interface AlertProps {
   tone: Tone;
   children: ReactNode;
+  /** What to do about it: a Button / LinkButton, shown at the right edge. */
+  action?: ReactNode;
   className?: string;
 }
 
 /** Errors are announced immediately (role=alert); other tones politely (role=status). */
-export function Alert({ tone, children, className }: AlertProps) {
+export function Alert({ tone, children, action, className }: AlertProps) {
   const style = toneStyle[tone];
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={cn('flex items-start gap-2.5 border px-3.5 py-2.5 text-sm', style.box, className)}
+      className={cn(
+        'flex items-start gap-2.5 border px-3.5 py-2.5 text-sm',
+        Boolean(action) && 'flex-wrap items-center sm:flex-nowrap',
+        style.box,
+        className,
+      )}
     >
       {style.icon}
-      <div className="min-w-0 pt-px">{children}</div>
+      <div className="min-w-0 flex-1 pt-px">{children}</div>
+      {action && (
+        <div className="flex w-full flex-wrap gap-2 pl-7.5 sm:w-auto sm:shrink-0 sm:pl-0">
+          {action}
+        </div>
+      )}
     </div>
   );
 }

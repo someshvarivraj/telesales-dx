@@ -11,7 +11,7 @@ import { paths } from '@/app/paths';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { Button, LinkButton } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
@@ -169,12 +169,12 @@ function AllocationDay({ data, manages }: { data: AllocationDayResponse; manages
           {hidden ? (
             <p>リーダーが確定すると、ここに出ます。</p>
           ) : data.targets.length === 0 ? (
-            <p>
-              割り振りの対象で出勤の人がいません。
-              <Link to={paths.telemaShifts} className="ml-1 font-bold text-link hover:underline">
+            <div className="flex flex-wrap items-center gap-3">
+              <p>割り振りの対象で出勤の人がいません。</p>
+              <LinkButton size="sm" to={paths.telemaShifts}>
                 シフトを見る
-              </Link>
-            </p>
+              </LinkButton>
+            </div>
           ) : (
             <Table>
               <thead>
