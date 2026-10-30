@@ -5,6 +5,8 @@ import {
   ChevronRight,
   FileUp,
   Keyboard,
+  Maximize2,
+  Minimize2,
   Minus,
   PanelLeft,
   Plus,
@@ -13,7 +15,7 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Button } from '@/components/ui/Button';
@@ -121,6 +123,8 @@ const SHORTCUTS: [string, string][] = [
 /** ② The single sales schedule: day / week / month / list, other reps too (spec §6). */
 export function SchedulePage() {
   const user = useCurrentUser();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const fullScreen = useFullScreen(pageRef);
   const [params, setParams] = useSearchParams();
   const date = params.get('date') ?? todayJst();
   const view =
@@ -327,7 +331,7 @@ export function SchedulePage() {
     'inline-flex h-10 items-center gap-2 border border-line-strong bg-surface px-3.5 text-sm font-bold text-ink transition-colors hover:border-main-line hover:bg-main-soft';
 
   return (
-    <>
+    <div ref={pageRef} className="schedule-page">
       {/* Page head: the place and the actions people come here for. */}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="min-w-0">
@@ -415,6 +419,21 @@ export function SchedulePage() {
           onChange={(value) => update({ view: value })}
           options={VIEWS}
         />
+        {fullScreen.supported && (
+          <Button
+            variant="secondary"
+            icon={
+              fullScreen.on ? (
+                <Minimize2 className="size-4" aria-hidden="true" />
+              ) : (
+                <Maximize2 className="size-4" aria-hidden="true" />
+              )
+            }
+            onClick={fullScreen.toggle}
+          >
+            {fullScreen.on ? '全画面を終了' : '全画面'}
+          </Button>
+        )}
         <div className="relative min-w-44 flex-1 sm:max-w-72">
           <Search
             aria-hidden="true"
@@ -830,6 +849,24 @@ export function SchedulePage() {
           ))}
         </dl>
       </Dialog>
-    </>
+    </div>
   );
+}
+
+/** 「全画面」 (request 10/29): the calendar alone on the whole screen; Esc returns. */
+function useFullScreen(target: RefObject<HTMLDivElement | null>) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const sync = () => setOn(document.fullscreenElement === target.current);
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, [target]);
+  return {
+    supported: typeof document !== 'undefined' && Boolean(document.fullscreenEnabled),
+    on,
+    toggle: () => {
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else void target.current?.requestFullscreen?.();
+    },
+  };
 }
