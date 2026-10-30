@@ -41,7 +41,7 @@ export function MailPage() {
   return (
     <>
       <PageHeader
-        eyebrow={<BackLink to={paths.appointment(id)}>アポのページへ戻る</BackLink>}
+        back={<BackLink to={paths.appointment(id)}>アポのページへ戻る</BackLink>}
         title={TITLE[mailKind]}
       />
       <QueryState query={draft}>
