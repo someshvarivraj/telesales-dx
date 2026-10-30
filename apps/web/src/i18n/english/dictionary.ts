@@ -20,7 +20,6 @@ export const EXACT: Readonly<Record<string, string>> = {
   'どの画面で、何をしたら、どうなったか（どうしてほしいか）を書いてください。':
     'Which screen, what you did, and what happened (or what you would like).',
   '添付（任意）': 'Attachments (optional)',
-  この画面を撮る: 'Capture this screen',
   ファイルを選ぶ: 'Choose files',
   'スクリーンショットはこの欄で Ctrl+V（Mac は ⌘+V）でも貼り付けられます。ファイルのドラッグ＆ドロップもできます。':
     'Paste a screenshot here with Ctrl+V (⌘+V on Mac), or drag and drop files.',
@@ -54,8 +53,6 @@ export const EXACT: Readonly<Record<string, string>> = {
   '各画面の「ご意見・不具合の報告」から届いたものです。メールの宛先は「通知の宛先」の N20 で変えられます（送った本人にも届きます）。「対応済み」にすると、対応内容が同じ宛先にメールされます。':
     'Reports sent with "Feedback / report an issue" on any screen. Change who gets the e-mail under Notice recipients → N20 (the sender always gets it). Marking one resolved e-mails what was done to the same people.',
   添付ファイル: 'Attachments',
-  '画面を撮れませんでした。Windows は PrtSc、Mac は ⌘+Shift+4 で撮って貼り付けてください。':
-    'Could not capture the screen. Take a screenshot (PrtSc on Windows, ⌘+Shift+4 on Mac) and paste it here.',
   // Operation history
   テレマアポ停止: 'Telemarketing stop',
   '休み・遅刻・早退・テレマアポ停止を入力':
