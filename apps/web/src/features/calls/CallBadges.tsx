@@ -7,8 +7,8 @@ import { ja } from '@/i18n/ja';
 const GRADE_TONE: Record<string, StatusTone> = {
   A: 'success',
   B: 'warning',
-  C: 'neutral',
-  D: 'neutral',
+  C: 'info',
+  D: 'danger',
   E: 'neutral',
 };
 
