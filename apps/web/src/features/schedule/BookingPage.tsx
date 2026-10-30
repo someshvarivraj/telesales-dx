@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
+import { BackLink } from '@/components/ui/BackLink';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { DescriptionList } from '@/components/ui/DescriptionList';
@@ -293,6 +294,7 @@ function BookingForm(props: BookingFormProps) {
     <>
       <PageHeader
         eyebrow={ja.module.schedule}
+        back={<BackLink onClick={() => navigate(-1)}>{ja.common.back}</BackLink>}
         title={rebookOf ? '再アポの登録' : salesBooked ? '自分で取ったアポの登録' : 'アポの登録'}
       />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">

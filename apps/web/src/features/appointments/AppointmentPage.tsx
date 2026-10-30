@@ -74,7 +74,7 @@ export function AppointmentPage() {
         return (
           <>
             <PageHeader
-              eyebrow={<BackLink to={paths.appointments}>{ja.module.appointments}へ戻る</BackLink>}
+              back={<BackLink to={paths.appointments}>{ja.module.appointments}へ戻る</BackLink>}
               title={appointment.company.name}
               actions={
                 <>
