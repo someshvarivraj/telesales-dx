@@ -82,6 +82,16 @@ describe('ご意見・不具合の報告', () => {
     expect(files[0]?.name).toMatch(/^screenshot-\d{8}-\d{6}\.png$/);
   });
 
+  it('stays open when the file picker is closed without choosing', async () => {
+    renderMenu();
+    await userEvent.click(screen.getByRole('button', { name: /ご意見・不具合の報告/ }));
+    const picker = document.querySelector('input[type="file"]');
+    expect(picker).toBeTruthy();
+    fireEvent(picker as Element, new Event('cancel', { bubbles: true }));
+    expect(screen.getByRole('textbox')).toBeTruthy();
+    expect(document.querySelector('dialog')?.hasAttribute('open')).toBe(true);
+  });
+
   it('refuses files it cannot attach', async () => {
     renderMenu();
     await userEvent.click(screen.getByRole('button', { name: /ご意見・不具合の報告/ }));

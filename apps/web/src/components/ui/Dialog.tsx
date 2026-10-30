@@ -31,6 +31,9 @@ export function Dialog({ open, title, onClose, children, footer, size = 'md' }: 
     <dialog
       ref={ref}
       onCancel={(event) => {
+        // A file picker closed without choosing also fires a (bubbling) cancel: only Esc
+        // on the dialog itself closes it.
+        if (event.target !== event.currentTarget) return;
         event.preventDefault();
         onClose();
       }}
