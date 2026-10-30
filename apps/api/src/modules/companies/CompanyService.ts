@@ -6,6 +6,7 @@ import {
   type CompanyListItem,
   type CompanySearchRequest,
   jstDate,
+  ListImportRowStatus,
   type Page,
   phoneDigitsOf,
   type ResolveFlagRequest,
@@ -141,6 +142,16 @@ export class CompanyService {
           orderBy: { createdAt: 'desc' },
           include: { listImport: { select: { id: true, listName: true, purpose: true } } },
         },
+        // Copies from later lists flagged against this company, not yet merged by a lead:
+        // their list names count as this company's too (request 10/29 ③ リスト取り込み ②).
+        flaggedBy: {
+          where: { flag: CompanyFlag.Duplicate },
+          select: {
+            importRows: {
+              include: { listImport: { select: { id: true, listName: true, purpose: true } } },
+            },
+          },
+        },
       },
     });
     if (!company) {
@@ -172,14 +183,21 @@ export class CompanyService {
         .filter((other) => isSimilarNumber(other.phoneDigits, company.phoneDigits))
         .map(({ id: otherId, name, phone }) => ({ id: otherId, name, phone })),
       flagMatches: company.flagMatch ? [company.flagMatch] : [],
-      imports: company.importRows.map((row) => ({
-        listImportId: row.listImport.id,
-        listName: row.listImport.listName,
-        purpose: row.listImport.purpose,
-        rowNumber: row.rowNumber,
-        status: row.status,
-        importedAt: iso(row.createdAt),
-      })),
+      imports: [
+        ...company.importRows,
+        ...company.flaggedBy.flatMap((copy) =>
+          copy.importRows.map((row) => ({ ...row, status: ListImportRowStatus.Duplicate })),
+        ),
+      ]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .map((row) => ({
+          listImportId: row.listImport.id,
+          listName: row.listImport.listName,
+          purpose: row.listImport.purpose,
+          rowNumber: row.rowNumber,
+          status: row.status,
+          importedAt: iso(row.createdAt),
+        })),
       updatedAt: iso(company.updatedAt),
     };
   }
