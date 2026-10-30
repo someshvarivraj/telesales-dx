@@ -17,6 +17,7 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { TextInput } from '@/components/ui/TextInput';
 import { useOptionList } from '@/features/reference/useReference';
+import { gradeLook } from './CallBadges';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useSaveCallRecord } from './api';
 
@@ -223,38 +224,6 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
   );
 }
 
-/** Colour per grade, matching GradeBadge: A got it, B/C call again later, D stop, E not counted. */
-const GRADE_LOOK: Record<string, { badge: string; chosen: string; hint: string }> = {
-  A: {
-    badge:
-      'bg-success-soft text-success group-aria-pressed:bg-success group-aria-pressed:text-white',
-    chosen: 'aria-pressed:bg-success-soft aria-pressed:ring-success',
-    hint: 'アポが取れた',
-  },
-  B: {
-    badge:
-      'bg-warning-soft text-warning-ink group-aria-pressed:bg-warning-ink group-aria-pressed:text-white',
-    chosen: 'aria-pressed:bg-warning-soft aria-pressed:ring-warning-ink',
-    hint: '時期を改めてかけ直す',
-  },
-  C: {
-    badge:
-      'bg-schedule-soft text-schedule group-aria-pressed:bg-schedule group-aria-pressed:text-white',
-    chosen: 'aria-pressed:bg-schedule-soft aria-pressed:ring-schedule',
-    hint: '期間をおいてかけ直す',
-  },
-  D: {
-    badge: 'bg-danger-soft text-danger group-aria-pressed:bg-danger group-aria-pressed:text-white',
-    chosen: 'aria-pressed:bg-danger-soft aria-pressed:ring-danger',
-    hint: '今後はかけない',
-  },
-};
-const OTHER_LOOK = {
-  badge: 'bg-admin-soft text-admin group-aria-pressed:bg-admin group-aria-pressed:text-white',
-  chosen: 'aria-pressed:bg-admin-soft aria-pressed:ring-admin',
-  hint: '',
-};
-
 /**
  * One grade as a card: letter badge, name on one line, and a short line under it.
  * A note in brackets in the name (「回避（カウント対象外）」) becomes that short line.
@@ -270,7 +239,7 @@ function GradeCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const look = GRADE_LOOK[code] ?? OTHER_LOOK;
+  const look = gradeLook(code);
   const bracket = /^(.+?)[（(](.+)[)）]$/.exec(label);
   const name = bracket?.[1] ?? label;
   const hint = bracket?.[2] ?? look.hint;
