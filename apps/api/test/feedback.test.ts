@@ -4,6 +4,7 @@ import type { Actor } from '../src/domain/access/AccessPolicy.js';
 import type { AuditLogger } from '../src/domain/audit/AuditLogger.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
 import { FeedbackService } from '../src/modules/feedback/FeedbackService.js';
+import type { FileService } from '../src/modules/files/FileService.js';
 import type {
   NoticeEvent,
   NotificationService,
@@ -16,10 +17,28 @@ function setup() {
   const rows = new Map<string, Record<string, unknown>>();
   const notices: NoticeEvent[] = [];
   const direct: unknown[][] = [];
+  const stored = new Map<string, Record<string, unknown>>();
+  const files = {
+    store: async (upload: { originalname: string; mimetype: string; size: number }) => {
+      const record = {
+        id: `file-${stored.size + 1}`,
+        originalName: upload.originalname,
+        contentType: upload.mimetype,
+        sizeBytes: upload.size,
+        sha256: '0'.repeat(64),
+        createdAt: new Date('2026-10-30T01:00:00Z'),
+      };
+      stored.set(record.id, record);
+      return record;
+    },
+  } as unknown as FileService;
   const withPeople = (row: Record<string, unknown>) => ({
     ...row,
     reporter: { id: row.reporterId, name: '山田 太郎' },
     handledBy: row.handledById ? { id: row.handledById, name: '管理者' } : null,
+    attachments: (
+      (row.attachments as { create?: { fileId: string }[] } | undefined)?.create ?? []
+    ).map(({ fileId }) => ({ file: stored.get(fileId) })),
   });
   const prisma = {
     feedback: {
@@ -52,7 +71,7 @@ function setup() {
     notifyUsers: async (...args: unknown[]) => void direct.push(args),
   } as unknown as NotificationService;
   const audit = { record: async () => undefined } as unknown as AuditLogger;
-  const service = new FeedbackService(prisma, notifications, audit, 'https://app.example');
+  const service = new FeedbackService(prisma, notifications, audit, files, 'https://app.example');
   return { service, notices, direct };
 }
 
@@ -77,6 +96,40 @@ describe('ご意見・不具合の報告', () => {
     expect(notice?.email?.text).toContain(
       '画面: スケジュール（https://app.example/schedule?date=2026-10-30）',
     );
+  });
+
+  it('stores screenshots and mails them along', async () => {
+    const { service, notices } = setup();
+    const png = {
+      originalname: 'screen.png',
+      mimetype: 'image/png',
+      size: 3,
+      buffer: Buffer.from('png'),
+    };
+    const dto = await service.create(
+      actor,
+      { type: 'BUG', body: '表示が崩れる', screenPath: '/home' },
+      [png],
+    );
+    expect(dto.files).toMatchObject([{ originalName: 'screen.png', contentType: 'image/png' }]);
+    expect(notices[0]?.email?.attachments).toMatchObject([
+      { fileId: 'file-1', filename: 'screen.png', contentType: 'image/png' },
+    ]);
+    expect(notices[0]?.email?.text).toContain('添付: screen.png');
+  });
+
+  it('refuses unsupported files and more than five', async () => {
+    const { service } = setup();
+    const input = { type: 'BUG' as const, body: 'x', screenPath: '/home' };
+    const exe = {
+      originalname: 'a.exe',
+      mimetype: 'application/x-msdownload',
+      size: 1,
+      buffer: Buffer.from('x'),
+    };
+    await expect(service.create(actor, input, [exe])).rejects.toThrow();
+    const png = { originalname: 'a.png', mimetype: 'image/png', size: 1, buffer: Buffer.from('x') };
+    await expect(service.create(actor, input, Array(6).fill(png))).rejects.toThrow();
   });
 
   it('keeps only in-app paths', async () => {

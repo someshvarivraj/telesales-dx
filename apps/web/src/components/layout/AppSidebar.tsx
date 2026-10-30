@@ -7,6 +7,7 @@ import { useTheme } from '@/components/brand/theme';
 import { cn } from '@/components/ui/cn';
 import { Switch } from '@/components/ui/Switch';
 import { useCurrentUser, useLogout } from '@/features/auth/hooks/useSession';
+import { FeedbackButton } from '@/features/feedback/FeedbackButton';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -144,6 +145,7 @@ export function AppSidebar() {
       </nav>
 
       <div className="shrink-0 border-t border-line p-2.5">
+        <FeedbackButton variant="menu" folded={folded} />
         <div className="flex items-center gap-2.5 px-1.5 py-1.5">
           <span
             aria-hidden="true"

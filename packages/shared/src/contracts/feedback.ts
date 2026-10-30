@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { UserRef } from './common.js';
+import type { FileDto, UserRef } from './common.js';
 
 /** ご意見・不具合の報告: what kind of report it is. */
 export const FEEDBACK_TYPES = ['BUG', 'REQUEST', 'FIX', 'OTHER'] as const;
@@ -10,6 +10,26 @@ export const FEEDBACK_TYPE_LABEL: Record<FeedbackType, string> = {
   FIX: '修正依頼',
   OTHER: 'その他',
 };
+
+/** Screenshots, pictures, screen recordings and documents (5 files, 10 MB each). */
+export const FEEDBACK_MAX_FILES = 5;
+export const FEEDBACK_MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const FEEDBACK_FILE_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'application/pdf',
+  'text/plain',
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+] as const;
 
 /** Where a report is in its handling (管理 → ご意見). */
 export const FEEDBACK_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING_DECISION', 'RESOLVED'] as const;
@@ -59,6 +79,7 @@ export interface FeedbackDto {
   resolution: string | null;
   reporter: UserRef;
   handledBy: UserRef | null;
+  files: FileDto[];
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;

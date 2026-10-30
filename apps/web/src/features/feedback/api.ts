@@ -17,7 +17,15 @@ export const feedbackKeys = {
 export function useSendFeedback() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateFeedbackRequest) => apiClient.post<FeedbackDto>('/feedback', input),
+    mutationFn: ({ files, ...input }: CreateFeedbackRequest & { files: File[] }) => {
+      const form = new FormData();
+      form.set('type', input.type);
+      form.set('body', input.body);
+      form.set('screenPath', input.screenPath);
+      if (input.screenName) form.set('screenName', input.screenName);
+      files.forEach((file) => form.append('files', file, file.name));
+      return apiClient.upload<FeedbackDto>('/feedback', form);
+    },
     onSuccess: () => void client.invalidateQueries({ queryKey: feedbackKeys.all }),
   });
 }
