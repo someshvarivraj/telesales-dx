@@ -29,9 +29,11 @@ export function AppLayout() {
         <AppSidebar />
         <div className="app-main flex min-h-dvh min-w-0 flex-col">
           <AppHeader />
+          {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
+              MoraBot launcher in the corner. */}
           <main
             className={cn(
-              'mx-auto w-full flex-1 px-4 pt-5 pb-24 sm:px-6 md:px-8 md:pt-7 md:pb-12',
+              'mx-auto w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:px-8 md:pt-7 md:pb-28',
               !wide && 'max-w-7xl',
             )}
           >

@@ -120,6 +120,15 @@ export function AssistantWidget() {
   const canCalls = usePermission(Permission.WriteCallRecords);
 
   const [mode, setMode] = useState<Mode>('closed');
+  // Once the page is scrolled, the launcher shrinks to MoraBot's head so it covers less;
+  // pointing at it shows the full label again.
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 80);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [showHistory, setShowHistory] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(
     () => memory.read().conversationId,
@@ -524,14 +533,27 @@ export function AssistantWidget() {
           type="button"
           onClick={() => setMode('panel')}
           aria-label="MoraBotにおまかせ（Ctrl+K）"
-          className="assistant-launcher fixed right-4 bottom-20 z-40 flex cursor-pointer items-center gap-3 border border-main-line bg-surface py-2 pr-5 pl-2.5 shadow-(--shadow-raised) hover:border-main hover:bg-main-soft md:right-6 md:bottom-6"
+          className={cn(
+            'assistant-launcher group fixed right-4 bottom-20 z-40 flex cursor-pointer items-center gap-3 border border-main-line bg-surface py-2 pl-2.5 shadow-(--shadow-raised) hover:border-main hover:bg-main-soft md:right-6 md:bottom-6',
+            compact ? 'pr-2.5 hover:pr-5 focus-visible:pr-5' : 'pr-5',
+          )}
         >
           <MoraBot headOnly size={42} title="" />
-          <span className="text-left max-sm:hidden">
+          <span
+            className={cn(
+              'text-left max-sm:hidden',
+              compact && 'hidden group-hover:block group-focus-visible:block',
+            )}
+          >
             <span className="block text-sm font-bold text-main">MoraBotにおまかせ</span>
             <span className="block text-[11px] text-ink-sub">調べもの・登録の準備・画面案内</span>
           </span>
-          <kbd className="ml-1 border border-line px-1.5 py-0.5 font-sans text-[10px] text-ink-sub max-md:hidden">
+          <kbd
+            className={cn(
+              'ml-1 border border-line px-1.5 py-0.5 font-sans text-[10px] text-ink-sub max-md:hidden',
+              compact && 'hidden group-hover:md:inline group-focus-visible:md:inline',
+            )}
+          >
             Ctrl K
           </kbd>
         </button>
