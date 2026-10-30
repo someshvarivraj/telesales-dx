@@ -111,6 +111,7 @@ const CONTEXT_LABEL: Record<string, string> = {
   ASSIGNEE: '割り振りの担当',
   RECORD_AUTHOR: '記録を書いた人',
   THREAD: '同じスレッドの人',
+  REPORTER: '報告した人',
 };
 
 function categoryOf(code: string) {

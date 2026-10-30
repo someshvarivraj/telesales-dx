@@ -5,6 +5,7 @@ import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
 import { Alert } from '@/components/ui/Alert';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
+import { FeedbackButton } from '@/features/feedback/FeedbackButton';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useSystemStatus } from '@/features/system/useSystemStatus';
 import { ja } from '@/i18n/ja';
@@ -36,6 +37,7 @@ export function AppLayout() {
           </main>
         </div>
         <MobileNav />
+        <FeedbackButton variant="tab" />
         <AssistantWidget />
       </div>
     </ThemeProvider>

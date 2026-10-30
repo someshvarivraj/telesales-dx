@@ -34,6 +34,7 @@ export const paths = {
     settings: '/admin/settings',
     apps: '/admin/apps',
     audit: '/admin/audit',
+    feedback: '/admin/feedback',
   },
 } as const;
 

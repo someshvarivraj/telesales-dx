@@ -48,6 +48,8 @@ import { PrismaCalendarRepository } from './modules/calendar/PrismaCalendarRepos
 import { CallRecordExportService } from './modules/callRecords/CallRecordExportService.js';
 import { CallRecordService } from './modules/callRecords/CallRecordService.js';
 import { CommentService } from './modules/comments/CommentService.js';
+import { FeedbackService } from './modules/feedback/FeedbackService.js';
+import { createFeedbackRouter } from './modules/feedback/feedbackRouter.js';
 import { createCompaniesRouter } from './modules/companies/companiesRouter.js';
 import { CompanyService } from './modules/companies/CompanyService.js';
 import { ListImportService } from './modules/companies/ListImportService.js';
@@ -275,6 +277,10 @@ export class Container {
       }),
       createTelemaRouter({ authenticator, team, allocations }),
       createNotificationsRouter({ authenticator, notifications, dashboard }),
+      createFeedbackRouter({
+        authenticator,
+        feedback: new FeedbackService(prisma, notifications, this.audit, config.appBaseUrl),
+      }),
       createAssistantRouter({
         authenticator,
         assistant,

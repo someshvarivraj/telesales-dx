@@ -42,6 +42,7 @@ export const AuditAction = {
   NextActionUpdated: 'appointment.next_action.updated',
   AppCreated: 'app.created',
   AppUpdated: 'app.updated',
+  FeedbackUpdated: 'feedback.updated',
 } as const;
 
 export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction];

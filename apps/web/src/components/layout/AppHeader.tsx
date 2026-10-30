@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
 import { useLogout } from '@/features/auth/hooks/useSession';
+import { FeedbackButton } from '@/features/feedback/FeedbackButton';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -26,6 +27,7 @@ export function AppHeader() {
         </Link>
         <div className="ml-auto flex items-center gap-1">
           <LanguageSwitch className="w-32" />
+          <FeedbackButton variant="icon" />
           <NotificationBell />
           <button
             type="button"

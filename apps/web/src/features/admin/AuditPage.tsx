@@ -104,6 +104,7 @@ const ACTIONS: Record<string, string> = {
   'allocation.confirmed': '割り振りの確定',
   'app.created': 'アプリの追加',
   'app.updated': 'アプリの変更',
+  'feedback.updated': 'ご意見の対応',
 };
 
 /** Field names in plain words; anything else is shown as recorded. */

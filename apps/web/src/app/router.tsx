@@ -12,6 +12,7 @@ import { NoticesPage } from '@/features/admin/NoticesPage';
 import { OptionsPage } from '@/features/admin/OptionsPage';
 import { SettingsPage } from '@/features/admin/SettingsPage';
 import { UsersPage } from '@/features/admin/UsersPage';
+import { FeedbackAdminPage } from '@/features/feedback/FeedbackAdminPage';
 import { AppointmentListPage } from '@/features/appointments/AppointmentListPage';
 import { AppointmentPage } from '@/features/appointments/AppointmentPage';
 import { AppointmentsLayout } from '@/features/appointments/AppointmentsLayout';
@@ -141,6 +142,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <AdminIndex /> },
           { path: 'users', element: guard(adminOnly, <UsersPage />) },
+          { path: 'feedback', element: guard(adminOnly, <FeedbackAdminPage />) },
           { path: 'area-table', element: <AreaTablePage /> },
           { path: 'calendar', element: guard(adminOnly, <CalendarAdminPage />) },
           { path: 'options', element: guard(adminOnly, <OptionsPage />) },

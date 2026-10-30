@@ -27,6 +27,7 @@ const CONTEXT_LABEL: Record<RecipientContext, string> = {
   [RecipientContext.Assignee]: '割り振りの担当',
   [RecipientContext.RecordAuthor]: '記録を書いた人',
   [RecipientContext.Thread]: '同じスレッドの人',
+  [RecipientContext.Reporter]: '報告した人',
 };
 
 /** Notice settings and recipients (spec §8: recipients, days and times are data, never code). */

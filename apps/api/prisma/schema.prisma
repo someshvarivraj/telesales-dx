@@ -41,42 +41,44 @@ model User {
   createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  roles               UserAppRole[]
-  permissionGrants    UserPermissionGrant[]    @relation("GrantUser")
-  grantsGiven         UserPermissionGrant[]    @relation("GrantGivenBy")
-  auditLogs           AuditLog[]
-  notifications       Notification[]
-  telemarketer        TelemarketerProfile?
-  callRecords         CallRecord[]
-  companiesCreated    Company[]
-  listImports         ListImport[]
-  appointmentsAsRep   Appointment[]            @relation("AppointmentRep")
-  appointmentsBooked  Appointment[]            @relation("AppointmentBooker")
-  dayBeforeChecks     Appointment[]            @relation("AppointmentDayBeforeChecker")
-  appointmentsCancel  Appointment[]            @relation("AppointmentCanceller")
-  preparations        AppointmentPreparation[]
-  meetingResults      MeetingResult[]
-  comments            Comment[]
-  appointmentChanges  AppointmentChange[]
-  changeRequests      ChangeRequest[]          @relation("ChangeRequester")
-  changeRequestsTaken ChangeRequest[]          @relation("ChangeHandler")
-  plansOwned          SchedulePlan[]           @relation("PlanOwner")
-  plansCreated        SchedulePlan[]           @relation("PlanCreator")
-  planAttendances     PlanAttendee[]
-  timeOff             TimeOff[]                @relation("TimeOffUser")
-  timeOffEntered      TimeOff[]                @relation("TimeOffEnteredBy")
-  slotLocksHeld       SlotLock[]               @relation("SlotLockHolder")
-  slotLocksOnRep      SlotLock[]               @relation("SlotLockRep")
-  areaRulesAsRep      SalesAreaRule[]          @relation("AreaRuleRep")
-  areaRulesAsBackup   SalesAreaRule[]          @relation("AreaRuleBackup")
-  shifts              Shift[]                  @relation("ShiftOwner")
-  shiftsEntered       Shift[]                  @relation("ShiftEnteredBy")
-  allocations         Allocation[]             @relation("AllocationAssignee")
-  allocationsConfirmed Allocation[]            @relation("AllocationConfirmer")
+  roles                UserAppRole[]
+  permissionGrants     UserPermissionGrant[]    @relation("GrantUser")
+  grantsGiven          UserPermissionGrant[]    @relation("GrantGivenBy")
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  telemarketer         TelemarketerProfile?
+  callRecords          CallRecord[]
+  companiesCreated     Company[]
+  listImports          ListImport[]
+  appointmentsAsRep    Appointment[]            @relation("AppointmentRep")
+  appointmentsBooked   Appointment[]            @relation("AppointmentBooker")
+  dayBeforeChecks      Appointment[]            @relation("AppointmentDayBeforeChecker")
+  appointmentsCancel   Appointment[]            @relation("AppointmentCanceller")
+  preparations         AppointmentPreparation[]
+  meetingResults       MeetingResult[]
+  comments             Comment[]
+  appointmentChanges   AppointmentChange[]
+  changeRequests       ChangeRequest[]          @relation("ChangeRequester")
+  changeRequestsTaken  ChangeRequest[]          @relation("ChangeHandler")
+  plansOwned           SchedulePlan[]           @relation("PlanOwner")
+  plansCreated         SchedulePlan[]           @relation("PlanCreator")
+  planAttendances      PlanAttendee[]
+  timeOff              TimeOff[]                @relation("TimeOffUser")
+  timeOffEntered       TimeOff[]                @relation("TimeOffEnteredBy")
+  slotLocksHeld        SlotLock[]               @relation("SlotLockHolder")
+  slotLocksOnRep       SlotLock[]               @relation("SlotLockRep")
+  areaRulesAsRep       SalesAreaRule[]          @relation("AreaRuleRep")
+  areaRulesAsBackup    SalesAreaRule[]          @relation("AreaRuleBackup")
+  shifts               Shift[]                  @relation("ShiftOwner")
+  shiftsEntered        Shift[]                  @relation("ShiftEnteredBy")
+  allocations          Allocation[]             @relation("AllocationAssignee")
+  allocationsConfirmed Allocation[]             @relation("AllocationConfirmer")
   assistantChats       AssistantConversation[]
   assistantActions     AssistantAction[]
-  filesUploaded       StoredFile[]
-  emails              OutboundEmail[]
+  feedbackSent         Feedback[]               @relation("FeedbackReporter")
+  feedbackHandled      Feedback[]               @relation("FeedbackHandler")
+  filesUploaded        StoredFile[]
+  emails               OutboundEmail[]
 
   @@map("users")
 }
@@ -697,20 +699,20 @@ model PreparationAttachment {
 }
 
 model MeetingResult {
-  id             String    @id @default(uuid()) @db.Uuid
-  appointmentId  String    @map("appointment_id") @db.Uuid
-  authorId       String    @map("author_id") @db.Uuid
-  visitedOn      DateTime  @map("visited_on") @db.Date
-  attendee       String?   @db.VarChar(100)
-  discussion     String
-  response       String?   @db.VarChar(48)
-  dealStatus     String?   @map("deal_status") @db.VarChar(48)
-  nextAction     String?   @map("next_action")
-  nextActionDate DateTime? @map("next_action_date") @db.Date
+  id               String    @id @default(uuid()) @db.Uuid
+  appointmentId    String    @map("appointment_id") @db.Uuid
+  authorId         String    @map("author_id") @db.Uuid
+  visitedOn        DateTime  @map("visited_on") @db.Date
+  attendee         String?   @db.VarChar(100)
+  discussion       String
+  response         String?   @db.VarChar(48)
+  dealStatus       String?   @map("deal_status") @db.VarChar(48)
+  nextAction       String?   @map("next_action")
+  nextActionDate   DateTime? @map("next_action_date") @db.Date
   /// Set when the rep ticks the next action off in their list.
   nextActionDoneAt DateTime? @map("next_action_done_at") @db.Timestamptz(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   author      User        @relation(fields: [authorId], references: [id])
@@ -1039,4 +1041,34 @@ model AssistantAction {
 
   @@index([userId, createdAt])
   @@map("assistant_actions")
+}
+
+/// ご意見・不具合の報告: sent from the button on every screen, handled on 管理 → ご意見.
+model Feedback {
+  id          String    @id @default(uuid()) @db.Uuid
+  /// Short number people can quote ("No.12").
+  number      Int       @unique @default(autoincrement())
+  reporterId  String    @map("reporter_id") @db.Uuid
+  /// BUG / REQUEST / FIX / OTHER
+  type        String    @db.VarChar(16)
+  body        String
+  /// The screen it was sent from (path) and its name at the time.
+  screenPath  String    @map("screen_path") @db.VarChar(500)
+  screenName  String    @map("screen_name") @db.VarChar(100)
+  /// OPEN / IN_PROGRESS / WAITING_DECISION / RESOLVED
+  status      String    @default("OPEN") @db.VarChar(20)
+  /// Internal note while it is handled (e.g. what needs deciding).
+  note        String?
+  /// What was done, mailed to everyone when resolved.
+  resolution  String?
+  handledById String?   @map("handled_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  reporter  User  @relation("FeedbackReporter", fields: [reporterId], references: [id])
+  handledBy User? @relation("FeedbackHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("feedback")
 }
