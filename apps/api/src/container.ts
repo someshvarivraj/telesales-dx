@@ -279,13 +279,7 @@ export class Container {
       createNotificationsRouter({ authenticator, notifications, dashboard }),
       createFeedbackRouter({
         authenticator,
-        feedback: new FeedbackService(
-          prisma,
-          notifications,
-          this.audit,
-          files,
-          config.appBaseUrl,
-        ),
+        feedback: new FeedbackService(prisma, notifications, this.audit, files, config.appBaseUrl),
       }),
       createAssistantRouter({
         authenticator,
