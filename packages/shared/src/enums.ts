@@ -149,6 +149,7 @@ export const RecipientContext = {
   Assignee: 'ASSIGNEE',
   RecordAuthor: 'RECORD_AUTHOR',
   Thread: 'THREAD',
+  Reporter: 'REPORTER',
 } as const;
 export type RecipientContext = (typeof RecipientContext)[keyof typeof RecipientContext];
 export const RECIPIENT_CONTEXTS = valuesOf(RecipientContext);
@@ -173,6 +174,7 @@ export const NoticeCode = {
   CallListImported: 'N17',
   Commented: 'N18',
   DailyAppointmentList: 'N19',
+  Feedback: 'N20',
 } as const;
 export type NoticeCode = (typeof NoticeCode)[keyof typeof NoticeCode];
 

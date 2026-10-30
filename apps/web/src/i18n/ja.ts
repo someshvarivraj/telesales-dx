@@ -140,6 +140,7 @@ export const ja = {
     settings: 'その他の設定',
     apps: 'アプリ・メンテナンス',
     audit: '操作履歴',
+    feedback: 'ご意見・不具合',
   },
   auth: {
     loginTitle: 'ログイン',

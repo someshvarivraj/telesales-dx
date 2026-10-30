@@ -14,6 +14,7 @@ import {
   History,
   Users,
   UsersRound,
+  MessageSquareText,
 } from 'lucide-react';
 import { paths } from '@/app/paths';
 import { ja } from '@/i18n/ja';
@@ -73,6 +74,14 @@ export const adminMenu: readonly MenuItem[] = [
     title: ja.admin.users,
     path: paths.admin.users,
     icon: Users,
+    tone: 'admin',
+    anyOf: [Permission.Administer],
+  },
+  {
+    key: 'feedback',
+    title: ja.admin.feedback,
+    path: paths.admin.feedback,
+    icon: MessageSquareText,
     tone: 'admin',
     anyOf: [Permission.Administer],
   },
