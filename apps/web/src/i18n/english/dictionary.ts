@@ -4,6 +4,28 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Schedule (request 10/29)
+  全画面: 'Full screen',
+  全画面を終了: 'Exit full screen',
+  // List import (request 10/29)
+  '自動割り振りする（毎朝の自動割り振りでテレマに配ります）':
+    'Allocate automatically (handed out to telemarketing each morning)',
+  '自動割り振りしない（架電対象にはなり、リーダーが手で割り振ります）':
+    'Do not allocate automatically (call targets; the lead hands them out)',
+  自動割り振りしない: 'Not auto-allocated',
+  登録済リスト一覧をExcelで出力: 'Export list registry to Excel',
+  // Company page (request 10/29)
+  テレマメモ: 'Telemarketing memo',
+  メモを保存: 'Save memo',
+  'メモはありません。': 'No memo.',
+  保存しました: 'Saved',
+  企業ランク: 'Company rank',
+  親会社名: 'Parent company',
+  上系: 'Listed group',
+  優良: 'Excellent',
+  中小企業: 'SME',
+  '例：定休日 水曜／始業 9:00／就業 18:00／受付は総務の山田さん':
+    'e.g. Closed Wed / opens 9:00 / closes 18:00 / ask for Yamada in general affairs',
   // Call results (request 10/29)
   C架電回避目安: 'C: avoid calling for',
   '架電結果（詳細）': 'Call result (detail)',
@@ -550,6 +572,22 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  会社名で探す: 'Search by company name',
+  会社名をクリア: 'Clear company name',
+  この条件を外す: 'Remove this condition',
+  'エリア・業種・判定などで絞り込めます': 'Filter by area, industry, grade and more',
+  すべて満たす: 'Match all',
+  どれかを満たす: 'Match any',
+  条件をすべて外す: 'Clear all conditions',
+  何で絞り込みますか: 'Filter by',
+  項目を選び直す: 'Pick another field',
+  '入れた文字を含むものを探します。': 'Finds values containing this text.',
+  過ぎています: 'Overdue',
+  企業一覧: 'Companies',
+  アポが取れた: 'Appointment booked',
+  時期を改めてかけ直す: 'Call again later',
+  期間をおいてかけ直す: 'Call again after a break',
+  今後はかけない: 'Do not call again',
   条件なし: 'No conditions',
   '条件に合う企業はありません。': 'No companies match.',
   会社名: 'Company name',
@@ -1746,4 +1784,6 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['{0} から架電リストに戻ります', 'Back on the call list from {0}'],
   ['C架電回避目安：{0}（{1}から再開）', 'C: avoid for {0} (calls again from {1})'],
   ['B次回架電日：{0}', 'B next call date: {0}'],
+  ['親会社名：{0}', 'Parent company: {0}'],
+  ['保存名：{0}（取り込み日が前に付きます）', 'Saved as: {0} (the import date goes in front)'],
 ];

@@ -1,5 +1,6 @@
 import type { CalendarEvent } from '../events';
 import { minutesWithin } from '../events';
+import { jstMinutesOfDay } from '@telesales/shared';
 
 /** Office hours drawn white on the grid and used for 空き (free time). */
 export const WORK_START = 9 * 60;
@@ -114,4 +115,25 @@ export function hoursLabel(minutes: number): string {
   if (minutes < 60) return `${minutes}分`;
   const hours = minutes / 60;
   return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}時間`;
+}
+
+/** The hours a calendar shows (request 10/29: 9:00–18:00, the office hours). */
+export const VIEW_START = WORK_START;
+export const VIEW_END = WORK_END;
+
+/**
+ * 9:00–18:00, widened to whole hours when something on screen starts earlier or ends later,
+ * so an early visit or a late meeting is never cut off.
+ */
+export function visibleSpan(events: readonly CalendarEvent[]): { start: number; end: number } {
+  let start = VIEW_START;
+  let end = VIEW_END;
+  for (const event of events) {
+    if (event.allDay) continue;
+    const from = jstMinutesOfDay(new Date(event.startsAt));
+    const to = jstMinutesOfDay(new Date(event.endsAt)) || 24 * 60;
+    start = Math.min(start, Math.floor(from / 60) * 60);
+    end = Math.max(end, Math.min(24 * 60, Math.ceil(Math.max(to, from) / 60) * 60));
+  }
+  return { start, end };
 }

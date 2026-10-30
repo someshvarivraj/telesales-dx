@@ -64,6 +64,15 @@ export function useUpdateCompany(id: string) {
   });
 }
 
+export function useSaveTelemaMemo(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (telemaMemo: string | null) =>
+      apiClient.put<CompanyDetail>(`/companies/${id}/telema-memo`, { telemaMemo }),
+    onSuccess: (company) => client.setQueryData(callsKeys.company(id), company),
+  });
+}
+
 export function useCallRecords(companyId: string) {
   return useQuery({
     queryKey: callsKeys.records(companyId),
@@ -176,6 +185,11 @@ export function useAddComment() {
       if (request.callRecordId) void client.invalidateQueries({ queryKey: ['companies'] });
     },
   });
+}
+
+/** 登録済リスト一覧のExcel (request 10/29). */
+export async function downloadListRegistry(): Promise<void> {
+  saveFile(await apiClient.download('/list-imports/registry.xlsx', '登録済リスト一覧.xlsx'));
 }
 
 /** 架電結果のExcel (Sano 10/24 No.7). */

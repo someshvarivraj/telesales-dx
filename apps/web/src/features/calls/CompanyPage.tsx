@@ -1,6 +1,7 @@
 import {
   AppointmentSource,
   type CallRecordDto,
+  type CompanyDetail,
   jstDate,
   AVOID_MONTH_CHOICES,
   OptionCategory,
@@ -17,14 +18,16 @@ import { DescriptionList } from '@/components/ui/DescriptionList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { QueryState } from '@/components/ui/QueryState';
+import { Textarea } from '@/components/ui/Textarea';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { CommentThread } from '@/features/comments/CommentThread';
 import { useAppointments } from '@/features/appointments/api';
 import { AppointmentStatusBadge } from '@/features/appointments/AppointmentBadges';
 import { useOptionList } from '@/features/reference/useReference';
+import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ja } from '@/i18n/ja';
-import { useCallRecords, useCompany } from './api';
+import { useCallRecords, useCompany, useSaveTelemaMemo } from './api';
 import { FlagBadge, GradeBadge } from './CallBadges';
 import { CallRecordForm } from './CallRecordForm';
 import { CompanyEditDialog } from './CompanyEditDialog';
@@ -113,6 +116,7 @@ export function CompanyPage() {
   const canBook = usePermission(Permission.ManageTelemaAppointments);
   const canEdit = usePermission(Permission.EditCompanies);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
+  const ranks = useOptionList(OptionCategory.CompanyRank);
   const [editOpen, setEditOpen] = useState(false);
   const [repOpen, setRepOpen] = useState(false);
   const [justSavedA, setJustSavedA] = useState<CallRecordDto | null>(null);
@@ -212,33 +216,9 @@ export function CompanyPage() {
             )}
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-3">
-            <div className="flex flex-col gap-5 lg:col-span-2">
-              {canCall && (
-                <Card title="架電結果を入力">
-                  <CallRecordForm
-                    companyId={id}
-                    onSaved={(record) => setJustSavedA(record.grade === 'A' ? record : null)}
-                  />
-                </Card>
-              )}
-              <Card title="これまでの架電">
-                <QueryState query={records}>
-                  {(list) =>
-                    list.length === 0 ? (
-                      <EmptyState scene="calling">まだ架電記録はありません。</EmptyState>
-                    ) : (
-                      <ul className="flex flex-col gap-4">
-                        {list.map((record) => (
-                          <CallRecordItem key={record.id} record={record} companyId={id} />
-                        ))}
-                      </ul>
-                    )
-                  }
-                </QueryState>
-              </Card>
-            </div>
-            <div className="flex flex-col gap-5">
+          {/* Request 10/29: company information on the left (60%), the call result on the right (40%). */}
+          <div className="grid gap-5 lg:grid-cols-5">
+            <div className="flex flex-col gap-5 lg:col-span-3">
               <Card title="企業情報">
                 <DescriptionList
                   items={[
@@ -269,6 +249,20 @@ export function CompanyPage() {
                     { label: '部署', value: data.department },
                     { label: '最寄駅', value: data.nearestStation },
                     { label: '業種', value: data.industry },
+                    {
+                      label: '企業ランク',
+                      value:
+                        data.companyRank || data.parentName ? (
+                          <span className="flex flex-col">
+                            <span>{ranks.labelOf(data.companyRank)}</span>
+                            {data.parentName && (
+                              <span className="text-sm text-ink-sub">
+                                親会社名：{data.parentName}
+                              </span>
+                            )}
+                          </span>
+                        ) : null,
+                    },
                     { label: '取引区分', value: customerTypes.labelOf(data.customerType) },
                     { label: 'クライアントNo', value: data.clientNo },
                     {
@@ -303,6 +297,7 @@ export function CompanyPage() {
                   ]}
                 />
               </Card>
+              <TelemaMemoCard company={data} canWrite={canCall || canEdit} />
               <Card title="この会社のアポ">
                 {companyAppointments.length === 0 ? (
                   <EmptyState scene="schedule">まだアポはありません。</EmptyState>
@@ -324,6 +319,31 @@ export function CompanyPage() {
                 )}
               </Card>
             </div>
+            <div className="flex flex-col gap-5 lg:col-span-2">
+              {canCall && (
+                <Card title="架電結果を入力">
+                  <CallRecordForm
+                    companyId={id}
+                    onSaved={(record) => setJustSavedA(record.grade === 'A' ? record : null)}
+                  />
+                </Card>
+              )}
+              <Card title="これまでの架電">
+                <QueryState query={records}>
+                  {(list) =>
+                    list.length === 0 ? (
+                      <EmptyState scene="calling">まだ架電記録はありません。</EmptyState>
+                    ) : (
+                      <ul className="flex flex-col gap-4">
+                        {list.map((record) => (
+                          <CallRecordItem key={record.id} record={record} companyId={id} />
+                        ))}
+                      </ul>
+                    )
+                  }
+                </QueryState>
+              </Card>
+            </div>
           </div>
 
           {editOpen && (
@@ -339,5 +359,46 @@ export function CompanyPage() {
         </>
       )}
     </QueryState>
+  );
+}
+
+/** テレマメモ (request 10/29): 定休日・始業時間・就業時間など、次に架ける人が知っておくこと. */
+function TelemaMemoCard({ company, canWrite }: { company: CompanyDetail; canWrite: boolean }) {
+  const save = useSaveTelemaMemo(company.id);
+  const [memo, setMemo] = useState(company.telemaMemo ?? '');
+  const changed = memo.trim() !== (company.telemaMemo ?? '');
+  return (
+    <Card title="テレマメモ">
+      {canWrite ? (
+        <div className="flex flex-col gap-2">
+          <Textarea
+            aria-label="テレマメモ"
+            rows={4}
+            maxLength={4000}
+            value={memo}
+            placeholder="例：定休日 水曜／始業 9:00／就業 18:00／受付は総務の山田さん"
+            onChange={(e) => setMemo(e.target.value)}
+          />
+          {save.isError && <Alert tone="error">{errorMessageOf(save.error)}</Alert>}
+          <div className="flex items-center justify-end gap-3">
+            {save.isSuccess && !changed && (
+              <span className="text-xs text-ink-sub">保存しました</span>
+            )}
+            <Button
+              variant="secondary"
+              disabled={!changed}
+              loading={save.isPending}
+              onClick={() => save.mutate(memo.trim() || null)}
+            >
+              メモを保存
+            </Button>
+          </div>
+        </div>
+      ) : company.telemaMemo ? (
+        <p className="text-sm whitespace-pre-wrap">{company.telemaMemo}</p>
+      ) : (
+        <p className="text-sm text-ink-sub">メモはありません。</p>
+      )}
+    </Card>
   );
 }

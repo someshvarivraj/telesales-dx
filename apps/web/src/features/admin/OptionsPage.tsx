@@ -14,6 +14,7 @@ import { useAdminOptions, useCreateOption, useUpdateOption } from './api';
 const CATEGORY_LABEL: Record<OptionCategory, string> = {
   call_grade: '架電結果の判定',
   call_result: '架電結果（詳細）',
+  company_rank: '企業ランク',
   customer_type: '取引区分',
   plan_type: '予定の種別',
   interest_level: '乗り気度',

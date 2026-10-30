@@ -201,6 +201,32 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-strong) transparent;
 }
+/* 全画面 on the schedule: the page fills the screen on the app's background. */
+.schedule-page:fullscreen {
+  overflow: auto;
+  background: var(--color-canvas);
+  padding: 1rem 1.5rem;
+}
+/* Calendars: scroll bars always shown, left–right and up–down (request 10/29). */
+.schedule-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-line-strong) var(--color-column);
+}
+.schedule-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.schedule-scroll::-webkit-scrollbar-track {
+  background: var(--color-column);
+}
+.schedule-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border: 3px solid var(--color-column);
+  border-radius: 6px;
+}
+.schedule-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-sub);
+}
 
 /* ---------------------------------------------------------------------------
    さくら theme (telemarketing, 10/27 test): pink actions and a faint blush on the

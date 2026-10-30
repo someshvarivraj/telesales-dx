@@ -7,6 +7,8 @@ export interface TableRow {
   /** Row number as the user sees it in Excel (header = 1). */
   row: number;
   values: Record<string, string>;
+  /** Text written in red, by header (Excel only): the parent company in 「NTT上系」. */
+  red?: Record<string, string>;
 }
 
 export interface Table {
@@ -37,6 +39,27 @@ function cellText(value: ExcelJS.CellValue): string {
     return '';
   }
   return String(value);
+}
+
+/** Red-ish font colour (FF0000 and the like), as Excel writes it (ARGB or RGB hex). */
+function isRed(color: Partial<ExcelJS.Color> | undefined): boolean {
+  const hex = color?.argb?.slice(-6);
+  if (!hex || !/^[0-9a-f]{6}$/i.test(hex)) return false;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return (r ?? 0) >= 0xc0 && (g ?? 255) <= 0x60 && (b ?? 255) <= 0x60;
+}
+
+/** The red part of a cell: red runs of rich text, or the whole cell when its font is red. */
+function redText(cell: ExcelJS.Cell): string {
+  const value = cell.value;
+  if (value && typeof value === 'object' && 'richText' in value) {
+    return value.richText
+      .filter((part) => isRed(part.font?.color))
+      .map((part) => part.text)
+      .join('')
+      .trim();
+  }
+  return isRed(cell.font?.color) ? cellText(value).trim() : '';
 }
 
 function normalizeHeader(header: string): string {
@@ -80,13 +103,17 @@ async function readXlsx(content: Buffer): Promise<Table> {
       return;
     }
     const values: Record<string, string> = {};
+    const red: Record<string, string> = {};
     headers.forEach((header, index) => {
       if (header) {
-        values[header] = cellText(row.getCell(index + 1).value).trim();
+        const cell = row.getCell(index + 1);
+        values[header] = cellText(cell.value).trim();
+        const marked = redText(cell);
+        if (marked) red[header] = marked;
       }
     });
     if (Object.values(values).some(Boolean)) {
-      rows.push({ row: rowNumber, values });
+      rows.push({ row: rowNumber, values, ...(Object.keys(red).length > 0 ? { red } : {}) });
     }
   });
   return { headers: headers.filter(Boolean), rows };

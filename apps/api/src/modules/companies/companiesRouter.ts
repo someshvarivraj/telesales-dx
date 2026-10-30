@@ -8,6 +8,7 @@ import {
   listImportRowsQuerySchema,
   Permission,
   resolveFlagRequestSchema,
+  telemaMemoRequestSchema,
   updateCompanyRequestSchema,
 } from '@telesales/shared';
 import { Router } from 'express';
@@ -35,6 +36,7 @@ export interface CompaniesDeps {
   comments: CommentService;
   area: AreaTableService;
   files: FileService;
+  appBaseUrl: string;
 }
 
 const callExportQuery = z.object({
@@ -117,6 +119,16 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       file.content,
     );
   });
+  router.put(
+    '/companies/:id/telema-memo',
+    auth.requireAnyPermission(Permission.WriteCallRecords, Permission.EditCompanies),
+    async (req, res) => {
+      const { telemaMemo } = parseWith(telemaMemoRequestSchema, req.body);
+      res.json(
+        await deps.companies.updateTelemaMemo(currentUserOf(req), idParam(req), telemaMemo ?? null),
+      );
+    },
+  );
   router.get('/companies/:id/call-records', view, async (req, res) => {
     res.json(await deps.callRecords.listForCompany(currentUserOf(req), idParam(req)));
   });
@@ -180,6 +192,21 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
     auth.requireAnyPermission(Permission.ImportLists, Permission.ResolveDuplicates),
     async (req, res) => {
       res.json(await deps.imports.rows(idParam(req), parseQuery(listImportRowsQuerySchema, req)));
+    },
+  );
+  router.get(
+    '/list-imports/registry.xlsx',
+    auth.requireAnyPermission(Permission.ImportLists),
+    async (_req, res) => {
+      const file = await deps.imports.registryWorkbook(deps.appBaseUrl);
+      sendFile(
+        res,
+        {
+          originalName: file.fileName,
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+        file.content,
+      );
     },
   );
   router.get(
