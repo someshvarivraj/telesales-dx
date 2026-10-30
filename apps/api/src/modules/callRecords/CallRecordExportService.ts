@@ -16,10 +16,12 @@ const COLUMNS: { header: string; width: number }[] = [
   { header: '架電日時', width: 17 },
   { header: 'テレマ担当', width: 14 },
   { header: '判定', width: 8 },
+  { header: '架電結果', width: 24 },
   { header: '結果の詳細', width: 40 },
   { header: '先方担当者', width: 14 },
   { header: '興味度', width: 10 },
-  { header: '次回架電日', width: 12 },
+  { header: 'B次回架電日', width: 12 },
+  { header: 'C架電回避目安', width: 12 },
   { header: 'メモ', width: 30 },
   { header: '会社名', width: 28 },
   { header: '事業所名', width: 14 },
@@ -56,7 +58,7 @@ export class CallRecordExportService {
     if (filter.to < filter.from || addDays(filter.from, 400) < filter.to) {
       throw new ValidationError({ to: ['invalid_range'] });
     }
-    const [rows, grades, interests, customerTypes] = await Promise.all([
+    const [rows, grades, interests, customerTypes, results] = await Promise.all([
       this.prisma.callRecord.findMany({
         where: {
           calledAt: { gte: fromJst(filter.from), lt: fromJst(addDays(filter.to, 1)) },
@@ -85,6 +87,7 @@ export class CallRecordExportService {
       this.options.labels(OptionCategory.CallGrade),
       this.options.labels(OptionCategory.InterestLevel),
       this.options.labels(OptionCategory.CustomerType),
+      this.options.labels(OptionCategory.CallResult),
     ]);
 
     const workbook = new ExcelJS.Workbook();
@@ -100,10 +103,12 @@ export class CallRecordExportService {
         excelDate(row.calledAt),
         row.telemarketer.name,
         label(grades, row.grade),
+        label(results, row.resultCode),
         row.resultDetail ?? '',
         row.contactName ?? '',
         label(interests, row.interestLevel),
         row.nextCallDate ? row.nextCallDate.toISOString().slice(0, 10) : '',
+        row.avoidUntil ? `${row.avoidUntil.toISOString().slice(0, 10)}まで` : '',
         row.notes ?? '',
         row.company.name,
         row.company.office ?? '',

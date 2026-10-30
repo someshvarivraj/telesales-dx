@@ -75,6 +75,17 @@ export function addDays(date: string, days: number): string {
   return jstDate(new Date(base.getTime() + days * DAY_MS));
 }
 
+/** "2026-10-30" + 6 months → "2027-04-30" (end of a shorter month: its last day). */
+export function addMonthsToDate(date: string, months: number): string {
+  const [y = 0, m = 1, d = 1] = date.split('-').map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(d, last));
+  return target.toISOString().slice(0, 10);
+}
+
 export function addMinutes(instant: Date, minutes: number): Date {
   return new Date(instant.getTime() + minutes * 60_000);
 }

@@ -128,10 +128,15 @@ export interface CompanyImportDto {
 
 export const createCallRecordRequestSchema = z.object({
   grade: requiredText(48),
+  /** Option code in "call_result" under the chosen grade. */
+  resultCode: optionalText(48),
   resultDetail: optionalText(2000),
   contactName: optionalText(100),
   interestLevel: optionalText(48),
   nextCallDate: dateString.nullish(),
+  avoidMonths: z
+    .union([z.literal(3), z.literal(6), z.literal(12), z.literal(18), z.literal(24)])
+    .nullish(),
   notes: optionalText(4000),
 });
 export type CreateCallRecordRequest = z.infer<typeof createCallRecordRequestSchema>;
@@ -142,10 +147,14 @@ export interface CallRecordDto {
   telemarketer: UserRef;
   calledAt: string;
   grade: string;
+  resultCode: string | null;
   resultDetail: string | null;
   contactName: string | null;
   interestLevel: string | null;
   nextCallDate: string | null;
+  avoidMonths: number | null;
+  /** Called again from this day (called date + avoidMonths). */
+  avoidUntil: string | null;
   notes: string | null;
   commentCount: number;
   canEdit: boolean;
