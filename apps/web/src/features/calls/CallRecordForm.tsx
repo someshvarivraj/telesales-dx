@@ -6,7 +6,6 @@ import {
   gradeOfResult,
   jstDate,
   OptionCategory,
-  UNCOUNTED_GRADE,
 } from '@telesales/shared';
 import { useState } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -92,28 +91,17 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
       {save.isError && <Alert tone="error">{errorMessageOf(save.error)}</Alert>}
       <fieldset>
         <legend className="mb-1.5 text-sm font-bold">判定</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-2">
           {grades.items.map((grade) => (
-            <button
+            <GradeCard
               key={grade.code}
-              type="button"
-              aria-pressed={values.grade === grade.code}
-              onClick={() => chooseGrade(grade.code)}
-              className={cn(
-                'flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-(--radius-control) border px-2 py-1.5 text-center text-sm leading-tight font-bold transition-colors',
-                values.grade === grade.code
-                  ? 'border-main bg-main text-white'
-                  : 'border-line bg-surface text-ink hover:border-main/60',
-              )}
-            >
-              <span className="text-base">{grade.code}</span>
-              {grade.label}
-            </button>
+              code={grade.code}
+              label={grade.label}
+              selected={values.grade === grade.code}
+              onSelect={() => chooseGrade(grade.code)}
+            />
           ))}
         </div>
-        {values.grade === UNCOUNTED_GRADE && (
-          <p className="mt-1.5 text-xs text-ink-sub">E は架電件数に数えません。</p>
-        )}
       </fieldset>
       {gradeResults.length > 0 && (
         <fieldset>
@@ -232,5 +220,86 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Colour per grade, matching GradeBadge: A got it, B/C call again later, D stop, E not counted. */
+const GRADE_LOOK: Record<string, { badge: string; chosen: string; hint: string }> = {
+  A: {
+    badge:
+      'bg-success-soft text-success group-aria-pressed:bg-success group-aria-pressed:text-white',
+    chosen: 'aria-pressed:bg-success-soft aria-pressed:ring-success',
+    hint: 'アポが取れた',
+  },
+  B: {
+    badge:
+      'bg-warning-soft text-warning-ink group-aria-pressed:bg-warning-ink group-aria-pressed:text-white',
+    chosen: 'aria-pressed:bg-warning-soft aria-pressed:ring-warning-ink',
+    hint: '時期を改めてかけ直す',
+  },
+  C: {
+    badge:
+      'bg-schedule-soft text-schedule group-aria-pressed:bg-schedule group-aria-pressed:text-white',
+    chosen: 'aria-pressed:bg-schedule-soft aria-pressed:ring-schedule',
+    hint: '期間をおいてかけ直す',
+  },
+  D: {
+    badge: 'bg-danger-soft text-danger group-aria-pressed:bg-danger group-aria-pressed:text-white',
+    chosen: 'aria-pressed:bg-danger-soft aria-pressed:ring-danger',
+    hint: '今後はかけない',
+  },
+};
+const OTHER_LOOK = {
+  badge: 'bg-admin-soft text-admin group-aria-pressed:bg-admin group-aria-pressed:text-white',
+  chosen: 'aria-pressed:bg-admin-soft aria-pressed:ring-admin',
+  hint: '',
+};
+
+/**
+ * One grade as a card: letter badge, name on one line, and a short line under it.
+ * A note in brackets in the name (「回避（カウント対象外）」) becomes that short line.
+ */
+function GradeCard({
+  code,
+  label,
+  selected,
+  onSelect,
+}: {
+  code: string;
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const look = GRADE_LOOK[code] ?? OTHER_LOOK;
+  const bracket = /^(.+?)[（(](.+)[)）]$/.exec(label);
+  const name = bracket?.[1] ?? label;
+  const hint = bracket?.[2] ?? look.hint;
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        'group relative flex min-h-16 cursor-pointer items-center gap-2.5 rounded-(--radius-control) border border-line bg-surface px-3 py-2.5 text-left transition-[background-color,box-shadow,border-color] duration-150 hover:border-line-strong hover:bg-hover active:translate-y-px',
+        'aria-pressed:border-transparent aria-pressed:ring-2',
+        look.chosen,
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'grid size-8 shrink-0 place-items-center rounded-(--radius-control) text-base font-bold transition-colors',
+          look.badge,
+        )}
+      >
+        {code}
+      </span>
+      <span className="w-full min-w-0">
+        <span className="block text-sm leading-snug font-bold whitespace-nowrap text-ink">
+          {name}
+        </span>
+        {hint && <span className="mt-0.5 block text-[11px] leading-snug text-ink-sub">{hint}</span>}
+      </span>
+    </button>
   );
 }
