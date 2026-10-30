@@ -1,4 +1,4 @@
-import { CompanyFlag, type CompanyListItem, OptionCategory } from '@telesales/shared';
+import { CompanyFlag, type CompanyListItem, OptionCategory, Role } from '@telesales/shared';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { QueryState } from '@/components/ui/QueryState';
 import { Table, Td, Th } from '@/components/ui/Table';
-import { useOptionList } from '@/features/reference/useReference';
+import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { formatDate, formatDateTime, todayJst } from '@/lib/format';
 import { useCompanySearch } from './api';
 import { FlagBadge, GradeBadge } from './CallBadges';
@@ -22,7 +22,7 @@ export function CallTargetsPage() {
   const [params] = useSearchParams();
   const initialList = params.get('list');
   const [name, setName] = useState('');
-  const [searchName, setSearchName] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [chips, setChips] = useState<FilterChip[]>(
     initialList ? [{ key: 1, field: 'listName', value: initialList }] : [],
   );
@@ -33,11 +33,16 @@ export function CallTargetsPage() {
   const [page, setPage] = useState(1);
   const grades = useOptionList(OptionCategory.CallGrade);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
+  const ranks = useOptionList(OptionCategory.CompanyRank);
+  const people = usePeople();
+  const telemarketers = (people.data ?? []).filter((person) =>
+    person.roles.some((role) => role === Role.Telema || role === Role.TelemaLead),
+  );
 
-  // The list follows the name box shortly after typing stops.
+  // The list follows the keyword box shortly after typing stops.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearchName(name.trim());
+      setKeyword(name.trim());
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);
@@ -49,14 +54,12 @@ export function CallTargetsPage() {
       setPage(1);
     };
 
-  const conditions = [
-    ...(searchName ? [{ field: 'name' as const, value: searchName }] : []),
-    ...chips.map((chip) => ({
-      field: chip.field,
-      value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
-    })),
-  ];
+  const conditions = chips.map((chip) => ({
+    field: chip.field,
+    value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
+  }));
   const query = useCompanySearch({
+    keyword,
     conditions,
     match,
     callTargetsOnly: onlyTargets,
@@ -69,6 +72,9 @@ export function CallTargetsPage() {
     if (field === 'lastGrade')
       return grades.items.map((g) => ({ value: g.code, label: `${g.code}：${g.label}` }));
     if (field === 'customerType') return customerTypes.selectOptions;
+    if (field === 'companyRank') return ranks.selectOptions;
+    if (field === 'telemarketer')
+      return telemarketers.map((person) => ({ value: person.id, label: person.name }));
     if (field === 'flag')
       return [
         { value: CompanyFlag.Duplicate, label: '重複' },

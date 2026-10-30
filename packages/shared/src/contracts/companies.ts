@@ -70,12 +70,31 @@ export const companyFilterConditionSchema = z.object({
     'nextCallDue',
     'neverCalled',
     'flag',
+    'companyRank',
+    /** Telemarketer of the latest call (user id). */
+    'telemarketer',
+    /** Ranges are written 「from~to」; either side may be empty. */
+    'telemaIdNo',
+    /** 最新テレマ日: day of the latest call. */
+    'lastCallDate',
+    /** 取込日: day the company came in on any list. */
+    'importedDate',
+    /** テレマ予定日: B次回架電日 of the latest call. */
+    'nextCallDate',
   ]),
   value: z.string().max(200).default(''),
 });
+
+/** 「from~to」 of a range condition; either side may be empty. */
+export function splitRange(value: string): { from: string; to: string } {
+  const [from = '', to = ''] = value.split('~').map((part) => part.trim());
+  return { from, to };
+}
 export type CompanyFilterCondition = z.infer<typeof companyFilterConditionSchema>;
 
 export const companySearchRequestSchema = z.object({
+  /** Words searched across every company field; all words must match (request 10/30). */
+  keyword: z.string().max(200).default(''),
   conditions: z.array(companyFilterConditionSchema).max(10).default([]),
   match: z.enum(['AND', 'OR']).default('AND'),
   callTargetsOnly: z.boolean().default(true),
