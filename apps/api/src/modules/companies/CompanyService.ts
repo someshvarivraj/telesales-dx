@@ -9,6 +9,7 @@ import {
   ListImportRowStatus,
   type Page,
   phoneDigitsOf,
+  splitRange,
   type ResolveFlagRequest,
   type UpdateCompanyRequest,
 } from '@telesales/shared';
@@ -435,6 +436,74 @@ export class CompanyService {
         const ids = await this.companyIdsByLatestCall(Prisma.sql`grade = ${value}`);
         return { id: { in: ids } };
       }
+      case 'companyRank':
+        return value ? { companyRank: value } : null;
+      case 'telemarketer': {
+        if (!/^[0-9a-f-]{36}$/i.test(value)) return null;
+        const ids = await this.companyIdsByLatestCall(Prisma.sql`telemarketer_id = ${value}::uuid`);
+        return { id: { in: ids } };
+      }
+      case 'telemaIdNo': {
+        const { from, to } = splitRange(value);
+        const low = /^\d{1,15}$/.test(from) ? BigInt(from) : null;
+        const high = /^\d{1,15}$/.test(to) ? BigInt(to) : null;
+        if (low === null && high === null) {
+          return from ? { telemaIdNo: { contains: from } } : null;
+        }
+        const bounds = [
+          Prisma.sql`telema_id_no ~ '^[0-9]{1,15}$'`,
+          ...(low !== null ? [Prisma.sql`telema_id_no::bigint >= ${low}`] : []),
+          ...(high !== null ? [Prisma.sql`telema_id_no::bigint <= ${high}`] : []),
+        ];
+        const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+          SELECT id FROM companies WHERE ${Prisma.join(bounds, ' AND ')}`;
+        return { id: { in: rows.map((row) => row.id) } };
+      }
+      case 'lastCallDate': {
+        const range = dateRange(value);
+        if (!range) return null;
+        const day = Prisma.sql`(called_at AT TIME ZONE 'Asia/Tokyo')::date`;
+        const ids = await this.companyIdsByLatestCall(
+          Prisma.join(
+            [
+              ...(range.from ? [Prisma.sql`${day} >= ${toDbDate(range.from)}`] : []),
+              ...(range.to ? [Prisma.sql`${day} <= ${toDbDate(range.to)}`] : []),
+            ],
+            ' AND ',
+          ),
+        );
+        return { id: { in: ids } };
+      }
+      case 'nextCallDate': {
+        const range = dateRange(value);
+        if (!range) return null;
+        const ids = await this.companyIdsByLatestCall(
+          Prisma.join(
+            [
+              ...(range.from ? [Prisma.sql`next_call_date >= ${toDbDate(range.from)}`] : []),
+              ...(range.to ? [Prisma.sql`next_call_date <= ${toDbDate(range.to)}`] : []),
+            ],
+            ' AND ',
+          ),
+        );
+        return { id: { in: ids } };
+      }
+      case 'importedDate': {
+        const range = dateRange(value);
+        if (!range) return null;
+        return {
+          importRows: {
+            some: {
+              listImport: {
+                createdAt: {
+                  ...(range.from ? { gte: jstDayStart(range.from) } : {}),
+                  ...(range.to ? { lt: jstDayStart(nextDay(range.to)) } : {}),
+                },
+              },
+            },
+          },
+        };
+      }
       case 'nextCallDue': {
         const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
           ? value
@@ -451,11 +520,31 @@ export class CompanyService {
   private async companyIdsByLatestCall(predicate: Prisma.Sql): Promise<string[]> {
     const rows = await this.prisma.$queryRaw<{ company_id: string }[]>`
       SELECT company_id FROM (
-        SELECT DISTINCT ON (company_id) company_id, grade, next_call_date
+        SELECT DISTINCT ON (company_id) company_id, grade, next_call_date, telemarketer_id, called_at
         FROM call_records
         ORDER BY company_id, called_at DESC
       ) latest
       WHERE ${predicate}`;
     return rows.map((row) => row.company_id);
   }
+}
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A 「from~to」 day range; null when neither side is a date. */
+function dateRange(value: string): { from: string | null; to: string | null } | null {
+  const { from, to } = splitRange(value);
+  const range = { from: DATE.test(from) ? from : null, to: DATE.test(to) ? to : null };
+  return range.from || range.to ? range : null;
+}
+
+/** 00:00 JST of a day. */
+function jstDayStart(date: string): Date {
+  return new Date(`${date}T00:00:00+09:00`);
+}
+
+function nextDay(date: string): string {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
 }

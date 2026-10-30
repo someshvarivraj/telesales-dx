@@ -54,7 +54,9 @@ export function usePopover(
     if (!open) return;
     const outside = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (!anchor.current?.contains(target) && !panel.current?.contains(target)) {
+      // A panel opened from inside this one (a calendar in a filter menu) counts as inside.
+      const inOtherPanel = target instanceof Element && target.closest('.pop-in') !== null;
+      if (!inOtherPanel && !anchor.current?.contains(target) && !panel.current?.contains(target)) {
         setOpen(false);
         onClose();
       }
