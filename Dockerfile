@@ -44,4 +44,7 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "--enable-source-maps", "dist/main.js"]
+# Staging runs the app in a 320 MiB container. Without a cap, V8 sizes its heap from the
+# host's RAM, lets garbage pile up, and the kernel kills the container (10/29: OOM after
+# ~24h). 200 MiB of heap keeps it collecting, leaving room for buffers and native memory.
+CMD ["node", "--enable-source-maps", "--max-old-space-size=200", "dist/main.js"]
