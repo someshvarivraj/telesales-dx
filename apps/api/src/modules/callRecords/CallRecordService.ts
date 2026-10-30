@@ -1,9 +1,15 @@
-import type { CallRecordDto, CreateCallRecordRequest } from '@telesales/shared';
+import {
+  addMonthsToDate,
+  type CallRecordDto,
+  type CreateCallRecordRequest,
+  gradeOfResult,
+  jstDate,
+} from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { AccessPolicy, Actor } from '../../domain/access/AccessPolicy.js';
 import type { Clock } from '../../domain/Clock.js';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
-import { ForbiddenError, NotFoundError } from '../../http/errors/AppError.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../http/errors/AppError.js';
 import { dateOnly, iso, toDbDate, userRef, userRefSelect } from '../../http/mappers.js';
 
 const recordInclude = {
@@ -15,23 +21,44 @@ type RecordRow = Prisma.CallRecordGetPayload<{ include: typeof recordInclude }>;
 
 function auditShape(row: {
   grade: string;
+  resultCode: string | null;
   resultDetail: string | null;
   contactName: string | null;
   interestLevel: string | null;
   nextCallDate: Date | null;
+  avoidMonths: number | null;
   notes: string | null;
 }) {
   return {
     grade: row.grade,
+    resultCode: row.resultCode,
     resultDetail: row.resultDetail,
     contactName: row.contactName,
     interestLevel: row.interestLevel,
     nextCallDate: dateOnly(row.nextCallDate),
+    avoidMonths: row.avoidMonths,
     notes: row.notes,
   };
 }
 
-/** Call results (spec §6): grade A–D, detail, next call date; past records on the same screen. */
+/**
+ * The detailed result must sit under the chosen grade; 「C架電回避目安」 only applies to
+ * grade C, and sets the day the company comes back on the call list.
+ */
+function resultFields(input: CreateCallRecordRequest, calledAt: Date) {
+  const resultCode = input.resultCode || null;
+  if (resultCode && gradeOfResult(resultCode) !== input.grade) {
+    throw new ValidationError({ resultCode: ['not_under_grade'] });
+  }
+  const avoidMonths = input.grade === 'C' ? (input.avoidMonths ?? null) : null;
+  return {
+    resultCode,
+    avoidMonths,
+    avoidUntil: avoidMonths ? toDbDate(addMonthsToDate(jstDate(calledAt), avoidMonths)) : null,
+  };
+}
+
+/** Call results (spec §6, request 10/29): grade A–E, detailed result, B次回架電日, C架電回避目安. */
 export class CallRecordService {
   constructor(
     private readonly prisma: PrismaClient,
@@ -73,12 +100,14 @@ export class CallRecordService {
     if (!company) {
       throw new NotFoundError();
     }
+    const calledAt = this.clock.now();
     const row = await this.prisma.callRecord.create({
       data: {
         companyId,
         telemarketerId: actor.id,
-        calledAt: this.clock.now(),
+        calledAt,
         grade: input.grade,
+        ...resultFields(input, calledAt),
         resultDetail: input.resultDetail ?? null,
         contactName: input.contactName ?? null,
         interestLevel: input.interestLevel ?? null,
@@ -110,6 +139,7 @@ export class CallRecordService {
       where: { id },
       data: {
         grade: input.grade,
+        ...resultFields(input, before.calledAt),
         resultDetail: input.resultDetail ?? null,
         contactName: input.contactName ?? null,
         interestLevel: input.interestLevel ?? null,
@@ -136,10 +166,13 @@ export class CallRecordService {
       telemarketer: userRef(row.telemarketer),
       calledAt: iso(row.calledAt),
       grade: row.grade,
+      resultCode: row.resultCode,
       resultDetail: row.resultDetail,
       contactName: row.contactName,
       interestLevel: row.interestLevel,
       nextCallDate: dateOnly(row.nextCallDate),
+      avoidMonths: row.avoidMonths,
+      avoidUntil: dateOnly(row.avoidUntil),
       notes: row.notes,
       commentCount: row._count.comments,
       canEdit: this.policy.canEditCallRecord(actor, row),

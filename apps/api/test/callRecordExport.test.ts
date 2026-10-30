@@ -7,11 +7,13 @@ import type { OptionService } from '../src/modules/options/OptionService.js';
 // Made-up call; the notes hold a formula-looking value that must stay text.
 const call = {
   calledAt: new Date('2026-10-23T01:30:00Z'),
-  grade: 'A',
+  grade: 'C',
+  resultCode: 'C-01',
   resultDetail: '前向きに検討',
   contactName: '山田',
   interestLevel: 'HIGH',
-  nextCallDate: new Date('2026-10-30T00:00:00Z'),
+  nextCallDate: null,
+  avoidUntil: new Date('2027-04-23T00:00:00Z'),
   notes: '=1+1',
   telemarketer: { name: 'テレマ 一号' },
   company: {
@@ -42,10 +44,12 @@ function service(rows: unknown[], where: unknown[]) {
       Promise.resolve(
         new Map(
           category === 'call_grade'
-            ? [['A', 'A（アポ）']]
-            : category === 'interest_level'
-              ? [['HIGH', '高い']]
-              : [['NEW', '新規']],
+            ? [['C', 'テレマ一旦ストップ']]
+            : category === 'call_result'
+              ? [['C-01', '断']]
+              : category === 'interest_level'
+                ? [['HIGH', '高い']]
+                : [['NEW', '新規']],
         ),
       ),
   } as unknown as OptionService;
@@ -72,11 +76,13 @@ describe('CallRecordExportService', () => {
     const row = sheet?.getRow(2);
     // 01:30 UTC = 10:30 JST, written as wall-clock time.
     expect((row?.getCell(1).value as Date).toISOString()).toBe('2026-10-23T10:30:00.000Z');
-    expect(row?.getCell(3).value).toBe('A（アポ）');
-    expect(row?.getCell(6).value).toBe('高い');
-    expect(row?.getCell(8).value).toBe('=1+1');
-    expect(row?.getCell(8).formula).toBeUndefined();
-    expect(row?.getCell(17).value).toBe('新規');
+    expect(row?.getCell(3).value).toBe('テレマ一旦ストップ');
+    expect(row?.getCell(4).value).toBe('断');
+    expect(row?.getCell(7).value).toBe('高い');
+    expect(row?.getCell(9).value).toBe('2027-04-23まで');
+    expect(row?.getCell(10).value).toBe('=1+1');
+    expect(row?.getCell(10).formula).toBeUndefined();
+    expect(row?.getCell(19).value).toBe('新規');
   });
 
   it('refuses a reversed or over-long period', async () => {

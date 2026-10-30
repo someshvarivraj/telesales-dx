@@ -2,6 +2,7 @@ import {
   AppointmentSource,
   type CallRecordDto,
   jstDate,
+  AVOID_MONTH_CHOICES,
   OptionCategory,
   Permission,
 } from '@telesales/shared';
@@ -34,6 +35,7 @@ function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyI
   const [editing, setEditing] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const grades = useOptionList(OptionCategory.CallGrade);
+  const results = useOptionList(OptionCategory.CallResult);
   const interest = useOptionList(OptionCategory.InterestLevel);
 
   if (editing) {
@@ -52,6 +54,9 @@ function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyI
     <li className="flex flex-col gap-2 border-b border-line pb-4 last:border-0 last:pb-0">
       <div className="flex flex-wrap items-center gap-2">
         <GradeBadge grade={record.grade} label={grades.labelOf(record.grade)} />
+        {record.resultCode && (
+          <span className="text-sm font-bold">{results.labelOf(record.resultCode)}</span>
+        )}
         <span className="text-sm font-bold">{record.telemarketer.name}</span>
         <span className="text-xs text-ink-sub">{formatDateTime(record.calledAt)}</span>
         <div className="ml-auto flex gap-1">
@@ -79,7 +84,13 @@ function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyI
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-sub">
         {record.contactName && <span>先方：{record.contactName}</span>}
         {record.interestLevel && <span>乗り気度：{interest.labelOf(record.interestLevel)}</span>}
-        {record.nextCallDate && <span>次回架電日：{formatDate(record.nextCallDate)}</span>}
+        {record.nextCallDate && <span>B次回架電日：{formatDate(record.nextCallDate)}</span>}
+        {record.avoidUntil && (
+          <span>
+            C架電回避目安：{AVOID_MONTH_CHOICES.find((c) => c.months === record.avoidMonths)?.label}
+            （{formatDate(record.avoidUntil)}から再開）
+          </span>
+        )}
       </div>
       {record.notes && <p className="text-xs whitespace-pre-wrap text-ink-sub">{record.notes}</p>}
       {showComments && (

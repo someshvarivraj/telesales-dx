@@ -67,7 +67,7 @@ export function CallExportDialog({ open, onClose }: { open: boolean; onClose: ()
       <div className="flex flex-col gap-4">
         {Boolean(error) && <Alert tone="error">{errorMessageOf(error)}</Alert>}
         <p className="text-sm text-ink-sub">
-          期間中の架電を1件1行で出します（判定・結果の詳細・次回架電日と、架けた企業の情報）。
+          期間中の架電を1件1行で出します（判定・架電結果・結果の詳細・B次回架電日・C架電回避目安と、架けた企業の情報）。
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="架電日（から）" required>

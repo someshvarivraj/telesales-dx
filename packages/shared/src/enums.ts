@@ -181,6 +181,8 @@ export type NoticeCode = (typeof NoticeCode)[keyof typeof NoticeCode];
 /** Option-list categories edited on the admin screen. */
 export const OptionCategory = {
   CallGrade: 'call_grade',
+  /** Detailed result under a grade; the code starts with the grade ("B-03"). */
+  CallResult: 'call_result',
   CustomerType: 'customer_type',
   PlanType: 'plan_type',
   InterestLevel: 'interest_level',
@@ -189,6 +191,23 @@ export const OptionCategory = {
 } as const;
 export type OptionCategory = (typeof OptionCategory)[keyof typeof OptionCategory];
 export const OPTION_CATEGORIES = valuesOf(OptionCategory);
+
+/** The grade a detailed call result belongs to ("C-02" → "C"). */
+export function gradeOfResult(code: string): string {
+  return code.split('-')[0] ?? '';
+}
+
+/** Grade E (回避・リスト重複) is not counted as a call. */
+export const UNCOUNTED_GRADE = 'E';
+
+/** 「C架電回避目安」: months before a company put on hold (grade C) is called again. */
+export const AVOID_MONTH_CHOICES = [
+  { months: 3, label: '3ヶ月' },
+  { months: 6, label: '6ヶ月' },
+  { months: 12, label: '1年' },
+  { months: 18, label: '1年半' },
+  { months: 24, label: '2年' },
+] as const;
 
 /** Plan types that are kept in sync with an appointment's format. */
 export const APPOINTMENT_PLAN_TYPE: Record<MeetingFormat, string> = {

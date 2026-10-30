@@ -336,7 +336,7 @@ export class AllocationService {
       SELECT c.id, c.name_key AS "nameKey"
       FROM companies c
       LEFT JOIN LATERAL (
-        SELECT r.next_call_date
+        SELECT r.next_call_date, r.avoid_until
         FROM call_records r
         WHERE r.company_id = c.id
         ORDER BY r.called_at DESC
@@ -352,6 +352,8 @@ export class AllocationService {
         AND (
           NOT EXISTS (SELECT 1 FROM call_records r WHERE r.company_id = c.id)
           OR last_call.next_call_date <= ${toDbDate(date)}::date
+          -- Grade C with 「C架電回避目安」: back on the list once the time is up.
+          OR last_call.avoid_until <= ${toDbDate(date)}::date
         )
       ORDER BY c.prefecture NULLS LAST, c.city NULLS LAST, c.created_at, c.id
     `);

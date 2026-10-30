@@ -529,10 +529,15 @@ model CallRecord {
   calledAt       DateTime  @map("called_at") @db.Timestamptz(6)
   /// Option code in category "call_grade" (A–D by default)
   grade          String    @db.VarChar(48)
+  /// Option code in category "call_result" (e.g. "B-03"), under the grade
+  resultCode     String?   @map("result_code") @db.VarChar(48)
   resultDetail   String?   @map("result_detail")
   contactName    String?   @map("contact_name") @db.VarChar(100)
   interestLevel  String?   @map("interest_level") @db.VarChar(48)
   nextCallDate   DateTime? @map("next_call_date") @db.Date
+  /// 「C架電回避目安」 in months, and the day the company is called again
+  avoidMonths    Int?      @map("avoid_months")
+  avoidUntil     DateTime? @map("avoid_until") @db.Date
   notes          String?
   listImportId   String?   @map("list_import_id") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

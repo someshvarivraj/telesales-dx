@@ -161,7 +161,7 @@ export const ACTION_DEFINITIONS = [
           grade: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
           resultDetail: { type: 'string', description: '結果詳細（話した内容）' },
           contactName: { type: 'string', description: '先方担当者' },
-          nextCallDate: { type: 'string', description: '次回架電日 YYYY-MM-DD（任意）' },
+          nextCallDate: { type: 'string', description: 'B次回架電日 YYYY-MM-DD（任意）' },
           notes: { type: 'string', description: 'メモ（任意）' },
         },
         required: ['company', 'grade'],
@@ -451,7 +451,9 @@ export class AssistantActions {
         { label: '判定', value: `${args.grade} ${GRADE_LABEL[args.grade] ?? ''}` },
         ...(args.resultDetail ? [{ label: '結果詳細', value: args.resultDetail }] : []),
         ...(args.contactName ? [{ label: '先方担当者', value: args.contactName }] : []),
-        ...(args.nextCallDate ? [{ label: '次回架電日', value: dayLabel(args.nextCallDate) }] : []),
+        ...(args.nextCallDate
+          ? [{ label: 'B次回架電日', value: dayLabel(args.nextCallDate) }]
+          : []),
         ...(args.notes ? [{ label: 'メモ', value: args.notes }] : []),
       ],
       warnings:

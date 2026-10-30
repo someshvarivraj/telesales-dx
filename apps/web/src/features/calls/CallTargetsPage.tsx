@@ -27,7 +27,7 @@ const FIELDS: { value: Field; label: string; needsValue: boolean }[] = [
   { value: 'listName', label: 'リスト名', needsValue: true },
   { value: 'customerType', label: '取引区分', needsValue: true },
   { value: 'lastGrade', label: '最新の判定', needsValue: true },
-  { value: 'nextCallDue', label: '次回架電日が来ている', needsValue: false },
+  { value: 'nextCallDue', label: 'B次回架電日が来ている', needsValue: false },
   { value: 'neverCalled', label: 'まだ架電していない', needsValue: false },
   { value: 'flag', label: '重複・要確認', needsValue: true },
 ];
@@ -228,7 +228,7 @@ export function CallTargetsPage() {
                       <Th className="max-md:hidden">業種</Th>
                       <Th className="max-lg:hidden">リスト名</Th>
                       <Th>最新の架電</Th>
-                      <Th>次回架電日</Th>
+                      <Th>B次回架電日</Th>
                     </tr>
                   </thead>
                   <tbody>

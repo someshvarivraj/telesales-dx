@@ -9,6 +9,7 @@ const GRADE_TONE: Record<string, StatusTone> = {
   B: 'warning',
   C: 'neutral',
   D: 'neutral',
+  E: 'neutral',
 };
 
 export function GradeBadge({ grade, label }: { grade: string; label?: string }) {
