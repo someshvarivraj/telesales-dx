@@ -92,6 +92,30 @@ describe('ご意見・不具合の報告', () => {
     expect(document.querySelector('dialog')?.hasAttribute('open')).toBe(true);
   });
 
+  it('stays open when Chrome asks to close it as the file picker is cancelled', async () => {
+    renderMenu();
+    await userEvent.click(screen.getByRole('button', { name: /ご意見・不具合の報告/ }));
+    const dialog = document.querySelector('dialog') as HTMLDialogElement;
+    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+    picker.click();
+    // Chrome: a close request on the dialog itself …
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(dialog.hasAttribute('open')).toBe(true);
+    // … or it closes the dialog outright: it is put back.
+    dialog.removeAttribute('open');
+    fireEvent(dialog, new Event('close'));
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(screen.getByRole('textbox')).toBeTruthy();
+  });
+
+  it('still closes with Esc when no file picker is involved', async () => {
+    renderMenu();
+    await userEvent.click(screen.getByRole('button', { name: /ご意見・不具合の報告/ }));
+    const dialog = document.querySelector('dialog') as HTMLDialogElement;
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(dialog.hasAttribute('open')).toBe(false);
+  });
+
   it('refuses files it cannot attach', async () => {
     renderMenu();
     await userEvent.click(screen.getByRole('button', { name: /ご意見・不具合の報告/ }));
