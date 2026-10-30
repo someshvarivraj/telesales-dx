@@ -14,6 +14,54 @@ interface DialogProps {
 /** Modal built on the native <dialog> element (focus trap, Esc to close). */
 export function Dialog({ open, title, onClose, children, footer, size = 'md' }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const openRef = useRef(open);
+  const onCloseRef = useRef(onClose);
+  /** Until when a file picker opened from inside counts as "still open" (ms timestamp). */
+  const pickerUntil = useRef(0);
+  useEffect(() => {
+    openRef.current = open;
+    onCloseRef.current = onClose;
+  });
+  const picking = () => Date.now() < pickerUntil.current;
+
+  // A file picker opened from this dialog: Chrome treats closing the picker (Cancel or Esc)
+  // as a request to close the dialog too, and may close it without asking. While a picker
+  // is open, and briefly after, such requests are ignored and the dialog is put back.
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    const isFileInput = (target: EventTarget | null) =>
+      target instanceof HTMLInputElement && target.type === 'file';
+    const opened = (event: Event) => {
+      if (isFileInput(event.target)) pickerUntil.current = Number.POSITIVE_INFINITY;
+    };
+    const settled = (event: Event) => {
+      if (isFileInput(event.target)) pickerUntil.current = Date.now() + 800;
+    };
+    const focused = () => {
+      if (pickerUntil.current === Number.POSITIVE_INFINITY) {
+        pickerUntil.current = Date.now() + 800;
+      }
+    };
+    const closed = () => {
+      // Closed by the browser while the app still wants it open.
+      if (!openRef.current) return;
+      if (picking()) dialog.showModal?.();
+      else onCloseRef.current();
+    };
+    dialog.addEventListener('click', opened, true);
+    dialog.addEventListener('change', settled, true);
+    dialog.addEventListener('cancel', settled, true);
+    dialog.addEventListener('close', closed);
+    window.addEventListener('focus', focused);
+    return () => {
+      dialog.removeEventListener('click', opened, true);
+      dialog.removeEventListener('change', settled, true);
+      dialog.removeEventListener('cancel', settled, true);
+      dialog.removeEventListener('close', closed);
+      window.removeEventListener('focus', focused);
+    };
+  }, []);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -35,6 +83,7 @@ export function Dialog({ open, title, onClose, children, footer, size = 'md' }: 
         // on the dialog itself closes it.
         if (event.target !== event.currentTarget) return;
         event.preventDefault();
+        if (picking()) return;
         onClose();
       }}
       aria-labelledby="dialog-title"
