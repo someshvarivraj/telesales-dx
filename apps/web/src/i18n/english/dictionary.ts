@@ -13,7 +13,6 @@ export const EXACT: Readonly<Record<string, string>> = {
   '自動割り振りしない（架電対象にはなり、リーダーが手で割り振ります）':
     'Do not allocate automatically (call targets; the lead hands them out)',
   自動割り振りしない: 'Not auto-allocated',
-  登録済リスト一覧をExcelで出力: 'Export list registry to Excel',
   // Company page (request 10/29)
   テレマメモ: 'Telemarketing memo',
   メモを保存: 'Save memo',
