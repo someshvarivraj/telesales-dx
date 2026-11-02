@@ -4,8 +4,15 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from '
 /**
  * Look of the app. 「さくら」 is the pink theme with the girl MoraBot, asked for by the
  * telemarketing team at the 10/27 test; it is their default and anyone can switch.
+ * 「目にやさしい」 (11/2): warm paper tones, softer text and a calm green, for long days.
  */
-export type Theme = 'standard' | 'sakura';
+export type Theme = 'standard' | 'sakura' | 'eyecare';
+
+export const THEMES: { value: Theme; label: string }[] = [
+  { value: 'standard', label: '標準' },
+  { value: 'sakura', label: 'さくら' },
+  { value: 'eyecare', label: '目にやさしい' },
+];
 
 const LAST_KEY = 'telesales.theme.last';
 const userKey = (userId: string) => `telesales.theme.${userId}`;
@@ -13,7 +20,7 @@ const userKey = (userId: string) => `telesales.theme.${userId}`;
 function read(key: string): Theme | null {
   try {
     const value = localStorage.getItem(key);
-    return value === 'sakura' || value === 'standard' ? value : null;
+    return THEMES.some((theme) => theme.value === value) ? (value as Theme) : null;
   } catch {
     return null;
   }
