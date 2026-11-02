@@ -1,4 +1,4 @@
-import { type CompanyDetail, OptionCategory } from '@telesales/shared';
+import { type CompanyDetail, formatCapital, OptionCategory, parseCapital } from '@telesales/shared';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -48,11 +48,24 @@ export function CompanyEditDialog({
     return initial;
   });
   const set = (key: Key, value: string) => setValues((current) => ({ ...current, [key]: value }));
+  const [walk, setWalk] = useState(company.walkMinutes === null ? '' : String(company.walkMinutes));
+  // 資本金 can be typed as 「1億2000万」 or 「120000000」; it is shown back in 億・万 (11/2).
+  const [capitalText, setCapitalText] = useState(
+    company.capital === null ? '' : String(company.capital),
+  );
+  const capital = parseCapital(capitalText);
+  const capitalInvalid = capitalText.trim() !== '' && capital === null;
+  const walkMinutes = walk.trim() === '' ? null : Number(walk.normalize('NFKC'));
+  const walkInvalid =
+    walkMinutes !== null &&
+    (!Number.isInteger(walkMinutes) || walkMinutes < 0 || walkMinutes > 240);
 
   const save = () =>
     update.mutate(
       {
         ...values,
+        walkMinutes: walkInvalid ? company.walkMinutes : walkMinutes,
+        capital,
         listingStatus: company.listingStatus,
         companyGroupId: company.companyGroupId,
         expectedUpdatedAt: company.updatedAt,
@@ -71,7 +84,11 @@ export function CompanyEditDialog({
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
-          <Button onClick={save} loading={update.isPending} disabled={!values.name.trim()}>
+          <Button
+            onClick={save}
+            loading={update.isPending}
+            disabled={!values.name.trim() || capitalInvalid || walkInvalid}
+          >
             保存する
           </Button>
         </>
@@ -95,6 +112,38 @@ export function CompanyEditDialog({
             )}
           </FormField>
         ))}
+        <FormField
+          label="駅から徒歩（分）"
+          error={walkInvalid ? '0〜240の数字で入力してください' : undefined}
+        >
+          {(c) => (
+            <TextInput
+              {...c}
+              inputMode="numeric"
+              value={walk}
+              placeholder="例：5"
+              onChange={(e) => setWalk(e.target.value)}
+            />
+          )}
+        </FormField>
+        <FormField
+          label="資本金"
+          hint={
+            capital !== null
+              ? `＝ ${formatCapital(capital)}`
+              : '「1億2000万」でも「120000000」でも入力できます。'
+          }
+          error={capitalInvalid ? '金額として読めません（例：1億2000万）' : undefined}
+        >
+          {(c) => (
+            <TextInput
+              {...c}
+              value={capitalText}
+              placeholder="例：1億2000万"
+              onChange={(e) => setCapitalText(e.target.value)}
+            />
+          )}
+        </FormField>
         <FormField label="企業ランク">
           {(c) => (
             <Select

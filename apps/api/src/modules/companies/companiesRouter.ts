@@ -6,9 +6,11 @@ import {
   createCommentRequestSchema,
   dateString,
   findRepRequestSchema,
+  groupDepartmentsRequestSchema,
   listImportRowsQuerySchema,
   Permission,
   resolveFlagRequestSchema,
+  setCallTargetRequestSchema,
   telemaMemoRequestSchema,
   updateCompanyRequestSchema,
 } from '@telesales/shared';
@@ -80,6 +82,19 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
   router.post('/companies/find-rep', view, async (req, res) => {
     res.json(await deps.area.findRep(parseWith(findRepRequestSchema, req.body)));
   });
+  // 架電対象 ⇄ 架電対象外 (request 11/2): leads and admins move lists in when it is their turn.
+  router.post(
+    '/companies/call-targets',
+    auth.requireAnyPermission(Permission.ImportLists, Permission.Administer),
+    async (req, res) => {
+      res.json(
+        await deps.companies.setCallTargets(
+          currentUserOf(req),
+          parseWith(setCallTargetRequestSchema, req.body),
+        ),
+      );
+    },
+  );
   router.get('/companies/:id', view, async (req, res) => {
     res.json(await deps.companies.get(idParam(req)));
   });
@@ -94,6 +109,27 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
           parseWith(updateCompanyRequestSchema, req.body),
         ),
       );
+    },
+  );
+  // Same name, another department / office: grouped under one company (request 11/2).
+  router.post(
+    '/companies/:id/departments',
+    auth.requireAnyPermission(Permission.EditCompanies, Permission.ResolveDuplicates),
+    async (req, res) => {
+      res.json(
+        await deps.companies.groupDepartments(
+          currentUserOf(req),
+          idParam(req),
+          parseWith(groupDepartmentsRequestSchema, req.body),
+        ),
+      );
+    },
+  );
+  router.delete(
+    '/companies/:id/department',
+    auth.requireAnyPermission(Permission.EditCompanies, Permission.ResolveDuplicates),
+    async (req, res) => {
+      res.json(await deps.companies.ungroup(currentUserOf(req), idParam(req)));
     },
   );
   router.post(

@@ -409,6 +409,10 @@ model Company {
   prefecture     String?     @db.VarChar(10)
   city           String?     @db.VarChar(50)
   nearestStation String?     @map("nearest_station") @db.VarChar(100)
+  /// Minutes on foot from the nearest station
+  walkMinutes    Int?        @map("walk_minutes") @db.SmallInt
+  /// 資本金 in yen
+  capital        BigInt?
   industry       String?     @db.VarChar(100)
   customerType   String?     @map("customer_type") @db.VarChar(48)
   clientNo       String?     @map("client_no") @db.VarChar(32)

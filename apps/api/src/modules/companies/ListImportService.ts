@@ -23,6 +23,8 @@ import {
   splitRankCell,
   UNKNOWN_URL,
   validateListRow,
+  parseCapital,
+  splitStation,
 } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
@@ -59,6 +61,10 @@ interface AnalyzedRow {
   flag: CompanyFlag;
   matchId: string | null;
   matchedName: string | null;
+  /** Generated before saving, so a row of the same file can be grouped under it. */
+  id: string;
+  /** Same name, another department / office: the company it can be grouped under. */
+  departmentOf: string | null;
 }
 
 interface LeftOutRow {
@@ -126,6 +132,7 @@ export class ListImportService {
       fixedCount: analysis.fixedCount,
       fixSamples: analysis.fixes.slice(0, FIX_SAMPLES),
       sAreaCount: analysis.sAreaCount,
+      departmentCount: analysis.valid.filter((row) => row.departmentOf).length,
       problems: analysis.problems.slice(0, MAX_PROBLEMS_SHOWN),
       headers: analysis.headers,
       columns: analysis.columns,
@@ -150,6 +157,15 @@ export class ListImportService {
     );
     if (analysis.valid.length === 0) {
       throw new FileUnreadableError({ reason: 'no_valid_rows' });
+    }
+    // Same name, another department / office: grouped under that company instead of 要確認.
+    if (input.groupDepartments) {
+      for (const row of analysis.valid) {
+        if (row.departmentOf && row.flag === CompanyFlag.NeedsCheck) {
+          row.flag = CompanyFlag.None;
+          row.matchId = null;
+        }
+      }
     }
     const listName = datedListName(input.listName, jstDate(new Date()));
     const customerTypes = await this.optionCodes(OptionCategory.CustomerType);
@@ -318,8 +334,7 @@ export class ListImportService {
       : null;
     const rank = row.fields.companyRank ?? null;
     return {
-      // Generated here so the import rows can point at the companies created in the same batch.
-      id: randomUUID(),
+      id: row.id,
       name: row.name,
       nameKey: row.nameKey,
       office: row.fields.office ?? null,
@@ -331,13 +346,15 @@ export class ListImportService {
       address,
       prefecture: row.fields.prefecture ?? parts.prefecture,
       city: row.fields.city ?? parts.city,
-      nearestStation: row.fields.nearestStation ?? null,
+      ...stationOf(row.fields),
+      capital: capitalOf(row.fields.capital),
       industry: row.fields.industry ?? null,
       customerType,
       clientNo: row.fields.clientNo ?? null,
       // An unknown rank is kept as written, so nothing in the list is lost.
       companyRank: rank ? (codes.ranks.get(rank) ?? rank.slice(0, 48)) : null,
       parentName: row.fields.parentName?.slice(0, 100) ?? null,
+      parentId: input.groupDepartments ? row.departmentOf : null,
       listName: input.listName,
       flag: row.flag,
       flagMatchId: row.matchId,
@@ -467,6 +484,9 @@ export class ListImportService {
         continue;
       }
       candidates.push({
+        // Generated here so the import rows (and grouped departments) can point at it.
+        id: randomUUID(),
+        departmentOf: null,
         row,
         raw,
         name: fields.name,
@@ -521,7 +541,14 @@ export class ListImportService {
       }),
       this.prisma.company.findMany({
         where: { nameKey: { in: names } },
-        select: { id: true, name: true, nameKey: true },
+        select: {
+          id: true,
+          name: true,
+          nameKey: true,
+          office: true,
+          department: true,
+          parentId: true,
+        },
         orderBy: [{ flag: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.companyFormerName.findMany({
@@ -533,7 +560,16 @@ export class ListImportService {
     byPhone.forEach((company) => {
       if (!phoneMatch.has(company.phoneDigits)) phoneMatch.set(company.phoneDigits, company);
     });
-    const nameMatch = new Map<string, { id: string; name: string }>();
+    const nameMatch = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        office?: string | null;
+        department?: string | null;
+        parentId?: string | null;
+      }
+    >();
     byName.forEach((company) => {
       if (!nameMatch.has(company.nameKey)) nameMatch.set(company.nameKey, company);
     });
@@ -560,13 +596,55 @@ export class ListImportService {
           row.flag = CompanyFlag.NeedsCheck;
           row.matchId = existingByName.id;
           row.matchedName = existingByName.name;
+          if ('office' in existingByName && isOtherPlace(row.fields, existingByName)) {
+            row.departmentOf = existingByName.parentId ?? existingByName.id;
+          }
         } else if (sameFileName) {
           row.flag = CompanyFlag.NeedsCheck;
           row.matchedName = `${sameFileName.fields.name}（${sameFileName.row}行目）`;
+          if (isOtherPlace(row.fields, sameFileName.fields)) {
+            row.departmentOf = sameFileName.departmentOf ?? sameFileName.id;
+          }
         }
       }
       seenPhones.set(row.phoneDigits, row);
       seenNames.set(row.nameKey, row);
     }
   }
+}
+
+/** 事業所 + 部署, compared without spaces and width differences. */
+function placeOf(fields: { office?: string | null; department?: string | null }): string {
+  return [fields.office, fields.department]
+    .filter(Boolean)
+    .join('/')
+    .normalize('NFKC')
+    .replace(/\s/g, '');
+}
+
+/** The row names its own department / office, and it is not the matched company's. */
+function isOtherPlace(
+  row: { office?: string | null; department?: string | null },
+  match: { office?: string | null; department?: string | null },
+): boolean {
+  const place = placeOf(row);
+  return place !== '' && place !== placeOf(match);
+}
+
+/** 「中野駅 徒歩5分」 in one column, or the minutes in their own column. */
+function stationOf(fields: Partial<Record<ListField, string>>): {
+  nearestStation: string | null;
+  walkMinutes: number | null;
+} {
+  const { station, walkMinutes } = splitStation(fields.nearestStation);
+  const minutes = fields.walkMinutes ? Number(fields.walkMinutes.replace(/\D/g, '')) : NaN;
+  return {
+    nearestStation: station?.slice(0, 100) ?? null,
+    walkMinutes: Number.isInteger(minutes) && minutes <= 240 ? minutes : walkMinutes,
+  };
+}
+
+function capitalOf(text: string | undefined): bigint | null {
+  const yen = parseCapital(text);
+  return yen === null ? null : BigInt(yen);
 }

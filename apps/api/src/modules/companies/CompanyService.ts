@@ -10,7 +10,10 @@ import {
   type Page,
   phoneDigitsOf,
   splitRange,
+  type GroupDepartmentsRequest,
   type ResolveFlagRequest,
+  type SetCallTargetRequest,
+  type SetCallTargetResult,
   type UpdateCompanyRequest,
 } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
@@ -22,6 +25,7 @@ import { keywordWhere } from '../../domain/companies/keywordSearch.js';
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import {
   InvalidStateError,
+  ValidationError,
   NotFoundError,
   VersionConflictError,
 } from '../../http/errors/AppError.js';
@@ -49,6 +53,8 @@ function auditShape(company: Record<string, unknown>): Record<string, unknown> {
     'prefecture',
     'city',
     'nearestStation',
+    'walkMinutes',
+    'capital',
     'industry',
     'customerType',
     'clientNo',
@@ -57,7 +63,13 @@ function auditShape(company: Record<string, unknown>): Record<string, unknown> {
     'parentName',
     'companyGroupId',
   ];
-  return Object.fromEntries(keys.map((key) => [key, company[key] ?? null]));
+  // 資本金 is a bigint in the database; the change log is JSON.
+  return Object.fromEntries(
+    keys.map((key) => {
+      const value = company[key] ?? null;
+      return [key, typeof value === 'bigint' ? Number(value) : value];
+    }),
+  );
 }
 
 /** Data for a company row from the editable fields (derived columns filled in). */
@@ -76,6 +88,13 @@ export function companyWriteData(fields: CompanyFields) {
     prefecture: fields.prefecture ?? parts.prefecture,
     city: fields.city ?? parts.city,
     nearestStation: fields.nearestStation,
+    walkMinutes: fields.walkMinutes,
+    capital:
+      fields.capital === undefined
+        ? undefined
+        : fields.capital === null
+          ? null
+          : BigInt(fields.capital),
     industry: fields.industry,
     customerType: fields.customerType,
     clientNo: fields.clientNo,
@@ -100,7 +119,11 @@ export class CompanyService {
     const filters = conditions.filter((where): where is Prisma.CompanyWhereInput => where !== null);
     const where: Prisma.CompanyWhereInput = {
       AND: [
-        request.callTargetsOnly ? { isCallTarget: true, flag: { not: CompanyFlag.Duplicate } } : {},
+        request.nonTargetsOnly
+          ? { isCallTarget: false }
+          : request.callTargetsOnly
+            ? { isCallTarget: true, flag: { not: CompanyFlag.Duplicate } }
+            : {},
         request.assignedToMe && viewerId
           ? {
               allocations: {
@@ -161,13 +184,36 @@ export class CompanyService {
     if (!company) {
       throw new NotFoundError();
     }
-    const sameName = company.phoneDigits
-      ? await this.prisma.company.findMany({
-          where: { nameKey: company.nameKey, id: { not: company.id } },
-          select: { id: true, name: true, phone: true, phoneDigits: true },
-          take: 50,
-        })
-      : [];
+    const sameName = await this.prisma.company.findMany({
+      where: { nameKey: company.nameKey, id: { not: company.id } },
+      select: {
+        id: true,
+        name: true,
+        office: true,
+        department: true,
+        phone: true,
+        phoneDigits: true,
+        parentId: true,
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 50,
+    });
+    const rootId = company.parentId ?? company.id;
+    const groupMembers = await this.prisma.company.findMany({
+      where: { OR: [{ id: rootId }, { parentId: rootId }], id: { not: company.id } },
+      select: { id: true, name: true, office: true, department: true, phone: true, parentId: true },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+    });
+    const grouped = new Set(groupMembers.map((member) => member.id));
+    const refOf = (other: (typeof groupMembers)[number]) => ({
+      id: other.id,
+      name: other.name,
+      office: other.office,
+      department: other.department,
+      phone: other.phone,
+      isGroupRoot: other.id === rootId,
+    });
     const avoided = company.phoneDigits
       ? await this.prisma.avoidPhone.findUnique({
           where: { phoneDigits: company.phoneDigits },
@@ -177,6 +223,8 @@ export class CompanyService {
     return {
       ...this.toListItem(company),
       department: company.department,
+      walkMinutes: company.walkMinutes,
+      capital: company.capital === null ? null : Number(company.capital),
       url: company.url,
       sourceUrl: company.sourceUrl,
       address: company.address,
@@ -193,6 +241,8 @@ export class CompanyService {
       avoided: avoided
         ? { by: userRef(avoided.createdBy), at: iso(avoided.createdAt), source: avoided.source }
         : null,
+      groupMembers: groupMembers.map(refOf),
+      sameNameCompanies: sameName.filter((other) => !grouped.has(other.id)).map(refOf),
       similarNumbers: sameName
         .filter((other) => isSimilarNumber(other.phoneDigits, company.phoneDigits))
         .map(({ id: otherId, name, phone }) => ({ id: otherId, name, phone })),
@@ -304,13 +354,19 @@ export class CompanyService {
     if (input.action === 'MERGE') {
       return this.mergeInto(actor, company);
     }
-    const callable =
-      input.action === 'KEEP' && company.importRows[0]?.listImport.purpose === 'CALL_REQUEST';
+    if (input.action === 'DEPARTMENT') {
+      if (!company.flagMatchId) {
+        throw new InvalidStateError({ reason: 'no_match' });
+      }
+      await this.groupDepartments(actor, company.flagMatchId, { companyIds: [company.id] });
+    }
+    const kept = input.action === 'KEEP' || input.action === 'DEPARTMENT';
+    const callable = kept && company.importRows[0]?.listImport.purpose === 'CALL_REQUEST';
     await this.prisma.company.update({
       where: { id },
       data: {
         flag: CompanyFlag.None,
-        isCallTarget: input.action === 'KEEP' ? callable || company.isCallTarget : false,
+        isCallTarget: kept ? callable || company.isCallTarget : false,
       },
     });
     await this.audit.record({
@@ -320,6 +376,135 @@ export class CompanyService {
       targetId: id,
       before: { flag: company.flag, isCallTarget: company.isCallTarget },
       after: { flag: CompanyFlag.None, action: input.action },
+    });
+    return this.get(id);
+  }
+
+  /**
+   * 架電対象 ⇄ 架電対象外 (request 11/2: lists registered for later are moved in when it is their
+   * turn). Numbers on the 回避企業 list and unresolved duplicates never move in.
+   */
+  async setCallTargets(actor: Actor, input: SetCallTargetRequest): Promise<SetCallTargetResult> {
+    const companies = await this.prisma.company.findMany({
+      where: { id: { in: input.companyIds } },
+      select: { id: true, phoneDigits: true, flag: true, isCallTarget: true },
+    });
+    let movable = companies.filter((company) => company.isCallTarget !== input.isCallTarget);
+    if (input.isCallTarget) {
+      const avoided = new Set(
+        (
+          await this.prisma.avoidPhone.findMany({
+            where: {
+              phoneDigits: {
+                in: movable.flatMap((company) =>
+                  company.phoneDigits ? [company.phoneDigits] : [],
+                ),
+              },
+            },
+            select: { phoneDigits: true },
+          })
+        ).map((entry) => entry.phoneDigits),
+      );
+      movable = movable.filter(
+        (company) =>
+          company.flag !== CompanyFlag.Duplicate &&
+          !(company.phoneDigits && avoided.has(company.phoneDigits)),
+      );
+    }
+    const ids = movable.map((company) => company.id);
+    await this.prisma.company.updateMany({
+      where: { id: { in: ids } },
+      data: { isCallTarget: input.isCallTarget },
+    });
+    await this.audit.record({
+      action: AuditAction.CompanyUpdated,
+      actorUserId: actor.id,
+      targetType: 'company',
+      metadata: { companyIds: ids },
+      after: { isCallTarget: input.isCallTarget },
+    });
+    const unchanged = companies.filter((c) => c.isCallTarget === input.isCallTarget).length;
+    return { changed: ids.length, skipped: companies.length - unchanged - ids.length };
+  }
+
+  /**
+   * Same name, another department or office (request 11/2): the companies are kept apart (each has
+   * its own phone and call history) but grouped under one company, shown together on its page.
+   */
+  async groupDepartments(
+    actor: Actor,
+    id: string,
+    input: GroupDepartmentsRequest,
+  ): Promise<CompanyDetail> {
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      select: { id: true, nameKey: true, parentId: true },
+    });
+    if (!company) {
+      throw new NotFoundError();
+    }
+    const rootId = company.parentId ?? company.id;
+    const others = await this.prisma.company.findMany({
+      where: { id: { in: input.companyIds.filter((other) => other !== rootId) } },
+      select: { id: true, nameKey: true },
+    });
+    if (others.some((other) => other.nameKey !== company.nameKey)) {
+      throw new ValidationError({ companyIds: ['different_name'] });
+    }
+    const ids = others.map((other) => other.id);
+    await this.prisma.$transaction([
+      // A company that headed its own group brings its departments along.
+      this.prisma.company.updateMany({
+        where: { parentId: { in: ids } },
+        data: { parentId: rootId },
+      }),
+      this.prisma.company.updateMany({ where: { id: { in: ids } }, data: { parentId: rootId } }),
+    ]);
+    await this.audit.record({
+      action: AuditAction.CompanyUpdated,
+      actorUserId: actor.id,
+      targetType: 'company',
+      targetId: rootId,
+      metadata: { groupedDepartments: ids },
+    });
+    return this.get(id);
+  }
+
+  /** Takes one company out of its group. */
+  async ungroup(actor: Actor, id: string): Promise<CompanyDetail> {
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      select: { id: true, parentId: true },
+    });
+    if (!company) {
+      throw new NotFoundError();
+    }
+    if (company.parentId) {
+      await this.prisma.company.update({ where: { id }, data: { parentId: null } });
+    } else {
+      // The head of the group leaves: the oldest department heads it instead.
+      const [next, ...rest] = await this.prisma.company.findMany({
+        where: { parentId: id },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (next) {
+        await this.prisma.$transaction([
+          this.prisma.company.update({ where: { id: next.id }, data: { parentId: null } }),
+          this.prisma.company.updateMany({
+            where: { id: { in: rest.map((r) => r.id) } },
+            data: { parentId: next.id },
+          }),
+        ]);
+      }
+    }
+    await this.audit.record({
+      action: AuditAction.CompanyUpdated,
+      actorUserId: actor.id,
+      targetType: 'company',
+      targetId: id,
+      before: { parentId: company.parentId },
+      after: { parentId: null },
     });
     return this.get(id);
   }

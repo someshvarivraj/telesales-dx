@@ -1662,6 +1662,47 @@ export const EXACT: Readonly<Record<string, string>> = {
     'On the avoid list. Do not call (it is out of the call targets).',
   '京都・滋賀・奈良（商圏チェック）': 'Kyoto, Shiga, Nara (area check)',
   '：京都・滋賀・奈良（商圏チェック）': ': Kyoto, Shiga, Nara (area check)',
+  // Lists and companies (11/2)
+  架電対象外: 'Not call targets',
+  いま架電する企業: 'Companies to call now',
+  'あとで架電する企業（取り込み時に「あとで」を選んだリストなど）':
+    'Companies to call later (lists imported with "later", etc.)',
+  登録されているすべての企業: 'Every registered company',
+  '架電を始める企業を選んで「架電対象にする」を押してください。':
+    'Choose the companies to start calling and press "Make call targets".',
+  '今は架電しない企業を選んで「架電対象外にする」を押してください。':
+    'Choose companies not to call now and press "Take out of call targets".',
+  架電対象にする: 'Make call targets',
+  架電対象外にする: 'Take out of call targets',
+  このページをすべて選ぶ: 'Select this page',
+  いつ架電しますか: 'When will you call?',
+  '今日から架電する（架電対象リスト）': 'Call from today (call-target list)',
+  '架電対象に入り、テレマ全員にお知らせします。':
+    'They become call targets and all telemarketers are notified.',
+  'あとで架電する（架電対象外リスト）': 'Call later (non-target list)',
+  '登録だけして架電対象には入れません。始めるときは、架電対象の画面の「架電対象外」から移せます。':
+    'Registered but not call targets. When it is time, move them in from 「架電対象外」 on the call-target screen.',
+  '「要確認」にせず、同じ会社のグループに入れます。電話番号と架電の記録はそれぞれ別のままです。':
+    'Grouped under the same company instead of 要確認. Each keeps its own phone number and call history.',
+  '今日から架電（架電対象）': 'Call from today (targets)',
+  'あとで架電（架電対象外）': 'Call later (not targets)',
+  '駅から徒歩（分）': 'Walk from station (min)',
+  '0〜240の数字で入力してください': 'Enter a number from 0 to 240',
+  資本金: 'Capital',
+  '「1億2000万」でも「120000000」でも入力できます。': 'Type 「1億2000万」 or 「120000000」.',
+  '金額として読めません（例：1億2000万）': 'Not an amount (e.g. 1億2000万)',
+  '例：5': 'e.g. 5',
+  '例：1億2000万': 'e.g. 1億2000万',
+  '同じ会社の部署・事業所': 'Departments / offices of the same company',
+  この企業をグループから外す: 'Take this company out of the group',
+  この企業: 'This company',
+  代表: 'Main',
+  '（事業所・部署なし）': '(no office / department)',
+  '同じ会社名の企業があります。同じ会社の別の部署・事業所なら、チェックしてまとめてください（電話番号と架電の記録はそれぞれ別のままです）。':
+    'There are companies with the same name. If they are other departments / offices of this company, tick them to group them (each keeps its own phone and call history).',
+  'チェックした件を同じ会社の部署・事業所としてまとめる':
+    'Group the ticked ones as departments / offices',
+  '同じ会社の別の部署・事業所としてまとめる': 'Group as another department / office',
   // Booking, mail and calendar (11/2)
   先方へ伺う: 'Go to the client',
   'Zoom・Meet など': 'Zoom, Meet, etc.',
@@ -1945,6 +1986,24 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['{0}さんが{1}に追加', 'Added by {0} on {1}'],
   ['{0} を回避企業から外します。', 'Remove {0} from the avoid list.'],
   ['{0} を回避企業に追加します。', 'Add {0} to the avoid list.'],
+  // Lists and companies (11/2)
+  ['{0}件を選んでいます', '{0} selected'],
+  ['{0}件を移しました', 'Moved {0}'],
+  [
+    '（回避企業・重複の{0}件は移していません）',
+    ' ({0} on the avoid list or duplicates were not moved)',
+  ],
+  ['{0}を選ぶ', 'Select {0}'],
+  [
+    '会社名が同じで部署・事業所が違う {0}件を、同じ会社の部署としてまとめる',
+    'Group the {0} rows with the same name but another department / office under that company',
+  ],
+  ['＝ {0}', '= {0}'],
+  ['{0}（徒歩{1}分）', '{0} ({1} min walk)'],
+  [
+    'チェックした{0}件を同じ会社の部署・事業所としてまとめる',
+    'Group the {0} ticked as departments / offices',
+  ],
   // Booking, mail and calendar (11/2)
   ['入力してください：{0}', 'Please enter: {0}'],
   ['{0}に送信しました。', 'Sent at {0}.'],

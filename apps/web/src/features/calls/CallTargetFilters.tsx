@@ -66,6 +66,19 @@ export function fieldDef(field: FilterField): FieldDef {
   return FILTER_FIELDS.find((def) => def.field === field) ?? { field, label: field, group: '企業' };
 }
 
+/** Which list (request 11/2): today's call targets, the ones kept for later, or every company. */
+export type CallList = 'TARGETS' | 'NON_TARGETS' | 'ALL';
+
+const LIST_OPTIONS: { value: CallList; label: string; hint: string }[] = [
+  { value: 'TARGETS', label: '架電対象', hint: 'いま架電する企業' },
+  {
+    value: 'NON_TARGETS',
+    label: '架電対象外',
+    hint: 'あとで架電する企業（取り込み時に「あとで」を選んだリストなど）',
+  },
+  { value: 'ALL', label: 'すべて', hint: '登録されているすべての企業' },
+];
+
 interface CallTargetFiltersProps {
   name: string;
   onName: (name: string) => void;
@@ -73,8 +86,8 @@ interface CallTargetFiltersProps {
   onChips: (chips: FilterChip[]) => void;
   match: 'AND' | 'OR';
   onMatch: (match: 'AND' | 'OR') => void;
-  onlyTargets: boolean;
-  onOnlyTargets: (on: boolean) => void;
+  list: CallList;
+  onList: (list: CallList) => void;
   onlyMine: boolean;
   onOnlyMine: (on: boolean) => void;
   /** Fixed choices for some fields (grades, 取引区分, flags); others are typed in. */
@@ -134,9 +147,13 @@ export function CallTargetFilters(props: CallTargetFiltersProps) {
           )}
         </label>
         <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-          <Toggle on={props.onlyTargets} onChange={props.onOnlyTargets}>
-            架電対象だけ
-          </Toggle>
+          <Segmented
+            aria-label="リスト"
+            size="sm"
+            value={props.list}
+            onChange={props.onList}
+            options={LIST_OPTIONS}
+          />
           <Toggle on={props.onlyMine} onChange={props.onOnlyMine}>
             今日の自分の担当だけ
           </Toggle>

@@ -5,6 +5,7 @@ export * from './contracts/assistant.js';
 export * from './contracts/common.js';
 export * from './contracts/companies.js';
 export * from './contracts/listRows.js';
+export * from './contracts/companyValues.js';
 export * from './contracts/avoidList.js';
 export * from './contracts/feedback.js';
 export * from './contracts/misc.js';

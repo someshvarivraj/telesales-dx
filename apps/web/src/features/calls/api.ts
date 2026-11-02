@@ -17,6 +17,9 @@ import type {
   Page,
   RepSuggestion,
   ResolveFlagRequest,
+  SetCallTargetRequest,
+  SetCallTargetResult,
+  GroupDepartmentsRequest,
   UpdateCompanyRequest,
 } from '@telesales/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -267,4 +270,31 @@ export function useCompanyAvoid(companyId: string) {
     },
     onSuccess: invalidate,
   });
+}
+
+/** 架電対象 ⇄ 架電対象外 (request 11/2). */
+export function useSetCallTargets() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: SetCallTargetRequest) =>
+      apiClient.post<SetCallTargetResult>('/companies/call-targets', request),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['companies'] }),
+  });
+}
+
+/** Group same-name companies as departments of one company, or take one out (request 11/2). */
+export function useCompanyGroup(companyId: string) {
+  const client = useQueryClient();
+  const onSuccess = () => void client.invalidateQueries({ queryKey: ['companies'] });
+  return {
+    group: useMutation({
+      mutationFn: (request: GroupDepartmentsRequest) =>
+        apiClient.post<CompanyDetail>(`/companies/${companyId}/departments`, request),
+      onSuccess,
+    }),
+    ungroup: useMutation({
+      mutationFn: () => apiClient.delete<CompanyDetail>(`/companies/${companyId}/department`),
+      onSuccess,
+    }),
+  };
 }

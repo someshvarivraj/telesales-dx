@@ -63,6 +63,7 @@ export function mailAppointmentOf(
       name: row.company.name,
       clientNo: row.company.clientNo,
       nearestStation: row.company.nearestStation,
+      walkMinutes: row.company.walkMinutes,
       address: row.company.address,
       phone: row.company.phone,
       department: row.company.department,
