@@ -1,4 +1,4 @@
-import { addDays, Role } from '@telesales/shared';
+import { addDays, isWeekend, Role } from '@telesales/shared';
 import { ChevronLeft, ChevronRight, Lock, LockOpen } from 'lucide-react';
 import { useMemo } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -15,6 +15,13 @@ import { buildEvents } from './events';
 import { ScheduleLegend } from './ScheduleLegend';
 import { slotProblemText } from './slotProblems';
 import type { LockState } from './useSlotLock';
+
+/** The next weekday before or after a date: Saturdays and Sundays cannot be booked (11/2). */
+function nextWeekday(date: string, step: 1 | -1): string {
+  let next = addDays(date, step);
+  while (isWeekend(next)) next = addDays(next, step);
+  return next;
+}
 
 export interface Slot {
   repId: string;
@@ -93,20 +100,21 @@ export function SlotPicker({
                 variant="secondary"
                 aria-label="前の日"
                 disabled={held}
-                onClick={() => set({ date: addDays(slot.date, -1) })}
+                onClick={() => set({ date: nextWeekday(slot.date, -1) })}
                 icon={<ChevronLeft className="size-4" aria-hidden="true" />}
               />
               <DatePicker
                 {...c}
                 value={slot.date}
                 disabled={held}
+                isDisabled={isWeekend}
                 onChange={(e) => e.target.value && set({ date: e.target.value })}
               />
               <Button
                 variant="secondary"
                 aria-label="次の日"
                 disabled={held}
-                onClick={() => set({ date: addDays(slot.date, 1) })}
+                onClick={() => set({ date: nextWeekday(slot.date, 1) })}
                 icon={<ChevronRight className="size-4" aria-hidden="true" />}
               />
             </div>

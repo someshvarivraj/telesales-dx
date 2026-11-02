@@ -24,6 +24,8 @@ interface DatePickerProps extends Omit<
   onChange?: (event: SelectChangeEvent) => void;
   min?: string;
   max?: string;
+  /** Days that cannot be picked, e.g. weekends for a booking. */
+  isDisabled?: (date: string) => boolean;
   placeholder?: string;
   /** Show a × to empty the field (filters). */
   clearable?: boolean;
@@ -110,6 +112,7 @@ export function DatePicker({
   onChange,
   min,
   max,
+  isDisabled,
   placeholder = '日付を選ぶ',
   clearable = false,
   size = 'md',
@@ -130,7 +133,8 @@ export function DatePicker({
   const onClose = useCallback(() => setTyped(''), []);
   const popover = usePopover(trigger, panel, { width: PANEL_W, height: PANEL_H, onClose });
 
-  const outOfRange = (date: string) => Boolean((min && date < min) || (max && date > max));
+  const outOfRange = (date: string) =>
+    Boolean((min && date < min) || (max && date > max) || isDisabled?.(date));
 
   const open = () => {
     if (disabled) return;

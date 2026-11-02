@@ -36,6 +36,7 @@ import { ActivityPage } from '@/features/notifications/ActivityPage';
 import { adminMenu, visibleItems } from '@/features/home/menus';
 import { BookingPage } from '@/features/schedule/BookingPage';
 import { SchedulePage } from '@/features/schedule/SchedulePage';
+import { SchedulePrintPage } from '@/features/schedule/SchedulePrintPage';
 import { NotFoundPage } from '@/features/system/NotFoundPage';
 import { AllocationPage } from '@/features/telema/AllocationPage';
 import { PeoplePage } from '@/features/telema/PeoplePage';
@@ -69,6 +70,11 @@ export const routes: RouteObject[] = [
         <ChangePasswordPage />
       </RequireSession>
     ),
+  },
+  // The weekly print (11/2): the page alone, without the app's menu.
+  {
+    path: paths.schedulePrint,
+    element: <RequireSession>{guard(view, <SchedulePrintPage />)}</RequireSession>,
   },
   {
     path: paths.root,

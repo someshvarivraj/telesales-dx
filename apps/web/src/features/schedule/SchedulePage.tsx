@@ -6,6 +6,7 @@ import {
   FileUp,
   Keyboard,
   Maximize2,
+  Printer,
   Minimize2,
   Minus,
   PanelLeft,
@@ -434,6 +435,21 @@ export function SchedulePage() {
             {fullScreen.on ? '全画面を終了' : '全画面'}
           </Button>
         )}
+        <Button
+          variant="secondary"
+          icon={<Printer className="size-4" aria-hidden="true" />}
+          onClick={() =>
+            window.open(
+              `${paths.schedulePrint}?${new URLSearchParams({
+                date,
+                people: chosen.join(','),
+              }).toString()}`,
+              '_blank',
+            )
+          }
+        >
+          週間予定を印刷
+        </Button>
         <div className="relative min-w-44 flex-1 sm:max-w-72">
           <Search
             aria-hidden="true"

@@ -8,6 +8,7 @@ import {
   jstDate,
   jstTime,
   MeetingFormat,
+  meetingFormatLabel,
   OptionCategory,
   Permission,
 } from '@telesales/shared';
@@ -29,11 +30,14 @@ import { Select } from '@/components/ui/Select';
 import { useAppointment, useCreateAppointment, usePrefill } from '@/features/appointments/api';
 import {
   AppointmentFields,
+  appointmentRequestFields,
   type AppointmentValues,
+  appointmentValuesOf,
   CompanyFields,
   type CompanyValues,
   emptyAppointment,
   emptyCompany,
+  missingAppointmentFields,
 } from '@/features/appointments/AppointmentFields';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
@@ -107,20 +111,7 @@ function initialValues(
 ): AppointmentValues {
   const { original, company, records } = props;
   if (original) {
-    return {
-      format: original.format,
-      visitAddress: original.visitAddress ?? '',
-      contactName: original.contactName ?? '',
-      contactDepartment: original.contactDepartment ?? '',
-      contactPhone: original.contactPhone ?? '',
-      contactEmail: original.contactEmail ?? '',
-      handoverNotes: original.handoverNotes ?? '',
-      customerType: original.customerType ?? '',
-      listName: original.listName ?? '',
-      isNewAppointment: original.isNewAppointment,
-      bookedById: '',
-      bookedOn: '',
-    };
+    return { ...appointmentValuesOf(original), bookedById: '' };
   }
   const latest = records.find((record) => record.id === params.get('callRecordId')) ?? records[0];
   return {
@@ -244,7 +235,8 @@ function BookingForm(props: BookingFormProps) {
 
   const needsCompany = !companyId;
   const held = lock.state.status === 'held';
-  const ready = held && values.format !== '' && (!needsCompany || companyValues.name.trim() !== '');
+  const missing = missingAppointmentFields(values, !salesBooked);
+  const ready = held && missing.length === 0 && (!needsCompany || companyValues.name.trim() !== '');
 
   const request = (): CreateAppointmentRequest => ({
     source,
@@ -263,15 +255,7 @@ function BookingForm(props: BookingFormProps) {
     bookedById: values.bookedById || null,
     bookedOn: values.bookedOn || null,
     originalAppointmentId: rebookOf,
-    visitAddress: values.visitAddress || null,
-    contactName: values.contactName || null,
-    contactDepartment: values.contactDepartment || null,
-    contactPhone: values.contactPhone || null,
-    contactEmail: values.contactEmail || null,
-    handoverNotes: values.handoverNotes || null,
-    customerType: values.customerType || null,
-    listName: values.listName || null,
-    isNewAppointment: values.isNewAppointment,
+    ...appointmentRequestFields(values),
   });
 
   const submit = () =>
@@ -468,7 +452,7 @@ function BookingForm(props: BookingFormProps) {
 
           <StepCard
             step={needsCompany ? (salesBooked ? 3 : 4) : 2}
-            done={values.format !== ''}
+            done={missing.length === 0}
             title="アポの内容"
           >
             {fileWarnings.length > 0 && (
@@ -478,7 +462,12 @@ function BookingForm(props: BookingFormProps) {
                 ))}
               </Alert>
             )}
-            <AppointmentFields values={values} onChange={setValues} showBooker={!salesBooked} />
+            <AppointmentFields
+              values={values}
+              onChange={setValues}
+              telema={!salesBooked}
+              showBookedOn
+            />
           </StepCard>
 
           {createError && (
@@ -534,7 +523,7 @@ function BookingForm(props: BookingFormProps) {
               </SummaryRow>
               <SummaryRow label="担当営業">{rep?.name ?? '―'}</SummaryRow>
               <SummaryRow label="訪問形態">
-                {values.format ? ja.format[values.format] : '―'}
+                {values.format ? meetingFormatLabel({ ...values, format: values.format }) : '―'}
               </SummaryRow>
               <SummaryRow label="登録元">{ja.source[source]}</SummaryRow>
             </dl>
@@ -542,6 +531,15 @@ function BookingForm(props: BookingFormProps) {
               <Todo done={held}>枠を押さえる</Todo>
               {needsCompany && <Todo done={companyValues.name.trim() !== ''}>会社名を入れる</Todo>}
               <Todo done={values.format !== ''}>訪問形態を選ぶ</Todo>
+              {!salesBooked && (
+                <Todo
+                  done={
+                    !missing.some((field) => ['先方担当者', '先方TEL', '伝達事項'].includes(field))
+                  }
+                >
+                  先方担当者・TEL・伝達事項を入れる
+                </Todo>
+              )}
             </ol>
             <div className="flex flex-col gap-2 border-t border-line p-4">
               <Button size="lg" fullWidth disabled={!ready} onClick={() => setConfirming(true)}>
@@ -585,9 +583,15 @@ function BookingForm(props: BookingFormProps) {
             },
             { label: '訪問日時', value: `${formatDate(slot.date)} ${slot.start}〜${slot.end}` },
             { label: '担当営業', value: rep?.name },
-            { label: '訪問形態', value: values.format ? ja.format[values.format] : '' },
+            {
+              label: '訪問形態',
+              value: values.format ? meetingFormatLabel({ ...values, format: values.format }) : '',
+            },
             { label: '取引区分', value: customerTypes.labelOf(values.customerType) },
             { label: '先方担当者', value: values.contactName },
+            ...(values.meetingPersonName
+              ? [{ label: '面談される方', value: values.meetingPersonName }]
+              : []),
             { label: '先方TEL', value: values.contactPhone },
             { label: '伝達事項', value: values.handoverNotes, wide: true },
             { label: 'テレマリスト名', value: values.listName },

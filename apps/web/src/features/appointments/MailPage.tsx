@@ -1,22 +1,19 @@
 import { type EmailDraftDto, familyName, operatorRoleLabel } from '@telesales/shared';
-import { RefreshCw, RotateCcw, Send } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { ArrowLeft, RotateCcw, Save, Send } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { FormField } from '@/components/ui/FormField';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { QueryState } from '@/components/ui/QueryState';
-import { Textarea } from '@/components/ui/Textarea';
+import { Spinner } from '@/components/ui/Spinner';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
-import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDateTime } from '@/lib/format';
 import { type MailKind, useMailActions, useMailDraft } from './api';
-import { BackBar, BackLink } from '@/components/ui/BackLink';
 
 const TITLE: Record<MailKind, string> = {
   booking: '営業さんへの伝達事項（N1）',
@@ -24,14 +21,11 @@ const TITLE: Record<MailKind, string> = {
   dayBefore: '前日確認の結果（N14）',
 };
 
-function splitAddresses(text: string): string[] {
-  return text
-    .split(/[\s,;、]+/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
-/** Preview → check → send (spec §8). Each e-mail is sent once; corrections go out as 【再送】. */
+/**
+ * Preview → send (spec §8), the last step of a booking. The mail is made from the appointment and
+ * cannot be changed here (11/2): 「戻って直す」 opens the appointment's edit and the mail is made
+ * again from it. Each e-mail is sent once; corrections go out as 【再送】.
+ */
 export function MailPage() {
   const { id = '', kind = 'booking' } = useParams();
   const mailKind = (
@@ -40,13 +34,10 @@ export function MailPage() {
   const draft = useMailDraft(id, mailKind);
   return (
     <>
-      <PageHeader
-        back={<BackLink to={paths.appointment(id)}>アポのページへ戻る</BackLink>}
-        title={TITLE[mailKind]}
-      />
+      <PageHeader title={TITLE[mailKind]} />
       <QueryState query={draft}>
         {(email) => (
-          <MailEditor
+          <MailPreview
             key={`${email.id}:${email.status}`}
             appointmentId={id}
             kind={mailKind}
@@ -58,7 +49,7 @@ export function MailPage() {
   );
 }
 
-function MailEditor({
+function MailPreview({
   appointmentId,
   kind,
   email,
@@ -68,12 +59,8 @@ function MailEditor({
   email: EmailDraftDto;
 }) {
   const actions = useMailActions(appointmentId, kind);
-  const [form, setForm] = useState({
-    to: email.to.join(', '),
-    cc: email.cc.join(', '),
-    subject: email.subject,
-    body: email.body,
-  });
+  const navigate = useNavigate();
+  const location = useLocation();
   const sent = email.status === 'SENT';
   // The server adds the sender when sending (Sano 10/24 No.6); show it here first.
   const user = useCurrentUser();
@@ -81,19 +68,35 @@ function MailEditor({
   const senderLine = `送信者：${user.name}（${operatorRoleLabel(user.roles)}）`;
   const error =
     actions.save.error ?? actions.send.error ?? actions.regenerate.error ?? actions.resend.error;
+  const appointmentPage = paths.appointment(appointmentId);
 
-  const saveThenSend = async () => {
-    await actions.save.mutateAsync({
-      id: email.id,
-      request: {
-        to: splitAddresses(form.to),
-        cc: splitAddresses(form.cc),
-        subject: form.subject,
-        body: form.body,
-      },
-    });
+  // Back from 「戻って直す」 with the appointment saved: make the mail again from it.
+  const regenerated = useRef(false);
+  const { regenerate } = actions;
+  useEffect(() => {
+    const state = location.state as { regenerate?: boolean } | null;
+    if (regenerated.current || !state?.regenerate || sent) return;
+    regenerated.current = true;
+    regenerate.mutate(email.id);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location, navigate, regenerate, email.id, sent]);
+
+  const request = {
+    to: email.to,
+    cc: email.cc,
+    subject: email.subject,
+    body: email.body,
+  };
+  const saveDraft = () =>
+    actions.save.mutate(
+      { id: email.id, request },
+      { onSuccess: () => navigate(appointmentPage, { state: { mailSaved: true } }) },
+    );
+  const send = async () => {
+    await actions.save.mutateAsync({ id: email.id, request });
     await actions.send.mutateAsync(email.id);
   };
+  const busy = actions.save.isPending || actions.send.isPending || actions.regenerate.isPending;
 
   return (
     <div className="flex flex-col gap-5">
@@ -102,120 +105,109 @@ function MailEditor({
         <Alert tone="success">
           <span className="flex flex-wrap items-center gap-2">
             <MoraBot mood="done" size={48} title="" />
-            {email.sentAt && formatDateTime(email.sentAt)}
-            に送信しました。同じメールは二度送られません。
+            {email.sentAt && `${formatDateTime(email.sentAt)}に送信しました。`}
+            同じメールは二度送られません。
+          </span>
+        </Alert>
+      ) : (
+        <Alert tone="info">
+          内容を確かめて「送信」を押してください。この画面では内容を変えられません。直すときは「戻って直す」でアポの内容を直すと、メールも作り直されます。
+        </Alert>
+      )}
+      {!sent && email.to.length === 0 && (
+        <Alert tone="warning">
+          宛先がありません。管理者に「通知の宛先」の設定を頼んでください。
+        </Alert>
+      )}
+
+      <Card>
+        <dl className="grid grid-cols-[4.5rem_1fr] gap-x-4 gap-y-2 border-b border-line pb-4 text-sm">
+          <dt className="font-bold text-ink-sub">宛先</dt>
+          <dd className="break-all">{email.to.join(', ') || '―'}</dd>
+          <dt className="font-bold text-ink-sub">CC</dt>
+          <dd className="break-all">{email.cc.join(', ') || '―'}</dd>
+          <dt className="font-bold text-ink-sub">件名</dt>
+          <dd className="font-bold">
+            {email.subject}
+            {!sent && !email.subject.includes('【担当：') && (
+              <span className="ml-1 font-normal text-ink-sub">{senderTag}</span>
+            )}
+          </dd>
+        </dl>
+        <div className="relative pt-4">
+          {actions.regenerate.isPending && (
+            <div className="absolute inset-0 grid place-items-center bg-surface/70">
+              <Spinner className="size-6" label="作り直しています" />
+            </div>
+          )}
+          <pre className="font-sans text-sm leading-relaxed break-words whitespace-pre-wrap">
+            {email.body}
+            {!sent && !email.body.includes('送信者：') && (
+              <span className="text-ink-sub">{`\n${senderLine}`}</span>
+            )}
+          </pre>
+        </div>
+      </Card>
+
+      {/* Every action of this step in one place, at the end (11/2). */}
+      <div className="flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:items-center">
+        {sent ? (
+          <>
+            <Button
+              variant="secondary"
+              icon={<ArrowLeft className="size-4" aria-hidden="true" />}
+              onClick={() => navigate(appointmentPage)}
+            >
+              アポのページへ戻る
+            </Button>
             {kind === 'booking' && (
               <Button
-                size="sm"
-                variant="secondary"
-                className="ml-auto"
-                icon={<RotateCcw aria-hidden="true" className="size-3.5" />}
+                className="sm:ml-auto"
+                icon={<RotateCcw aria-hidden="true" className="size-4" />}
+                loading={actions.resend.isPending}
                 onClick={() => actions.resend.mutate()}
               >
                 内容を直して【再送】する
               </Button>
             )}
-          </span>
-        </Alert>
-      ) : (
-        <Alert tone="info">内容を確かめてから「送信」を押してください。本文は直せます。</Alert>
-      )}
-      <Card>
-        <div className="flex flex-col gap-4">
-          <FormField
-            label="宛先（TO）"
-            required
-            hint="複数のときはカンマで区切ります。宛先の初期値は管理画面の「通知の宛先」で変えられます。"
-          >
-            {(c) => (
-              <TextInput
-                {...c}
-                value={form.to}
-                disabled={sent}
-                onChange={(e) => setForm({ ...form, to: e.target.value })}
-              />
-            )}
-          </FormField>
-          <FormField label="CC">
-            {(c) => (
-              <TextInput
-                {...c}
-                value={form.cc}
-                disabled={sent}
-                onChange={(e) => setForm({ ...form, cc: e.target.value })}
-              />
-            )}
-          </FormField>
-          <FormField
-            label="件名"
-            required
-            hint={
-              sent || form.subject.includes('【担当：')
-                ? undefined
-                : `送信すると、件名の最後に「${senderTag}」が付きます。`
-            }
-          >
-            {(c) => (
-              <TextInput
-                {...c}
-                value={form.subject}
-                disabled={sent}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-              />
-            )}
-          </FormField>
-          <FormField
-            label="本文"
-            required
-            hint={
-              sent || form.body.includes('送信者：')
-                ? undefined
-                : `送信すると、本文の最後に「${senderLine}」が入ります。`
-            }
-          >
-            {(c) => (
-              <Textarea
-                {...c}
-                rows={22}
-                value={form.body}
-                disabled={sent}
-                className="font-mono text-sm"
-                onChange={(e) => setForm({ ...form, body: e.target.value })}
-              />
-            )}
-          </FormField>
-        </div>
-      </Card>
-      {!sent && (
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button
-            variant="text"
-            icon={<RefreshCw className="size-4" aria-hidden="true" />}
-            loading={actions.regenerate.isPending}
-            onClick={() => actions.regenerate.mutate(email.id)}
-          >
-            いまのアポの内容で作り直す
-          </Button>
-          <Link
-            to={paths.appointment(appointmentId)}
-            className="inline-flex h-10 items-center rounded-(--radius-control) border border-line bg-surface px-4 text-sm font-bold hover:bg-column"
-          >
-            あとで送る
-          </Link>
-          <Button
-            size="lg"
-            icon={<Send className="size-4" aria-hidden="true" />}
-            loading={actions.save.isPending || actions.send.isPending}
-            disabled={
-              splitAddresses(form.to).length === 0 || !form.subject.trim() || !form.body.trim()
-            }
-            onClick={() => void saveThenSend().catch(() => undefined)}
-          >
-            送信
-          </Button>
-        </div>
-      )}
-      {sent && <BackBar to={paths.appointment(appointmentId)}>アポのページへ戻る</BackBar>}
+          </>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              icon={<ArrowLeft className="size-4" aria-hidden="true" />}
+              disabled={busy}
+              onClick={() =>
+                navigate(
+                  kind === 'booking' ? `${appointmentPage}?edit=1&then=mail` : appointmentPage,
+                )
+              }
+            >
+              {kind === 'booking' ? '戻って直す' : 'アポのページへ戻る'}
+            </Button>
+            <div className="flex flex-col-reverse gap-3 sm:ml-auto sm:flex-row">
+              <Button
+                variant="secondary"
+                icon={<Save className="size-4" aria-hidden="true" />}
+                loading={actions.save.isPending && !actions.send.isPending}
+                disabled={busy}
+                onClick={saveDraft}
+              >
+                下書き保存
+              </Button>
+              <Button
+                size="lg"
+                icon={<Send className="size-4" aria-hidden="true" />}
+                loading={actions.send.isPending}
+                disabled={busy || email.to.length === 0}
+                onClick={() => void send().catch(() => undefined)}
+              >
+                送信
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

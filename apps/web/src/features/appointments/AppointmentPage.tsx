@@ -1,4 +1,4 @@
-import { DayBeforeResult, jstDate, OptionCategory } from '@telesales/shared';
+import { DayBeforeResult, jstDate, meetingFormatLabel, OptionCategory } from '@telesales/shared';
 import {
   CalendarClock,
   Check,
@@ -11,7 +11,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { Button, LinkButton } from '@/components/ui/Button';
@@ -57,11 +57,26 @@ type OpenDialog = 'reschedule' | 'cancel' | 'request' | 'edit' | null;
  */
 export function AppointmentPage() {
   const { id = '' } = useParams();
+  const navigate = useNavigate();
+  // 「戻って直す」 on the mail screen opens the edit here and goes back to the mail after saving.
+  const [search, setSearch] = useSearchParams();
+  const backToMail = search.get('then') === 'mail';
+  const mailSaved = (useLocation().state as { mailSaved?: boolean } | null)?.mailSaved === true;
   const query = useAppointment(id);
   const confirm = useConfirmAppointment(id);
   const dayBefore = useDayBeforeCheck();
   const customerTypes = useOptionList(OptionCategory.CustomerType);
-  const [dialog, setDialog] = useState<OpenDialog>(null);
+  const [dialog, setDialog] = useState<OpenDialog>(() =>
+    search.get('edit') === '1' ? 'edit' : null,
+  );
+  const closeEdit = (saved: boolean) => {
+    setDialog(null);
+    if (backToMail) {
+      navigate(paths.appointmentMail(id, 'booking'), { state: { regenerate: saved } });
+    } else if (search.has('edit')) {
+      setSearch({}, { replace: true });
+    }
+  };
 
   return (
     <QueryState query={query}>
@@ -79,6 +94,15 @@ export function AppointmentPage() {
               title={appointment.company.name}
               actions={
                 <>
+                  {abilities.sendBookingMail && !sent && appointment.status !== 'CANCELLED' && (
+                    <LinkButton
+                      variant="primary"
+                      to={paths.appointmentMail(appointment.id, 'booking')}
+                      icon={<Send aria-hidden="true" className="size-4" />}
+                    >
+                      確認して送る
+                    </LinkButton>
+                  )}
                   {abilities.confirm && !appointment.salesConfirmedAt && (
                     <Button
                       icon={<Check className="size-4" aria-hidden="true" />}
@@ -140,7 +164,7 @@ export function AppointmentPage() {
                 <span className="text-lg font-bold">
                   {formatRange(appointment.startsAt, appointment.endsAt)}
                 </span>
-                <FormatBadge format={appointment.format} />
+                <FormatBadge format={appointment.format} label={meetingFormatLabel(appointment)} />
                 <AppointmentStatusBadge status={appointment.status} />
                 {appointment.status === 'SCHEDULED' && (
                   <ConfirmedBadge confirmedAt={appointment.salesConfirmedAt} />
@@ -156,21 +180,12 @@ export function AppointmentPage() {
               {(confirm.isError || dayBefore.isError) && (
                 <Alert tone="error">{errorMessageOf(confirm.error ?? dayBefore.error)}</Alert>
               )}
+              {mailSaved && !sent && (
+                <Alert tone="success">メール（N1）を下書きとして保存しました。</Alert>
+              )}
               {abilities.sendBookingMail && !sent && appointment.status !== 'CANCELLED' && (
-                <Alert
-                  tone="warning"
-                  action={
-                    <LinkButton
-                      variant="primary"
-                      size="sm"
-                      to={paths.appointmentMail(appointment.id, 'booking')}
-                      icon={<Send aria-hidden="true" className="size-3.5" />}
-                    >
-                      確認して送る
-                    </LinkButton>
-                  }
-                >
-                  営業さんへのメール（N1）はまだ送っていません。
+                <Alert tone="warning">
+                  営業さんへのメール（N1）はまだ送っていません。上の「確認して送る」から送れます。
                 </Alert>
               )}
               {appointment.status === 'CANCELLED' && (
@@ -267,6 +282,9 @@ export function AppointmentPage() {
                           .filter(Boolean)
                           .join(' '),
                       },
+                      ...(appointment.meetingPersonName
+                        ? [{ label: '面談される方', value: appointment.meetingPersonName }]
+                        : []),
                       {
                         label: '先方TEL',
                         value: appointment.contactPhone ? (
@@ -281,7 +299,7 @@ export function AppointmentPage() {
                         value:
                           appointment.format === 'VISIT'
                             ? (appointment.visitAddress ?? appointment.company.address)
-                            : 'オンライン',
+                            : meetingFormatLabel(appointment),
                       },
                       {
                         label: '伝達事項（取れたときの状況）',
@@ -424,7 +442,12 @@ export function AppointmentPage() {
               <ChangeRequestDialog appointment={appointment} onClose={() => setDialog(null)} />
             )}
             {dialog === 'edit' && (
-              <EditDetailsDialog appointment={appointment} onClose={() => setDialog(null)} />
+              <EditDetailsDialog
+                appointment={appointment}
+                onClose={() => closeEdit(false)}
+                onSaved={() => closeEdit(true)}
+                saveLabel={backToMail ? '保存してメールに戻る' : undefined}
+              />
             )}
             <BackBar to={paths.appointments}>{ja.module.appointments}へ戻る</BackBar>
           </>

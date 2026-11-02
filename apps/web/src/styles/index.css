@@ -89,6 +89,8 @@
   /* 土日祝・会社の休日: grey with diagonal dashes, unlike anything that can be booked. */
   --color-off: #eceef1;
   --color-off-line: #cfd4db;
+  /* Lunch break: a warmer, solid grey so it is not mistaken for a day off. */
+  --color-lunch: #e7e3dc;
   /* One distinct hue per kind of event (10/30: shades of one colour were confused). */
   --color-ev-telema: #0f766e;
   --color-ev-telema-soft: #ddf2ee;

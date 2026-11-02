@@ -10,7 +10,7 @@ export function slotProblemText(problem: unknown): string {
     case 'TIME_OFF':
       return `お休みの時間です（${formatRange(value.startsAt, value.endsAt)}）。`;
     case 'SALES_BLOCK':
-      return `埋まり（営業枠）：営業がテレマアポ停止にしている時間です（${formatRange(value.startsAt, value.endsAt)}）。`;
+      return `営業予定あり：営業がテレマアポ停止にしている時間です（${formatRange(value.startsAt, value.endsAt)}）。`;
     case 'OVERLAP':
       return value.startsAt
         ? `「${value.title}」（${formatRange(value.startsAt, value.endsAt)}）と重なっています。`
