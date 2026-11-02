@@ -1772,6 +1772,11 @@ export const EXACT: Readonly<Record<string, string>> = {
   '終日 休み': 'Day off',
   '営業予定あり（テレマアポ不可）': 'Sales plans (no telemarketing bookings)',
   '祝日・休日': 'Holiday / day off',
+  // Themes (11/2)
+  テーマ: 'Theme',
+  標準: 'Standard',
+  さくら: 'Sakura',
+  目にやさしい: 'Easy on the eyes',
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
@@ -2059,4 +2064,5 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['印刷日 {0}・営業 {1}人・時間帯 9:00–18:00', 'Printed {0} · {1} reps · 9:00–18:00'],
   ['1時間以上空き {0}人', '{0} free 1h+'],
   ['【アポ・{0}】', '[Appt · {0}]'],
+  ['テーマ：{0}', 'Theme: {0}'],
 ];

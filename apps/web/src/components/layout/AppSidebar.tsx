@@ -3,9 +3,9 @@ import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
-import { useTheme } from '@/components/brand/theme';
+import { type Theme, THEMES, useTheme } from '@/components/brand/theme';
 import { cn } from '@/components/ui/cn';
-import { Switch } from '@/components/ui/Switch';
+import { Select } from '@/components/ui/Select';
 import { useCurrentUser, useLogout } from '@/features/auth/hooks/useSession';
 import { FeedbackButton } from '@/features/feedback/FeedbackButton';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
@@ -217,15 +217,17 @@ function SideLink({ item, folded }: { item: NavItem; folded: boolean }) {
   );
 }
 
-/** さくら (pink, girl MoraBot) or the standard look; remembered per person in this browser. */
+/** 標準 / さくら (pink, girl MoraBot) / 目にやさしい; remembered per person in this browser. */
 function ThemeSwitch() {
   const { theme, setTheme } = useTheme();
   return (
-    <Switch
-      className="mt-1 min-h-9 px-1 text-xs text-ink-sub"
-      checked={theme === 'sakura'}
-      onChange={(on) => setTheme(on ? 'sakura' : 'standard')}
-      label="さくらテーマ"
+    <Select
+      size="sm"
+      className="mt-1.5 w-full"
+      aria-label="テーマ"
+      options={THEMES.map((option) => ({ value: option.value, label: `テーマ：${option.label}` }))}
+      value={theme}
+      onChange={(event) => setTheme(event.target.value as Theme)}
     />
   );
 }
