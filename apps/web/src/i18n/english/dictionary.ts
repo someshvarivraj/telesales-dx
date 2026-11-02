@@ -1772,6 +1772,7 @@ export const EXACT: Readonly<Record<string, string>> = {
   '終日 休み': 'Day off',
   '営業予定あり（テレマアポ不可）': 'Sales plans (no telemarketing bookings)',
   '祝日・休日': 'Holiday / day off',
+  スケジュールに戻る: 'Back to the schedule',
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
