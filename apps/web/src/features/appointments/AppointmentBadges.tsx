@@ -4,7 +4,7 @@ import {
   DayBeforeResult,
   MeetingFormat,
 } from '@telesales/shared';
-import { Building2, Video } from 'lucide-react';
+import { Building2, MoreHorizontal, Phone, Video } from 'lucide-react';
 import { MetaLabel, StatusLabel, type StatusTone } from '@/components/ui/StatusLabel';
 import { ja } from '@/i18n/ja';
 
@@ -24,12 +24,16 @@ export function AppointmentStatusBadge({ status }: { status: AppointmentStatus }
   return <StatusLabel tone={STATUS_TONE[status]}>{ja.appointmentStatus[status]}</StatusLabel>;
 }
 
-export function FormatBadge({ format }: { format: MeetingFormat }) {
-  return (
-    <MetaLabel icon={format === MeetingFormat.Online ? Video : Building2}>
-      {ja.format[format]}
-    </MetaLabel>
-  );
+export const FORMAT_ICON: Record<MeetingFormat, typeof Video> = {
+  [MeetingFormat.Visit]: Building2,
+  [MeetingFormat.Online]: Video,
+  [MeetingFormat.Phone]: Phone,
+  [MeetingFormat.Other]: MoreHorizontal,
+};
+
+/** The format, with its detail (「オンライン（Zoom）」) when given. */
+export function FormatBadge({ format, label }: { format: MeetingFormat; label?: string }) {
+  return <MetaLabel icon={FORMAT_ICON[format]}>{label ?? ja.format[format]}</MetaLabel>;
 }
 
 const DAY_BEFORE_TONE: Record<DayBeforeResult, StatusTone> = {

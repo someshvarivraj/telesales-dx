@@ -242,7 +242,7 @@ export function WeekView({
                         </div>
                       )}
                       <div className="absolute top-1 right-1 flex items-center gap-1">
-                        {onAdd && (
+                        {onAdd && !off && (
                           <button
                             type="button"
                             aria-label={`${person.name} ${formatShortDate(date)} に予定を追加`}

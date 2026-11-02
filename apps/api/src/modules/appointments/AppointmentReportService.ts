@@ -13,6 +13,14 @@ import { ValidationError } from '../../http/errors/AppError.js';
 import type { OptionService } from '../options/OptionService.js';
 import { familyName } from './AppointmentMailTemplates.js';
 
+/** The report's 訪問形態 column (online is written "Web" as today). */
+const REPORT_FORMAT: Record<MeetingFormat, string> = {
+  [MeetingFormat.Visit]: '訪問',
+  [MeetingFormat.Online]: 'Web',
+  [MeetingFormat.Phone]: '電話',
+  [MeetingFormat.Other]: 'その他',
+};
+
 const JST_OFFSET_MS = 9 * 60 * 60_000;
 
 /** Excel has no time zones: write the JST wall-clock time. */
@@ -150,7 +158,7 @@ export class AppointmentReportService {
         row.company.name,
         row.contactDepartment ?? '',
         row.contactName ?? '',
-        row.format === MeetingFormat.Visit ? '訪問' : 'Web',
+        REPORT_FORMAT[row.format],
         familyName(row.bookedBy.name),
         excelDate(row.startsAt),
         familyName(row.salesRep.name),

@@ -1,4 +1,14 @@
-import { MeetingFormat, OptionCategory, Role } from '@telesales/shared';
+import {
+  type AppointmentDetail,
+  MeetingFormat,
+  ONLINE_TOOLS,
+  OptionCategory,
+  OTHER_FORMAT_EXAMPLES,
+  Role,
+} from '@telesales/shared';
+import { Building2, MoreHorizontal, Phone, Video } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
+import { cn } from '@/components/ui/cn';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { FormField } from '@/components/ui/FormField';
@@ -24,7 +34,10 @@ export interface CompanyValues {
 export interface AppointmentValues {
   format: MeetingFormat | '';
   visitAddress: string;
+  onlineTool: string;
+  formatNote: string;
   contactName: string;
+  meetingPersonName: string;
   contactDepartment: string;
   contactPhone: string;
   contactEmail: string;
@@ -52,7 +65,10 @@ export const emptyCompany: CompanyValues = {
 export const emptyAppointment: AppointmentValues = {
   format: '',
   visitAddress: '',
+  onlineTool: '',
+  formatNote: '',
   contactName: '',
+  meetingPersonName: '',
   contactDepartment: '',
   contactPhone: '',
   contactEmail: '',
@@ -63,6 +79,62 @@ export const emptyAppointment: AppointmentValues = {
   bookedById: '',
   bookedOn: '',
 };
+
+/**
+ * What still has to be filled in (shown with *). Telemarketing bookings also need who was spoken
+ * to, their number and the handover notes: the rep works from them (11/2).
+ */
+export function missingAppointmentFields(values: AppointmentValues, telema: boolean): string[] {
+  const missing: string[] = [];
+  if (!values.format) missing.push('訪問形態');
+  if (values.format === MeetingFormat.Other && !values.formatNote.trim())
+    missing.push('その他の内容');
+  if (telema) {
+    if (!values.contactName.trim()) missing.push('先方担当者');
+    if (!values.contactPhone.trim()) missing.push('先方TEL');
+    if (!values.handoverNotes.trim()) missing.push('伝達事項');
+  }
+  return missing;
+}
+
+/** The appointment fields of a saved appointment, for editing. */
+export function appointmentValuesOf(appointment: AppointmentDetail): AppointmentValues {
+  return {
+    format: appointment.format,
+    visitAddress: appointment.visitAddress ?? '',
+    onlineTool: appointment.onlineTool ?? '',
+    formatNote: appointment.formatNote ?? '',
+    contactName: appointment.contactName ?? '',
+    meetingPersonName: appointment.meetingPersonName ?? '',
+    contactDepartment: appointment.contactDepartment ?? '',
+    contactPhone: appointment.contactPhone ?? '',
+    contactEmail: appointment.contactEmail ?? '',
+    handoverNotes: appointment.handoverNotes ?? '',
+    customerType: appointment.customerType ?? '',
+    listName: appointment.listName ?? '',
+    isNewAppointment: appointment.isNewAppointment,
+    bookedById: appointment.bookedBy.id,
+    bookedOn: '',
+  };
+}
+
+/** The request fields shared by booking and editing (empty → null). */
+export function appointmentRequestFields(values: AppointmentValues) {
+  return {
+    visitAddress: values.visitAddress || null,
+    onlineTool: values.format === MeetingFormat.Online ? values.onlineTool || null : null,
+    formatNote: values.format === MeetingFormat.Other ? values.formatNote || null : null,
+    contactName: values.contactName || null,
+    meetingPersonName: values.meetingPersonName || null,
+    contactDepartment: values.contactDepartment || null,
+    contactPhone: values.contactPhone || null,
+    contactEmail: values.contactEmail || null,
+    handoverNotes: values.handoverNotes || null,
+    customerType: values.customerType || null,
+    listName: values.listName || null,
+    isNewAppointment: values.isNewAppointment,
+  };
+}
 
 const COMPANY_FIELDS: {
   key: keyof CompanyValues;
@@ -110,15 +182,106 @@ export function CompanyFields({
 interface AppointmentFieldsProps {
   values: AppointmentValues;
   onChange: (values: AppointmentValues) => void;
-  /** Telemarketing bookings show the booker and booking date (taken from the file when imported). */
-  showBooker?: boolean;
+  /** Telemarketing bookings: the booker, and who was spoken to / handover notes are required. */
+  telema?: boolean;
+  /** Show the booking date too (new bookings; it is fixed once registered). */
+  showBookedOn?: boolean;
+}
+
+const FORMAT_CHOICES: { format: MeetingFormat; icon: ReactNode; hint: string }[] = [
+  { format: MeetingFormat.Visit, icon: <Building2 className="size-5" />, hint: '先方へ伺う' },
+  { format: MeetingFormat.Online, icon: <Video className="size-5" />, hint: 'Zoom・Meet など' },
+  { format: MeetingFormat.Phone, icon: <Phone className="size-5" />, hint: '電話で話す' },
+  { format: MeetingFormat.Other, icon: <MoreHorizontal className="size-5" />, hint: '来社など' },
+];
+
+/** Picks one of a few common answers, or lets the person type their own. */
+function ChoiceChips({
+  label,
+  choices,
+  value,
+  onChange,
+  required = false,
+  placeholder,
+}: {
+  label: string;
+  choices: readonly string[];
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  placeholder: string;
+}) {
+  const typed = value !== '' && !choices.includes(value);
+  const [typing, setTyping] = useState(typed);
+  const chip = (on: boolean) =>
+    cn(
+      'inline-flex h-9 items-center border px-3 text-sm transition-colors',
+      on
+        ? 'border-main bg-main-soft font-bold text-main'
+        : 'border-line-strong bg-surface hover:border-main-line',
+    );
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1.5 flex items-baseline gap-1.5 text-[13px] font-bold">
+        {label}
+        {required && (
+          <>
+            <span aria-hidden="true" className="text-danger">
+              *
+            </span>
+            <span className="sr-only">{ja.common.required}</span>
+          </>
+        )}
+      </legend>
+      <div className="flex flex-wrap gap-2">
+        {choices.map((choice) => (
+          <button
+            key={choice}
+            type="button"
+            aria-pressed={!typing && value === choice}
+            className={chip(!typing && value === choice)}
+            onClick={() => {
+              setTyping(false);
+              onChange(value === choice ? '' : choice);
+            }}
+          >
+            {choice}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-pressed={typing}
+          className={chip(typing)}
+          onClick={() => {
+            setTyping(true);
+            if (choices.includes(value)) onChange('');
+          }}
+        >
+          その他（入力）
+        </button>
+      </div>
+      {typing && (
+        <TextInput
+          aria-label={label}
+          aria-required={required}
+          className="max-w-md"
+          placeholder={placeholder}
+          value={value}
+          maxLength={100}
+          autoFocus
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </fieldset>
+  );
 }
 
 /** The appointment details the rep and everyone involved will see (spec §1). */
 export function AppointmentFields({
   values,
   onChange,
-  showBooker = false,
+  telema = false,
+  showBookedOn = false,
 }: AppointmentFieldsProps) {
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const telemas = usePeople(Role.Telema);
@@ -126,26 +289,45 @@ export function AppointmentFields({
     onChange({ ...values, [key]: value });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      <p className="text-xs text-ink-sub">
+        <span className="text-danger">*</span> は必ず入力してください。
+      </p>
       <fieldset>
-        <legend className="mb-1 flex items-center gap-2 text-sm font-bold">
+        <legend className="mb-2 flex items-baseline gap-1.5 text-[13px] font-bold">
           訪問形態
-          <span className="rounded-sm bg-danger-soft px-1.5 py-0.5 text-xs font-bold text-danger">
-            {ja.common.required}
+          <span aria-hidden="true" className="text-danger">
+            *
           </span>
+          <span className="sr-only">{ja.common.required}</span>
         </legend>
-        <div className="flex gap-6">
-          {[MeetingFormat.Visit, MeetingFormat.Online].map((format) => (
-            <Checkbox
-              key={format}
-              type="radio"
-              name="format"
-              value={format}
-              label={ja.format[format]}
-              checked={values.format === format}
-              onChange={() => set('format', format)}
-            />
-          ))}
+        <div role="radiogroup" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {FORMAT_CHOICES.map(({ format, icon, hint }) => {
+            const on = values.format === format;
+            return (
+              <button
+                key={format}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => set('format', format)}
+                className={cn(
+                  'flex items-center gap-2.5 border px-3 py-2.5 text-left transition-[border-color,box-shadow,background-color]',
+                  on
+                    ? 'border-main bg-main-soft shadow-[0_0_0_1px_var(--color-main)]'
+                    : 'border-line-strong bg-surface hover:border-main-line',
+                )}
+              >
+                <span aria-hidden="true" className={on ? 'text-main' : 'text-ink-sub'}>
+                  {icon}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold">{ja.format[format]}</span>
+                  <span className="block truncate text-xs text-ink-sub">{hint}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </fieldset>
       {values.format === MeetingFormat.Visit && (
@@ -159,13 +341,41 @@ export function AppointmentFields({
           )}
         </FormField>
       )}
+      {values.format === MeetingFormat.Online && (
+        <ChoiceChips
+          label="使うツール"
+          choices={ONLINE_TOOLS}
+          value={values.onlineTool}
+          onChange={(value) => set('onlineTool', value)}
+          placeholder="例：Webex、先方の会議システム"
+        />
+      )}
+      {values.format === MeetingFormat.Other && (
+        <ChoiceChips
+          label="その他の内容"
+          choices={OTHER_FORMAT_EXAMPLES}
+          value={values.formatNote}
+          onChange={(value) => set('formatNote', value)}
+          required
+          placeholder="例：先方が当社へ来社"
+        />
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="先方担当者（氏名）">
+        <FormField label="先方担当者（電話で話した方）" required={telema}>
           {(c) => (
             <TextInput
               {...c}
               value={values.contactName}
               onChange={(e) => set('contactName', e.target.value)}
+            />
+          )}
+        </FormField>
+        <FormField label="面談される方" hint="電話で話した方と違うときだけ入力します。">
+          {(c) => (
+            <TextInput
+              {...c}
+              value={values.meetingPersonName}
+              onChange={(e) => set('meetingPersonName', e.target.value)}
             />
           )}
         </FormField>
@@ -178,7 +388,7 @@ export function AppointmentFields({
             />
           )}
         </FormField>
-        <FormField label="先方TEL">
+        <FormField label="先方TEL" required={telema}>
           {(c) => (
             <TextInput
               {...c}
@@ -201,6 +411,7 @@ export function AppointmentFields({
       </div>
       <FormField
         label="伝達事項"
+        required={telema}
         hint="アポが取れたときの状況。営業さんへのメールにそのまま入ります。"
       >
         {(c) => (
@@ -239,28 +450,37 @@ export function AppointmentFields({
         checked={values.isNewAppointment}
         onChange={(e) => set('isNewAppointment', e.target.checked)}
       />
-      {showBooker && (
+      {telema && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="アポ取得者" hint="空のときは自分になります。">
+          <FormField
+            label="アポ取得者"
+            hint={
+              showBookedOn
+                ? '空のときは自分になります。登録する人と違うときは選んでください。'
+                : 'アポを取ったテレマ。登録した人と違うときは直してください。'
+            }
+          >
             {(c) => (
               <Select
                 {...c}
                 value={values.bookedById}
-                placeholder="自分"
+                placeholder={showBookedOn ? '自分' : '―'}
                 options={(telemas.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
                 onChange={(e) => set('bookedById', e.target.value)}
               />
             )}
           </FormField>
-          <FormField label="アポ取得日" hint="空のときは今日になります。">
-            {(c) => (
-              <DatePicker
-                {...c}
-                value={values.bookedOn}
-                onChange={(e) => set('bookedOn', e.target.value)}
-              />
-            )}
-          </FormField>
+          {showBookedOn && (
+            <FormField label="アポ取得日" hint="空のときは今日になります。">
+              {(c) => (
+                <DatePicker
+                  {...c}
+                  value={values.bookedOn}
+                  onChange={(e) => set('bookedOn', e.target.value)}
+                />
+              )}
+            </FormField>
+          )}
         </div>
       )}
     </div>

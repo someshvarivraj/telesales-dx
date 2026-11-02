@@ -21,7 +21,13 @@ import { companyFieldsSchema } from './companies.js';
 
 const appointmentContactFields = {
   visitAddress: optionalText(300),
+  /** Zoom / Google Meet / Microsoft Teams or written in (online only). */
+  onlineTool: optionalText(50),
+  /** What 「その他」 is, e.g. 来社. */
+  formatNote: optionalText(100),
   contactName: optionalText(100),
+  /** The person the rep will meet, when not the person on the phone. */
+  meetingPersonName: optionalText(100),
   contactDepartment: optionalText(100),
   contactPhone: optionalText(64),
   contactEmail: z
@@ -52,7 +58,7 @@ export const createAppointmentRequestSchema = z
     salesRepId: z.uuid(),
     startsAt: instantString,
     endsAt: instantString,
-    format: z.enum(['VISIT', 'ONLINE']),
+    format: z.enum(['VISIT', 'ONLINE', 'PHONE', 'OTHER']),
     /** Booker as read from the file; defaults to the signed-in user. */
     bookedById: z.uuid().nullish(),
     bookedOn: dateString.nullish(),
@@ -66,7 +72,9 @@ export type CreateAppointmentCommand = z.output<typeof createAppointmentRequestS
 
 export const updateAppointmentDetailsRequestSchema = z.object({
   expectedVersion: z.number().int().min(1),
-  format: z.enum(['VISIT', 'ONLINE']),
+  format: z.enum(['VISIT', 'ONLINE', 'PHONE', 'OTHER']),
+  /** アポ取得者: the telemarketer who got it can differ from who registered it (11/2). */
+  bookedById: z.uuid().optional(),
   ...appointmentContactFields,
 });
 export type UpdateAppointmentDetailsRequest = z.input<typeof updateAppointmentDetailsRequestSchema>;
@@ -288,7 +296,10 @@ export interface AppointmentDetail extends AppointmentListItem {
     url: string | null;
   };
   visitAddress: string | null;
+  onlineTool: string | null;
+  formatNote: string | null;
   contactName: string | null;
+  meetingPersonName: string | null;
   contactDepartment: string | null;
   contactPhone: string | null;
   contactEmail: string | null;

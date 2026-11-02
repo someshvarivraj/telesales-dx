@@ -581,6 +581,8 @@ model CallRecord {
 enum MeetingFormat {
   VISIT
   ONLINE
+  PHONE
+  OTHER
 }
 
 enum AppointmentStatus {
@@ -615,7 +617,13 @@ model Appointment {
   endsAt                DateTime          @map("ends_at") @db.Timestamptz(6)
   format                MeetingFormat
   visitAddress          String?           @map("visit_address") @db.VarChar(300)
+  /// Zoom / Google Meet / Microsoft Teams or written in (online meetings)
+  onlineTool            String?           @map("online_tool") @db.VarChar(50)
+  /// What 「その他」 is, e.g. 来社
+  formatNote            String?           @map("format_note") @db.VarChar(100)
   contactName           String?           @map("contact_name") @db.VarChar(100)
+  /// The person the rep will meet, when not the person on the phone
+  meetingPersonName     String?           @map("meeting_person_name") @db.VarChar(100)
   contactDepartment     String?           @map("contact_department") @db.VarChar(100)
   contactPhone          String?           @map("contact_phone") @db.VarChar(64)
   contactEmail          String?           @map("contact_email") @db.VarChar(254)

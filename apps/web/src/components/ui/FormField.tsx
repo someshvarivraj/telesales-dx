@@ -17,7 +17,7 @@ interface FormFieldProps {
   children: (control: FieldControlProps) => ReactNode;
 }
 
-/** Label, 必須 badge, hint and inline error for one control. */
+/** Label, required asterisk, hint and inline error for one control. */
 export function FormField({ label, required = false, hint, error, children }: FormFieldProps) {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
@@ -29,7 +29,12 @@ export function FormField({ label, required = false, hint, error, children }: Fo
       <label htmlFor={id} className="flex items-baseline gap-1.5 text-[13px] font-bold text-ink">
         {label}
         {required && (
-          <span className="text-[11px] font-bold text-danger">{ja.common.required}</span>
+          <>
+            <span aria-hidden="true" className="text-danger">
+              *
+            </span>
+            <span className="sr-only">{ja.common.required}</span>
+          </>
         )}
       </label>
       {children({

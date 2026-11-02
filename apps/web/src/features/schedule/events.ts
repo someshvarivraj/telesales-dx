@@ -123,7 +123,7 @@ export function buildEvents(data: ScheduleResponse): CalendarEvent[] {
       // テレマアポ停止 reads as taken for the rep's own work (営業枠).
       title:
         timeOff.kind === TimeOffKind.TelemaStop
-          ? `埋まり（営業枠）${timeOff.note ? `：${timeOff.note}` : ''}`
+          ? `営業予定あり${timeOff.note ? `：${timeOff.note}` : ''}`
           : timeOff.note
             ? `休み：${timeOff.note}`
             : '休み',
