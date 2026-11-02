@@ -1763,6 +1763,15 @@ export const EXACT: Readonly<Record<string, string>> = {
     'The companies registered by this import are deleted and it leaves the import history. Companies that also came in on another list stay. The same file can then be imported again.',
   'まだ誰も架電・アポ登録・割り振りの確定をしていないときだけ取り消せます。取り消したことは履歴に残ります。':
     'Only possible while nobody has called, booked or confirmed an allocation for it. The undo is kept in the history.',
+  // Weekly print (11/2)
+  '営業全員の1週間を横向きA4で印刷します。色付きで印刷するには、印刷画面の「背景のグラフィック」をオンにしてください。':
+    'Prints every sales rep’s week on landscape A4. For colour, turn on "Background graphics" in the print dialog.',
+  '担当（今週）': 'Rep (this week)',
+  空き: 'Free',
+  空きなし: 'No free time',
+  '終日 休み': 'Day off',
+  '営業予定あり（テレマアポ不可）': 'Sales plans (no telemarketing bookings)',
+  '祝日・休日': 'Holiday / day off',
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
@@ -2046,4 +2055,8 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
     '「{0}」の取り込みを取り消しました（企業 {1}件を削除）。同じファイルをもう一度取り込めます。',
     'Undid the import of 「{0}」 ({1} companies deleted). The same file can be imported again.',
   ],
+  // Weekly print (11/2)
+  ['印刷日 {0}・営業 {1}人・時間帯 9:00–18:00', 'Printed {0} · {1} reps · 9:00–18:00'],
+  ['1時間以上空き {0}人', '{0} free 1h+'],
+  ['【アポ・{0}】', '[Appt · {0}]'],
 ];

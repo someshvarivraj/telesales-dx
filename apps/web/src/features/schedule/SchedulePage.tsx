@@ -143,9 +143,8 @@ export function SchedulePage() {
 
   const { from, to } = rangeFor(view, date);
   // useHref adds the path the app is served under (e.g. /telesales-dx/); a bare path 404s there.
-  const printHref = useHref(
-    `${paths.schedulePrint}?${new URLSearchParams({ date, people: chosen.join(',') }).toString()}`,
-  );
+  // Every sales rep is printed (request 11/2), whoever is shown on screen.
+  const printHref = useHref(`${paths.schedulePrint}?${new URLSearchParams({ date }).toString()}`);
   const schedule = useSchedule(from, to, []);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [planDialog, setPlanDialog] = useState<{
