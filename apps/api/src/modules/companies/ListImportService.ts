@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import ExcelJS from 'exceljs';
 import {
   CompanyFlag,
   type CommitListImportRequest,
@@ -215,85 +214,6 @@ export class ListImportService {
       include: { importedBy: userRefSelect, file: true },
     });
     return rows.map((row) => this.toDto(row));
-  }
-
-  /**
-   * 登録済リスト一覧 (request 10/29): every list imported, its size, how many rows came in,
-   * and the companies from it that got an appointment, with a link to the original file.
-   */
-  async registryWorkbook(appBaseUrl: string): Promise<{ fileName: string; content: Buffer }> {
-    const imports = await this.prisma.listImport.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        importedBy: userRefSelect,
-        file: { select: { originalName: true } },
-        rows: { where: { companyId: { not: null } }, select: { companyId: true, status: true } },
-      },
-    });
-    const companyIds = [
-      ...new Set(imports.flatMap((item) => item.rows.map((row) => row.companyId as string))),
-    ];
-    const appointments = await this.prisma.appointment.findMany({
-      where: { companyId: { in: companyIds } },
-      select: { companyId: true, createdAt: true, company: { select: { name: true } } },
-    });
-
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'テレマ・営業DX';
-    const sheet = workbook.addWorksheet('登録済リスト一覧');
-    sheet.columns = [
-      { header: '取り込み日', width: 12 },
-      { header: 'リスト名', width: 34 },
-      { header: '目的', width: 12 },
-      { header: '自動割り振り', width: 12 },
-      { header: 'リスト総件数', width: 12 },
-      { header: '取り込み件数', width: 12 },
-      { header: '重複', width: 8 },
-      { header: '要確認', width: 8 },
-      { header: 'エラー', width: 8 },
-      { header: 'アポ取得件数', width: 12 },
-      { header: 'アポ取得企業名', width: 50 },
-      { header: '取り込んだ人', width: 14 },
-      { header: 'Excelファイル', width: 36 },
-    ];
-    sheet.getRow(1).font = { bold: true };
-    sheet.views = [{ state: 'frozen', ySplit: 1 }];
-    for (const item of imports) {
-      const ids = new Set(item.rows.map((row) => row.companyId));
-      // Appointments made after the list came in, for companies on it.
-      const won = [
-        ...new Set(
-          appointments
-            .filter((a) => ids.has(a.companyId) && a.createdAt >= item.createdAt)
-            .map((a) => a.company.name),
-        ),
-      ];
-      const added = sheet.addRow([
-        jstDate(item.createdAt),
-        item.listName,
-        item.purpose === 'CALL_REQUEST' ? '架電依頼' : '登録のみ',
-        item.purpose === 'CALL_REQUEST' ? (item.autoAllocate ? 'する' : 'しない') : '',
-        item.rowCount,
-        item.rows.filter((row) => row.status === 'IMPORTED').length,
-        item.duplicateCount,
-        item.checkCount,
-        item.errorCount,
-        won.length,
-        won.join('、'),
-        item.importedBy.name,
-        {
-          text: item.file.originalName,
-          hyperlink: `${appBaseUrl}/api/list-imports/${item.id}/file`,
-        },
-      ]);
-      added.getCell(13).font = { color: { argb: 'FF0563C1' }, underline: true };
-      added.getCell(11).alignment = { wrapText: true, vertical: 'top' };
-    }
-    const today = jstDate(new Date()).replaceAll('-', '');
-    return {
-      fileName: `登録済リスト一覧_${today}.xlsx`,
-      content: Buffer.from(await workbook.xlsx.writeBuffer()),
-    };
   }
 
   /** The rows of one import as they were read and judged. */

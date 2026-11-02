@@ -263,7 +263,6 @@ export class Container {
         comments,
         area,
         files,
-        appBaseUrl: config.appBaseUrl,
       }),
       createScheduleRouter({ authenticator, schedule, guard }),
       createAppointmentsRouter({
