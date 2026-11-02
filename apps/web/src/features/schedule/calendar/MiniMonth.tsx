@@ -95,6 +95,7 @@ export function MiniMonth({ date, range, holidays, load, onPick }: MiniMonthProp
                 !inMonth && 'text-ink-disabled',
                 inMonth && (dow === 0 || holiday) && 'text-sunday',
                 inMonth && dow === 6 && !holiday && 'text-saturday',
+                inMonth && !inRange && (dow === 0 || dow === 6 || holiday) && 'bg-off',
                 day !== date && 'hover:bg-column',
               )}
             >

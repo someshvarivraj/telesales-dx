@@ -1,6 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 import { sessionQueryKey } from '@/features/auth/hooks/useSession';
 import { ApiError } from '@/lib/api/ApiError';
+import { sessionExpiry } from '@/lib/api/sessionExpiry';
 
 /**
  * Any 401 from the API means the session ended (timeout, logout elsewhere, deactivation).
@@ -23,6 +24,8 @@ export function createQueryClient(): QueryClient {
 
 function handleAuthError(client: QueryClient, error: unknown): void {
   if (ApiError.isApiError(error) && error.isUnauthenticated) {
+    // Signed in until now: the login screen says the session ended.
+    if (client.getQueryData(sessionQueryKey)) sessionExpiry.markEnded();
     client.setQueryData(sessionQueryKey, null);
   }
 }

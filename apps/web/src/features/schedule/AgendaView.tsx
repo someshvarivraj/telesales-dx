@@ -66,7 +66,7 @@ export function AgendaView({
             <div
               className={cn(
                 'flex items-baseline gap-2 px-4 pt-3 sm:block sm:py-3',
-                (isWeekend(date) || holiday) && 'sm:bg-weekend',
+                (isWeekend(date) || holiday) && 'sm:bg-off',
               )}
             >
               <p

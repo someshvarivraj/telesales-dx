@@ -21,6 +21,13 @@ export function createAuthRouter(controller: AuthController, authenticator: Auth
   router.post('/logout', controller.logout);
   router.get('/me', authenticator.requireAuth({ allowPendingPasswordChange: true }), controller.me);
   router.post(
+    '/extend',
+    authenticator.requireAuth({ allowPendingPasswordChange: true }),
+    (req, res) => {
+      res.json({ expiresAt: authenticator.extend(req, res) });
+    },
+  );
+  router.post(
     '/password',
     authenticator.requireAuth({ allowPendingPasswordChange: true }),
     validateBody(changePasswordRequestSchema),

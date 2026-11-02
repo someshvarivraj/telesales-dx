@@ -1,5 +1,5 @@
-import type { Permission } from '@telesales/shared';
-import type { Request, RequestHandler } from 'express';
+import { type Permission, SESSION_EXPIRES_HEADER } from '@telesales/shared';
+import type { Request, RequestHandler, Response } from 'express';
 import type { SessionPolicy } from '../../config/AppConfig.js';
 import type { Clock } from '../../domain/Clock.js';
 import type { User } from '../../domain/user/User.js';
@@ -27,11 +27,12 @@ export class Authenticator {
   ) {}
 
   requireAuth(options: AuthOptions = {}): RequestHandler {
-    return async (req, _res, next) => {
+    return async (req, res, next) => {
       const user = await this.resolveUser(req);
       if (!user) {
         throw new UnauthenticatedError();
       }
+      this.sendExpiry(req, res);
       if (user.mustChangePassword && !options.allowPendingPasswordChange) {
         throw new PasswordChangeRequiredError();
       }
@@ -55,6 +56,24 @@ export class Authenticator {
       }
       next();
     };
+  }
+
+  /**
+   * 「ログインを続ける」 on the warning (request 11/2): the session starts its week again, so a
+   * person in the middle of a task is not signed out.
+   */
+  extend(req: Request, res: Response): string {
+    req.session.authenticatedAt = this.clock.now().getTime();
+    return this.sendExpiry(req, res);
+  }
+
+  /** The earlier of the idle limit (renewed by this request) and the absolute limit. */
+  private sendExpiry(req: Request, res: Response): string {
+    const now = this.clock.now().getTime();
+    const absolute = (req.session.authenticatedAt ?? now) + this.policy.absoluteTimeoutMs;
+    const expiresAt = new Date(Math.min(now + this.policy.idleTimeoutMs, absolute)).toISOString();
+    res.setHeader(SESSION_EXPIRES_HEADER, expiresAt);
+    return expiresAt;
   }
 
   private async resolveUser(req: Request): Promise<User | null> {

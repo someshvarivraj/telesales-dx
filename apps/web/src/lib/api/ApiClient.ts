@@ -1,5 +1,11 @@
-import { type ApiErrorBody, CSRF_HEADER, CSRF_HEADER_VALUE } from '@telesales/shared';
+import {
+  type ApiErrorBody,
+  CSRF_HEADER,
+  CSRF_HEADER_VALUE,
+  SESSION_EXPIRES_HEADER,
+} from '@telesales/shared';
 import { ApiError } from './ApiError';
+import { sessionExpiry } from './sessionExpiry';
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -89,7 +95,7 @@ export class ApiClient {
   ): Promise<Response> {
     const isForm = body instanceof FormData;
     try {
-      return await fetch(`${this.baseUrl}${path}`, {
+      const response = await fetch(`${this.baseUrl}${path}`, {
         method,
         credentials: 'same-origin',
         headers: {
@@ -100,6 +106,9 @@ export class ApiClient {
         body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
         signal,
       });
+      const expires = response.headers.get(SESSION_EXPIRES_HEADER);
+      if (expires) sessionExpiry.set(expires);
+      return response;
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
