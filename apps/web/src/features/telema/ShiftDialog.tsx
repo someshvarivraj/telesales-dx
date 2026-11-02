@@ -1,15 +1,16 @@
 import { type ShiftDto, ShiftKind } from '@telesales/shared';
-import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { FormField } from '@/components/ui/FormField';
 import { Select } from '@/components/ui/Select';
 import { TimePicker } from '@/components/ui/TimePicker';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate } from '@/lib/format';
+import { useDraft } from '@/lib/drafts';
 import { useDeleteShift, useSaveShift } from './api';
 import { formatMinutes } from './telemaAccess';
 
@@ -40,11 +41,24 @@ interface ShiftDialogProps {
 export function ShiftDialog({ open, onClose, person, date, shift, usual }: ShiftDialogProps) {
   const save = useSaveShift();
   const remove = useDeleteShift();
-  const [kind, setKind] = useState<ShiftKind>(shift?.kind ?? ShiftKind.Work);
-  const [start, setStart] = useState(shift?.startTime ?? usual.start ?? '09:00');
-  const [end, setEnd] = useState(shift?.endTime ?? usual.end ?? '18:00');
-  const [breakMinutes, setBreakMinutes] = useState(shift?.breakMinutes ?? usual.breakMinutes);
-  const [note, setNote] = useState(shift?.note ?? '');
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft(`shift:${person.id}:${date}`, {
+    kind: shift?.kind ?? ShiftKind.Work,
+    start: shift?.startTime ?? usual.start ?? '09:00',
+    end: shift?.endTime ?? usual.end ?? '18:00',
+    breakMinutes: shift?.breakMinutes ?? usual.breakMinutes,
+    note: shift?.note ?? '',
+  });
+  const { kind, start, end, breakMinutes, note } = draft.value;
+  const field =
+    <K extends keyof typeof draft.value>(key: K) =>
+    (value: (typeof draft.value)[K]) =>
+      draft.set((current) => ({ ...current, [key]: value }));
+  const setKind = field('kind');
+  const setStart = field('start');
+  const setEnd = field('end');
+  const setBreakMinutes = field('breakMinutes');
+  const setNote = field('note');
   const work = kind === ShiftKind.Work;
   const invalid = work && end <= start;
   const error = save.error ?? remove.error;
@@ -60,7 +74,12 @@ export function ShiftDialog({ open, onClose, person, date, shift, usual }: Shift
         breakMinutes: work ? breakMinutes : 0,
         note: note.trim() || null,
       },
-      { onSuccess: onClose },
+      {
+        onSuccess: () => {
+          draft.reset();
+          onClose();
+        },
+      },
     );
 
   return (
@@ -80,6 +99,7 @@ export function ShiftDialog({ open, onClose, person, date, shift, usual }: Shift
               消去
             </Button>
           )}
+          {!shift && <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />}
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -89,6 +109,7 @@ export function ShiftDialog({ open, onClose, person, date, shift, usual }: Shift
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       <div className="flex flex-col gap-4">
         {error && <Alert tone="error">{errorMessageOf(error)}</Alert>}
         <fieldset className="flex gap-6">

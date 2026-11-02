@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Button, LinkButton } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DescriptionList } from '@/components/ui/DescriptionList';
@@ -27,6 +28,7 @@ import { useAppointments } from '@/features/appointments/api';
 import { AppointmentStatusBadge } from '@/features/appointments/AppointmentBadges';
 import { useOptionList } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useCallRecords, useCompany, useSaveTelemaMemo } from './api';
@@ -380,12 +382,15 @@ export function CompanyPage() {
 /** テレマメモ (request 10/29): 定休日・始業時間・就業時間など、次に架ける人が知っておくこと. */
 function TelemaMemoCard({ company, canWrite }: { company: CompanyDetail; canWrite: boolean }) {
   const save = useSaveTelemaMemo(company.id);
-  const [memo, setMemo] = useState(company.telemaMemo ?? '');
+  const draft = useDraft(`telema-memo:${company.id}`, company.telemaMemo ?? '');
+  const memo = draft.value;
+  const setMemo = draft.set;
   const changed = memo.trim() !== (company.telemaMemo ?? '');
   return (
     <Card title="テレマメモ">
       {canWrite ? (
         <div className="flex flex-col gap-2">
+          <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
           <Textarea
             aria-label="テレマメモ"
             rows={4}
@@ -396,6 +401,7 @@ function TelemaMemoCard({ company, canWrite }: { company: CompanyDetail; canWrit
           />
           {save.isError && <Alert tone="error">{errorMessageOf(save.error)}</Alert>}
           <div className="flex items-center justify-end gap-3">
+            <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
             {save.isSuccess && !changed && (
               <span className="text-xs text-ink-sub">保存しました</span>
             )}
@@ -403,7 +409,7 @@ function TelemaMemoCard({ company, canWrite }: { company: CompanyDetail; canWrit
               variant="secondary"
               disabled={!changed}
               loading={save.isPending}
-              onClick={() => save.mutate(memo.trim() || null)}
+              onClick={() => save.mutate(memo.trim() || null, { onSuccess: draft.commit })}
             >
               メモを保存
             </Button>

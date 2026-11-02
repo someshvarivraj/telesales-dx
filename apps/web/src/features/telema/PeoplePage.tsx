@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormField } from '@/components/ui/FormField';
 import { QueryState } from '@/components/ui/QueryState';
@@ -15,6 +16,7 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { timeOptions } from '@/lib/format';
+import { useDraft } from '@/lib/drafts';
 import { useTelemarketers, useUpdateOwnUsualHours, useUpdateTelemarketer } from './api';
 import { useTelemaAccess, WEEKDAY_OPTIONS, weekdaysLabel } from './telemaAccess';
 
@@ -126,7 +128,8 @@ function PersonDialog({
 }) {
   const updateAll = useUpdateTelemarketer();
   const updateOwn = useUpdateOwnUsualHours();
-  const [values, setValues] = useState({
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft(`telemarketer:${person.user.id}`, {
     jobType: person.jobType ?? '',
     isAllocationTarget: person.isAllocationTarget,
     territory: person.territory,
@@ -135,6 +138,8 @@ function PersonDialog({
     usualBreakMinutes: person.usualBreakMinutes,
     usualWeekdays: person.usualWeekdays,
   });
+  const values = draft.value;
+  const setValues = draft.set;
   const [prefecture, setPrefecture] = useState('');
   const invalid = !!values.usualStart && !!values.usualEnd && values.usualEnd <= values.usualStart;
   const pending = updateAll.isPending || updateOwn.isPending;
@@ -158,10 +163,20 @@ function PersonDialog({
             territory: values.territory,
           },
         },
-        { onSuccess: onClose },
+        {
+          onSuccess: () => {
+            draft.reset();
+            onClose();
+          },
+        },
       );
     } else {
-      updateOwn.mutate(usual, { onSuccess: onClose });
+      updateOwn.mutate(usual, {
+        onSuccess: () => {
+          draft.reset();
+          onClose();
+        },
+      });
     }
   };
 
@@ -173,6 +188,7 @@ function PersonDialog({
       size="lg"
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -182,6 +198,7 @@ function PersonDialog({
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       <div className="flex flex-col gap-4">
         {error && <Alert tone="error">{errorMessageOf(error)}</Alert>}
         {full && (

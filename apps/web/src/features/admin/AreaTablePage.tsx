@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormField } from '@/components/ui/FormField';
 import { QueryState } from '@/components/ui/QueryState';
@@ -25,6 +26,7 @@ import { TextInput } from '@/components/ui/TextInput';
 import { usePeople } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, todayJst } from '@/lib/format';
+import { useDraft } from '@/lib/drafts';
 import {
   useAreaRules,
   useCompanyGroups,
@@ -44,7 +46,8 @@ function RuleDialog({ rule, onClose }: { rule?: AreaRuleDto; onClose: () => void
   const remove = useDeleteAreaRule();
   const reps = usePeople(Role.Sales);
   const groups = useCompanyGroups();
-  const [values, setValues] = useState({
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft(`area-rule:${rule?.id ?? 'new'}`, {
     prefecture: rule?.prefecture ?? '',
     city: rule?.city ?? '',
     customerTypeCondition: rule?.customerTypeCondition ?? '',
@@ -55,6 +58,8 @@ function RuleDialog({ rule, onClose }: { rule?: AreaRuleDto; onClose: () => void
     validFrom: rule?.validFrom ?? todayJst(),
     validTo: rule?.validTo ?? '',
   });
+  const values = draft.value;
+  const setValues = draft.set;
   const repOptions = (reps.data ?? []).map((p) => ({ value: p.id, label: p.name }));
   const submit = () => {
     const request: AreaRuleRequest = {
@@ -69,7 +74,15 @@ function RuleDialog({ rule, onClose }: { rule?: AreaRuleDto; onClose: () => void
       validFrom: values.validFrom,
       validTo: values.validTo || null,
     };
-    save.mutate({ id: rule?.id, request }, { onSuccess: onClose });
+    save.mutate(
+      { id: rule?.id, request },
+      {
+        onSuccess: () => {
+          draft.reset();
+          onClose();
+        },
+      },
+    );
   };
   return (
     <Dialog
@@ -88,6 +101,7 @@ function RuleDialog({ rule, onClose }: { rule?: AreaRuleDto; onClose: () => void
               削除
             </Button>
           )}
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -101,6 +115,7 @@ function RuleDialog({ rule, onClose }: { rule?: AreaRuleDto; onClose: () => void
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       <div className="flex flex-col gap-4">
         {(save.isError || remove.isError) && (
           <Alert tone="error">{errorMessageOf(save.error ?? remove.error)}</Alert>

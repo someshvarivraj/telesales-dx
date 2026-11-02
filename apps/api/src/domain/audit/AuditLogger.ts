@@ -13,6 +13,7 @@ export const AuditAction = {
   CompanyFlagResolved: 'company.flag.resolved',
   CompanyMerged: 'company.merged',
   ListImported: 'list.imported',
+  ListImportUndone: 'list.import_undone',
   AvoidListImported: 'avoid_list.imported',
   AvoidPhoneAdded: 'avoid_phone.added',
   AvoidPhoneRemoved: 'avoid_phone.removed',

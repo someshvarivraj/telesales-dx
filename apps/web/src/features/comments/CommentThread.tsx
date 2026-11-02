@@ -4,6 +4,8 @@ import { MessageSquare, Reply } from 'lucide-react';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
+import { ResetButton } from '@/components/ui/DraftBar';
+import { useDraft } from '@/lib/drafts';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Textarea } from '@/components/ui/Textarea';
 import { usePermission } from '@/features/auth/hooks/usePermission';
@@ -19,24 +21,29 @@ interface CommentThreadProps {
 }
 
 function CommentForm({
+  draftKey,
   onSubmit,
   pending,
   placeholder,
   autoFocus,
 }: {
+  /** What is being written is kept through a refresh until sent (request 11/2). */
+  draftKey: string;
   onSubmit: (body: string) => Promise<unknown>;
   pending: boolean;
   placeholder: string;
   autoFocus?: boolean;
 }) {
-  const [body, setBody] = useState('');
+  const draft = useDraft(draftKey, '');
+  const body = draft.value;
+  const setBody = draft.set;
   return (
     <form
       className="flex flex-col gap-2"
       onSubmit={(event) => {
         event.preventDefault();
         if (!body.trim()) return;
-        void onSubmit(body.trim()).then(() => setBody(''));
+        void onSubmit(body.trim()).then(() => draft.reset());
       }}
     >
       <Textarea
@@ -47,7 +54,11 @@ function CommentForm({
         aria-label={placeholder}
         autoFocus={autoFocus}
       />
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {draft.restoredAt !== null && (
+          <span className="mr-auto self-center text-xs text-schedule">前回の入力を戻しました</span>
+        )}
+        <ResetButton dirty={draft.dirty} onReset={draft.reset} />
         <Button type="submit" size="md" loading={pending} disabled={!body.trim()}>
           送信
         </Button>
@@ -92,6 +103,7 @@ function CommentItem({
         <div className="ml-5">
           {replying ? (
             <CommentForm
+              draftKey={`comment-reply:${comment.id}`}
               pending={false}
               placeholder="返信を書く"
               autoFocus
@@ -149,6 +161,7 @@ export function CommentThread({
       )}
       {canWrite && (
         <CommentForm
+          draftKey={`comment:${appointmentId ?? ''}:${callRecordId ?? ''}`}
           pending={add.isPending}
           placeholder="質問・コメントを書く"
           onSubmit={(body) => submit(body)}

@@ -8,12 +8,13 @@ import {
   Role,
 } from '@telesales/shared';
 import { AlignLeft, Building2, Clock, Repeat, Tag, UserRound, Users } from 'lucide-react';
-import { type ReactNode, useDeferredValue, useId, useState } from 'react';
+import { type ReactNode, useDeferredValue, useId } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { Dialog } from '@/components/ui/Dialog';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import { TextInput } from '@/components/ui/TextInput';
@@ -23,6 +24,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { defaultEndTime, formatTime, toInstant } from '@/lib/format';
+import { useDraft } from '@/lib/drafts';
 import { jstDate } from '@telesales/shared';
 import { useSavePlan } from './api';
 import { Avatar } from './calendar/Avatar';
@@ -44,26 +46,32 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
   const people = usePeople();
   const sales = usePeople(Role.Sales);
   const initialDate = plan ? jstDate(new Date(plan.startsAt)) : (defaults?.date ?? '');
-  const [values, setValues] = useState({
-    ownerId: plan?.owner.id ?? defaults?.ownerId ?? '',
-    type: plan?.type ?? 'INTERNAL',
-    // An old visit kept the company as its title: start with an empty 件名 then.
-    title: plan && plan.title !== plan.companyName ? plan.title : '',
-    companyName: plan?.companyName ?? '',
-    date: initialDate,
-    endDate: plan ? jstDate(new Date(new Date(plan.endsAt).getTime() - 1)) : initialDate,
-    start: plan && !plan.allDay ? formatTime(plan.startsAt) : (defaults?.time ?? '10:00'),
-    end:
-      plan && !plan.allDay
-        ? formatTime(plan.endsAt)
-        : (defaults?.endTime ?? defaultEndTime(defaults?.time ?? '10:00')),
-    allDay: plan?.allDay ?? false,
-    status: plan?.status ?? PlanStatus.Fixed,
-    holidayWork: plan?.holidayWork ?? false,
-    note: plan?.note ?? '',
-    attendeeIds: plan?.attendees.map((attendee) => attendee.id) ?? [],
-    repeatWeeks: 1,
-  });
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft(
+    `plan:${plan?.id ?? `new:${defaults?.ownerId ?? ''}:${defaults?.date ?? ''}`}`,
+    {
+      ownerId: plan?.owner.id ?? defaults?.ownerId ?? '',
+      type: plan?.type ?? 'INTERNAL',
+      // An old visit kept the company as its title: start with an empty 件名 then.
+      title: plan && plan.title !== plan.companyName ? plan.title : '',
+      companyName: plan?.companyName ?? '',
+      date: initialDate,
+      endDate: plan ? jstDate(new Date(new Date(plan.endsAt).getTime() - 1)) : initialDate,
+      start: plan && !plan.allDay ? formatTime(plan.startsAt) : (defaults?.time ?? '10:00'),
+      end:
+        plan && !plan.allDay
+          ? formatTime(plan.endsAt)
+          : (defaults?.endTime ?? defaultEndTime(defaults?.time ?? '10:00')),
+      allDay: plan?.allDay ?? false,
+      status: plan?.status ?? PlanStatus.Fixed,
+      holidayWork: plan?.holidayWork ?? false,
+      note: plan?.note ?? '',
+      attendeeIds: plan?.attendees.map((attendee) => attendee.id) ?? [],
+      repeatWeeks: 1,
+    },
+  );
+  const values = draft.value;
+  const setValues = draft.set;
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
   const withCompany = PLAN_TYPES_WITH_COMPANY.includes(values.type);
@@ -92,7 +100,15 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       candidateGroupId: plan?.candidateGroupId ?? null,
       repeat: !plan && values.repeatWeeks > 1 ? { weeklyCount: values.repeatWeeks } : null,
     };
-    save.mutate({ id: plan?.id, request }, { onSuccess: onClose });
+    save.mutate(
+      { id: plan?.id, request },
+      {
+        onSuccess: () => {
+          draft.reset();
+          onClose();
+        },
+      },
+    );
   };
 
   // Attendees are sales reps (spec §6: 同席 is another rep joining the visit).
@@ -116,6 +132,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       size="lg"
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -133,6 +150,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       <div className="flex flex-col gap-1">
         {save.isError && (
           <Alert tone="error" className="mb-3">

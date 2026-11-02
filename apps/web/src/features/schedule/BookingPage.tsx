@@ -13,7 +13,7 @@ import {
   Permission,
 } from '@telesales/shared';
 import { Check, FileSpreadsheet, FileText, PencilLine } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ReactNode, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
@@ -22,6 +22,7 @@ import { BackLink } from '@/components/ui/BackLink';
 import { Button, LinkButton } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { DescriptionList } from '@/components/ui/DescriptionList';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Dialog } from '@/components/ui/Dialog';
 import { FileDrop } from '@/components/ui/FileDrop';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -46,6 +47,7 @@ import { useCallRecords, useCompany } from '@/features/calls/api';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { defaultEndTime, formatDate, todayJst, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { type Slot, SlotPicker } from './SlotPicker';
@@ -161,15 +163,36 @@ function BookingForm(props: BookingFormProps) {
   const [prefilled, setPrefilled] = useState<AppointmentFilePrefill | null>(null);
   const salesBooked = source === AppointmentSource.SalesBooked;
 
-  const [slot, setSlot] = useState<Slot>(() => {
-    const start = params.get('start') ?? '10:00';
-    return {
-      repId: original?.salesRep.id ?? params.get('repId') ?? (salesBooked ? user.id : ''),
-      date: params.get('date') ?? todayJst(),
-      start,
-      end: params.get('end') ?? defaultEndTime(start),
-    };
-  });
+  // Everything typed is kept through a refresh or a closed window until it is registered (11/2).
+  // The slot comes back too, but has to be held again (holds end with the page).
+  const draft = useDraft<{ slot: Slot; company: CompanyValues; values: AppointmentValues }>(
+    `booking:${original?.id ?? company?.id ?? 'new'}:${params.get('source') ?? ''}`,
+    () => {
+      const start = params.get('start') ?? '10:00';
+      return {
+        slot: {
+          repId: original?.salesRep.id ?? params.get('repId') ?? (salesBooked ? user.id : ''),
+          date: params.get('date') ?? todayJst(),
+          start,
+          end: params.get('end') ?? defaultEndTime(start),
+        },
+        company: emptyCompany,
+        values: initialValues(params, props, source),
+      };
+    },
+  );
+  const part =
+    <K extends 'slot' | 'company' | 'values'>(key: K) =>
+    (next: SetStateAction<(typeof draft.value)[K]>) =>
+      draft.set((current) => ({
+        ...current,
+        [key]:
+          typeof next === 'function'
+            ? (next as (previous: (typeof draft.value)[K]) => (typeof draft.value)[K])(current[key])
+            : next,
+      }));
+  const slot = draft.value.slot;
+  const setSlot = part('slot');
   // From MoraBot's 「枠を押さえて登録画面へ」: hold the proposed slot as soon as the page opens.
   const autoHeld = useRef(false);
   useEffect(() => {
@@ -177,10 +200,10 @@ function BookingForm(props: BookingFormProps) {
     autoHeld.current = true;
     void lock.acquire(slot.repId, toInstant(slot.date, slot.start), toInstant(slot.date, slot.end));
   }, [params, slot, lock]);
-  const [companyValues, setCompanyValues] = useState<CompanyValues>(emptyCompany);
-  const [values, setValues] = useState<AppointmentValues>(() =>
-    initialValues(params, props, source),
-  );
+  const companyValues = draft.value.company;
+  const setCompanyValues = part('company');
+  const values = draft.value.values;
+  const setValues = part('values');
 
   const readFiles = (selected: File[], rowIndex?: number) => {
     const list = selected.slice(0, 2);
@@ -262,6 +285,7 @@ function BookingForm(props: BookingFormProps) {
     create.mutate(request(), {
       onSuccess: (appointment) => {
         lock.forget();
+        draft.reset();
         navigate(paths.appointmentMail(appointment.id, 'booking'), { replace: true });
       },
       onError: () => setConfirming(false),
@@ -283,6 +307,7 @@ function BookingForm(props: BookingFormProps) {
       />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
         <div className="flex flex-col gap-5">
+          <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
           {original && (
             <Alert tone="info">
               取り消したアポ（{formatDate(jstDate(new Date(original.startsAt)))}
@@ -493,6 +518,7 @@ function BookingForm(props: BookingFormProps) {
           )}
 
           <div className="flex flex-wrap items-center justify-end gap-3 lg:hidden">
+            <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
             <Button variant="secondary" onClick={() => navigate(-1)}>
               キャンセル
             </Button>
@@ -548,6 +574,7 @@ function BookingForm(props: BookingFormProps) {
               <Button variant="text" fullWidth onClick={() => navigate(-1)}>
                 キャンセル
               </Button>
+              <ResetButton dirty={draft.dirty} onReset={draft.reset} className="w-full" />
               {!held && (
                 <p className="text-center text-xs text-ink-sub">
                   先に「この枠を押さえる」を押してください。
