@@ -91,8 +91,8 @@ export const ja = {
     [TimeOffKind.TelemaStop]: 'テレマアポ停止',
   },
   listPurpose: {
-    [ListImportPurpose.CallRequest]: '架電を依頼する',
-    [ListImportPurpose.RegisterOnly]: '企業情報として登録するだけ',
+    [ListImportPurpose.CallRequest]: '今日から架電（架電対象）',
+    [ListImportPurpose.RegisterOnly]: 'あとで架電（架電対象外）',
   },
   companyFlag: {
     [CompanyFlag.None]: '',

@@ -30,6 +30,7 @@ export interface MailAppointment {
     name: string;
     clientNo: string | null;
     nearestStation: string | null;
+    walkMinutes?: number | null;
     address: string | null;
     phone: string | null;
     department: string | null;
@@ -82,7 +83,9 @@ export function bookingMail(
     `[取引区分] ${value(appointment.customerTypeLabel)}`,
     `[訪問形態] ${FORMAT_IN_MAIL[appointment.format]}`,
     `[会社名] ${companyLine(appointment)}`,
-    `[最寄駅] ${value(appointment.company.nearestStation)}`,
+    `[最寄駅] ${value(appointment.company.nearestStation)}${
+      appointment.company.walkMinutes != null ? ` 徒歩${appointment.company.walkMinutes}分` : ''
+    }`,
     `[住所] ${value(appointment.visitAddress ?? appointment.company.address)}`,
     `[代表TEL] ${value(appointment.company.phone)}`,
     `[部署] ${value(appointment.contactDepartment ?? appointment.company.department)}`,

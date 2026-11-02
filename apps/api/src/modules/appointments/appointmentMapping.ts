@@ -37,6 +37,7 @@ export const appointmentDetailInclude = {
       phone: true,
       address: true,
       nearestStation: true,
+      walkMinutes: true,
       url: true,
     },
   },

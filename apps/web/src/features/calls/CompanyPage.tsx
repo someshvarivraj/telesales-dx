@@ -4,7 +4,9 @@ import {
   type CompanyDetail,
   jstDate,
   AVOID_MONTH_CHOICES,
+  formatCapital,
   OptionCategory,
+  stationLabel,
   Permission,
 } from '@telesales/shared';
 import { Building2, CalendarPlus, MessageSquare, Pencil } from 'lucide-react';
@@ -32,6 +34,7 @@ import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import { AvoidCheckbox } from './CompanyAvoid';
 import { CallRecordForm } from './CallRecordForm';
 import { CompanyEditDialog } from './CompanyEditDialog';
+import { CompanyGroupCard } from './CompanyGroup';
 import { FindRepDialog } from './FindRepDialog';
 import { BackBar, BackLink } from '@/components/ui/BackLink';
 
@@ -257,8 +260,9 @@ export function CompanyPage() {
                     { label: '住所', value: data.address, wide: true },
                     { label: '事業所', value: data.office },
                     { label: '部署', value: data.department },
-                    { label: '最寄駅', value: data.nearestStation },
+                    { label: '最寄駅', value: stationLabel(data.nearestStation, data.walkMinutes) },
                     { label: '業種', value: data.industry },
+                    { label: '資本金', value: formatCapital(data.capital) },
                     {
                       label: '企業ランク',
                       value:
@@ -307,6 +311,7 @@ export function CompanyPage() {
                   ]}
                 />
               </Card>
+              <CompanyGroupCard company={data} />
               <TelemaMemoCard company={data} canWrite={canCall || canEdit} />
               <Card title="この会社のアポ">
                 {companyAppointments.length === 0 ? (

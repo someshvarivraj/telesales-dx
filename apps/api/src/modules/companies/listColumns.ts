@@ -12,6 +12,8 @@ export type ListField =
   | 'prefecture'
   | 'city'
   | 'nearestStation'
+  | 'walkMinutes'
+  | 'capital'
   | 'industry'
   | 'customerType'
   | 'clientNo'
@@ -43,6 +45,8 @@ const HEADER_ALIASES: Record<ListField, readonly string[]> = {
   prefecture: ['都道府県'],
   city: ['市区町村'],
   nearestStation: ['最寄駅', '最寄り駅'],
+  walkMinutes: ['徒歩', '徒歩分', '徒歩(分)', '駅徒歩'],
+  capital: ['資本金'],
   industry: ['業種', '業界'],
   customerType: ['取引区分'],
   clientNo: ['クライアントNo', 'クライアントNo.', 'クライアント番号', 'ｸﾗｲｱﾝﾄNo'],
@@ -102,6 +106,8 @@ export const LIST_FIELD_LABEL: Record<ListField, string> = {
   prefecture: '都道府県',
   city: '市区町村',
   nearestStation: '最寄駅',
+  walkMinutes: '徒歩（分）',
+  capital: '資本金',
   industry: '業種',
   customerType: '取引区分',
   clientNo: 'クライアントNo',

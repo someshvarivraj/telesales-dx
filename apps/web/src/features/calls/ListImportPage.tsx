@@ -17,7 +17,6 @@ import { FormField } from '@/components/ui/FormField';
 import { TextInput } from '@/components/ui/TextInput';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
-import { ja } from '@/i18n/ja';
 import { useCommitImport, usePreviewImport } from './api';
 import { checkRows, ImportReview, type RowEdits } from './ImportReview';
 
@@ -57,6 +56,7 @@ export function ListImportPage() {
   const [purpose, setPurpose] = useState<ListImportPurpose>(ListImportPurpose.CallRequest);
   const [listName, setListName] = useState('');
   const [autoAllocate, setAutoAllocate] = useState(true);
+  const [groupDepartments, setGroupDepartments] = useState(true);
   const [edits, setEdits] = useState<RowEdits>({});
   const checked = useMemo(() => (result ? checkRows(result, edits) : []), [result, edits]);
   const fixes = checked
@@ -153,18 +153,20 @@ export function ListImportPage() {
           <Card title="3. 目的を選んで取り込む">
             <div className="flex flex-col gap-4">
               <fieldset className="flex flex-col">
-                <legend className="mb-1 text-sm font-bold">目的</legend>
+                <legend className="mb-1 text-sm font-bold">いつ架電しますか</legend>
                 <Checkbox
                   type="radio"
                   name="purpose"
-                  label={`${ja.listPurpose.CALL_REQUEST}（テレマ全員に知らせ、架電対象にします）`}
+                  label="今日から架電する（架電対象リスト）"
+                  description="架電対象に入り、テレマ全員にお知らせします。"
                   checked={purpose === ListImportPurpose.CallRequest}
                   onChange={() => setPurpose(ListImportPurpose.CallRequest)}
                 />
                 <Checkbox
                   type="radio"
                   name="purpose"
-                  label={`${ja.listPurpose.REGISTER_ONLY}（知らせません）`}
+                  label="あとで架電する（架電対象外リスト）"
+                  description="登録だけして架電対象には入れません。始めるときは、架電対象の画面の「架電対象外」から移せます。"
                   checked={purpose === ListImportPurpose.RegisterOnly}
                   onChange={() => setPurpose(ListImportPurpose.RegisterOnly)}
                 />
@@ -187,6 +189,14 @@ export function ListImportPage() {
                     onChange={() => setAutoAllocate(false)}
                   />
                 </fieldset>
+              )}
+              {result.departmentCount > 0 && (
+                <Checkbox
+                  label={`会社名が同じで部署・事業所が違う ${result.departmentCount}件を、同じ会社の部署としてまとめる`}
+                  description="「要確認」にせず、同じ会社のグループに入れます。電話番号と架電の記録はそれぞれ別のままです。"
+                  checked={groupDepartments}
+                  onChange={(event) => setGroupDepartments(event.target.checked)}
+                />
               )}
               <FormField
                 label="リスト名"
@@ -214,6 +224,7 @@ export function ListImportPage() {
                       purpose,
                       listName: listName.trim(),
                       autoAllocate,
+                      groupDepartments,
                       fixes,
                     })
                   }

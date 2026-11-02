@@ -30,6 +30,10 @@ export const companyFieldsSchema = z.object({
   prefecture: optionalText(10),
   city: optionalText(50),
   nearestStation: optionalText(100),
+  /** Minutes on foot from the nearest station. */
+  walkMinutes: z.number().int().min(0).max(240).nullish(),
+  /** 資本金 in yen. */
+  capital: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullish(),
   industry: optionalText(100),
   customerType: optionalText(48),
   clientNo: optionalText(32),
@@ -54,8 +58,9 @@ export const resolveFlagRequestSchema = z.object({
    * KEEP = a separate company (callable).
    * MERGE = the same company as the match: its import history and records move to the match.
    * EXCLUDE = the same company, but there is no registered match to merge into (not called).
+   * DEPARTMENT = another department / office of the match's company: kept, grouped under it.
    */
-  action: z.enum(['KEEP', 'MERGE', 'EXCLUDE']),
+  action: z.enum(['KEEP', 'MERGE', 'EXCLUDE', 'DEPARTMENT']),
 });
 export type ResolveFlagRequest = z.infer<typeof resolveFlagRequestSchema>;
 
@@ -100,6 +105,8 @@ export const companySearchRequestSchema = z.object({
   conditions: z.array(companyFilterConditionSchema).max(10).default([]),
   match: z.enum(['AND', 'OR']).default('AND'),
   callTargetsOnly: z.boolean().default(true),
+  /** 架電対象外: companies registered for later (request 11/2). */
+  nonTargetsOnly: z.boolean().default(false),
   /** Only companies allocated to me today (confirmed allocation). */
   assignedToMe: z.boolean().default(false),
   page: z.number().int().min(1).default(1),
@@ -125,6 +132,8 @@ export interface CompanyListItem {
 
 export interface CompanyDetail extends CompanyListItem {
   department: string | null;
+  walkMinutes: number | null;
+  capital: number | null;
   url: string | null;
   /** 掲載元のURL: where the list maker found the company (the list's 「引用先URL」). */
   sourceUrl: string | null;
@@ -143,12 +152,45 @@ export interface CompanyDetail extends CompanyListItem {
   avoided: { by: UserRef | null; at: string; source: 'LIST' | 'CALL' } | null;
   /** Same name, phone differs only in the last 1–2 digits (warning only, spec §7). */
   similarNumbers: { id: string; name: string; phone: string | null }[];
+  /** The same company's other departments / offices (grouped, request 11/2). */
+  groupMembers: CompanyRefWithDepartment[];
+  /** Same name, not grouped yet: offered to group as departments. */
+  sameNameCompanies: CompanyRefWithDepartment[];
   /** Companies this one was flagged against on import. */
   flagMatches: { id: string; name: string; phone: string | null }[];
   /** Every list this company came in on, newest first. */
   imports: CompanyImportDto[];
   updatedAt: string;
 }
+
+export interface CompanyRefWithDepartment {
+  id: string;
+  name: string;
+  office: string | null;
+  department: string | null;
+  phone: string | null;
+  /** The company the group is kept under. */
+  isGroupRoot: boolean;
+}
+
+/** Move companies into or out of the call targets (架電対象 / 架電対象外). */
+export const setCallTargetRequestSchema = z.object({
+  companyIds: z.array(z.uuid()).min(1).max(200),
+  isCallTarget: z.boolean(),
+});
+export type SetCallTargetRequest = z.infer<typeof setCallTargetRequestSchema>;
+
+export interface SetCallTargetResult {
+  changed: number;
+  /** Not moved in: on the 回避企業 list or an unresolved duplicate. */
+  skipped: number;
+}
+
+/** Group same-name companies as departments / offices of one company. */
+export const groupDepartmentsRequestSchema = z.object({
+  companyIds: z.array(z.uuid()).min(1).max(50),
+});
+export type GroupDepartmentsRequest = z.infer<typeof groupDepartmentsRequestSchema>;
 
 export interface CompanyImportDto {
   listImportId: string;
@@ -226,6 +268,8 @@ export interface ListImportPreview {
   fixSamples: ({ row: number } & ListRowFix)[];
   /** Companies in Kyoto, Shiga or Nara (the 「s」 label). */
   sAreaCount: number;
+  /** Same name as another company but another department / office: can be grouped. */
+  departmentCount: number;
   problems: ListImportProblemRow[];
   /** Headers of the file in order, for the CSV of rows left out. */
   headers: string[];
@@ -248,6 +292,8 @@ export const commitListImportRequestSchema = z.object({
   listName: requiredText(180),
   /** 「自動割り振りする」: the companies go into the morning automatic allocation. */
   autoAllocate: z.boolean().default(true),
+  /** Same name, another department / office: grouped under that company, not 要確認 (11/2). */
+  groupDepartments: z.boolean().default(true),
   /** Corrections made on the import screen, by Excel row. */
   fixes: z
     .array(

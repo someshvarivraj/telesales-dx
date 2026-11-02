@@ -79,6 +79,17 @@ export function DuplicatesPage() {
                             同じ会社なので架電しない
                           </ResolveButton>
                         )}
+                        {company.flag === CompanyFlag.NeedsCheck &&
+                          company.flagMatches.length > 0 && (
+                            <ResolveButton
+                              company={company.id}
+                              action="DEPARTMENT"
+                              resolve={resolve}
+                              variant="secondary"
+                            >
+                              同じ会社の別の部署・事業所としてまとめる
+                            </ResolveButton>
+                          )}
                         <ResolveButton company={company.id} action="KEEP" resolve={resolve}>
                           {company.flag === CompanyFlag.Duplicate
                             ? '別の会社として架電対象にする'

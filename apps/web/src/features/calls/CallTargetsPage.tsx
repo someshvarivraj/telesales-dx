@@ -1,17 +1,26 @@
-import { CompanyFlag, type CompanyListItem, OptionCategory, Role } from '@telesales/shared';
+import {
+  CompanyFlag,
+  type CompanyListItem,
+  OptionCategory,
+  Permission,
+  Role,
+} from '@telesales/shared';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { QueryState } from '@/components/ui/QueryState';
 import { Table, Td, Th } from '@/components/ui/Table';
+import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { formatDate, formatDateTime, todayJst } from '@/lib/format';
-import { useCompanySearch } from './api';
+import { useCompanySearch, useSetCallTargets } from './api';
 import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import {
   CallTargetFilters,
+  type CallList,
   type Choice,
   type FilterChip,
   type FilterField,
@@ -27,7 +36,14 @@ export function CallTargetsPage() {
     initialList ? [{ key: 1, field: 'listName', value: initialList }] : [],
   );
   const [match, setMatch] = useState<'AND' | 'OR'>('AND');
-  const [onlyTargets, setOnlyTargets] = useState(true);
+  const [list, setList] = useState<CallList>(
+    params.get('targets') === 'later' ? 'NON_TARGETS' : 'TARGETS',
+  );
+  const canImport = usePermission(Permission.ImportLists);
+  const isAdmin = usePermission(Permission.Administer);
+  const canMove = canImport || isAdmin;
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const move = useSetCallTargets();
   // Today's confirmed allocation (priority 2); the home tile links here with ?mine=1.
   const [onlyMine, setOnlyMine] = useState(params.get('mine') === '1');
   const [page, setPage] = useState(1);
@@ -62,7 +78,8 @@ export function CallTargetsPage() {
     keyword,
     conditions,
     match,
-    callTargetsOnly: onlyTargets,
+    callTargetsOnly: list === 'TARGETS',
+    nonTargetsOnly: list === 'NON_TARGETS',
     assignedToMe: onlyMine,
     page,
     pageSize: 50,
@@ -83,6 +100,8 @@ export function CallTargetsPage() {
     return null;
   };
 
+  const selectable = canMove && list !== 'ALL';
+
   return (
     <div className="flex flex-col gap-4">
       <CallTargetFilters
@@ -92,8 +111,12 @@ export function CallTargetsPage() {
         onChips={changed(setChips)}
         match={match}
         onMatch={changed(setMatch)}
-        onlyTargets={onlyTargets}
-        onOnlyTargets={changed(setOnlyTargets)}
+        list={list}
+        onList={(value) => {
+          setList(value);
+          setPicked(new Set());
+          setPage(1);
+        }}
         onlyMine={onlyMine}
         onOnlyMine={changed(setOnlyMine)}
         choicesOf={choicesOf}
@@ -109,6 +132,39 @@ export function CallTargetsPage() {
               <EmptyState mood="think">条件に合う企業はありません。</EmptyState>
             ) : (
               <>
+                {selectable && (
+                  <div className="flex flex-wrap items-center gap-3 border-b border-line bg-column px-4 py-2.5">
+                    <span className="text-sm text-ink-sub">
+                      {picked.size > 0
+                        ? `${picked.size}件を選んでいます`
+                        : list === 'NON_TARGETS'
+                          ? '架電を始める企業を選んで「架電対象にする」を押してください。'
+                          : '今は架電しない企業を選んで「架電対象外にする」を押してください。'}
+                    </span>
+                    {move.data && !move.isPending && (
+                      <span className="text-sm text-success">
+                        {`${move.data.changed}件を移しました`}
+                        {move.data.skipped > 0 &&
+                          `（回避企業・重複の${move.data.skipped}件は移していません）`}
+                      </span>
+                    )}
+                    <Button
+                      className="ml-auto"
+                      size="sm"
+                      variant={list === 'NON_TARGETS' ? 'primary' : 'secondary'}
+                      disabled={picked.size === 0}
+                      loading={move.isPending}
+                      onClick={() =>
+                        move.mutate(
+                          { companyIds: [...picked], isCallTarget: list === 'NON_TARGETS' },
+                          { onSuccess: () => setPicked(new Set()) },
+                        )
+                      }
+                    >
+                      {list === 'NON_TARGETS' ? '架電対象にする' : '架電対象外にする'}
+                    </Button>
+                  </div>
+                )}
                 <div className="border-b border-line">
                   <Pagination
                     page={data.page}
@@ -120,7 +176,27 @@ export function CallTargetsPage() {
                 <Table stickyHeader>
                   <thead>
                     <tr>
-                      <Th className="pl-4">会社名</Th>
+                      {selectable && (
+                        <Th className="w-0 pl-4">
+                          <input
+                            type="checkbox"
+                            className="check-input"
+                            aria-label="このページをすべて選ぶ"
+                            checked={data.items.every((item) => picked.has(item.id))}
+                            onChange={(event) =>
+                              setPicked((current) => {
+                                const next = new Set(current);
+                                for (const item of data.items) {
+                                  if (event.target.checked) next.add(item.id);
+                                  else next.delete(item.id);
+                                }
+                                return next;
+                              })
+                            }
+                          />
+                        </Th>
+                      )}
+                      <Th className={selectable ? undefined : 'pl-4'}>会社名</Th>
                       <Th>エリア</Th>
                       <Th className="max-md:hidden">業種</Th>
                       <Th className="max-lg:hidden">リスト名</Th>
@@ -134,6 +210,15 @@ export function CallTargetsPage() {
                         key={company.id}
                         company={company}
                         gradeLabel={grades.labelOf(company.lastCall?.grade)}
+                        picked={selectable ? picked.has(company.id) : undefined}
+                        onPick={(on) =>
+                          setPicked((current) => {
+                            const next = new Set(current);
+                            if (on) next.add(company.id);
+                            else next.delete(company.id);
+                            return next;
+                          })
+                        }
                       />
                     ))}
                   </tbody>
@@ -156,12 +241,23 @@ export function CallTargetsPage() {
 }
 
 /** One company; the whole row opens it (the name stays a real link for keyboards). */
-function CompanyRow({ company, gradeLabel }: { company: CompanyListItem; gradeLabel: string }) {
+function CompanyRow({
+  company,
+  gradeLabel,
+  picked,
+  onPick,
+}: {
+  company: CompanyListItem;
+  gradeLabel: string;
+  /** Shown with a checkbox when companies can be moved between the lists. */
+  picked?: boolean;
+  onPick: (on: boolean) => void;
+}) {
   const navigate = useNavigate();
   const today = todayJst();
   const due = company.nextCallDate !== null && company.nextCallDate <= today;
   const open = (event: React.MouseEvent) => {
-    if ((event.target as HTMLElement).closest('a,button')) return;
+    if ((event.target as HTMLElement).closest('a,button,input,label')) return;
     if (window.getSelection()?.toString()) return;
     navigate(paths.company(company.id));
   };
@@ -170,7 +266,18 @@ function CompanyRow({ company, gradeLabel }: { company: CompanyListItem; gradeLa
       onClick={open}
       className="cursor-pointer transition-colors duration-100 hover:bg-main-soft/60 [&>td]:py-2.5"
     >
-      <Td className="pl-4">
+      {picked !== undefined && (
+        <Td className="pl-4">
+          <input
+            type="checkbox"
+            className="check-input mt-1"
+            aria-label={`${company.name}を選ぶ`}
+            checked={picked}
+            onChange={(event) => onPick(event.target.checked)}
+          />
+        </Td>
+      )}
+      <Td className={picked !== undefined ? undefined : 'pl-4'}>
         <div className="min-w-44">
           <Link
             to={paths.company(company.id)}
