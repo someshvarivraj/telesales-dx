@@ -104,6 +104,8 @@ export const ja = {
     [ListImportRowStatus.Duplicate]: '重複',
     [ListImportRowStatus.NeedsCheck]: '要確認',
     [ListImportRowStatus.Invalid]: 'エラー',
+    [ListImportRowStatus.Avoided]: '回避企業',
+    [ListImportRowStatus.NoPhone]: '電話番号なし',
   },
   sourceFileType: {
     [SourceFileType.ExistingListCsv]: 'テレマシステムのCSV',
@@ -127,6 +129,7 @@ export const ja = {
     [Permission.WriteShifts]: 'シフトの入力',
     [Permission.ConfirmAllocation]: '割り振りの確定',
     [Permission.EditAreaTable]: '営業担当表の更新',
+    [Permission.ManageAvoidList]: '回避企業の読み込み・外す',
     [Permission.Administer]: '管理',
   },
   admin: {

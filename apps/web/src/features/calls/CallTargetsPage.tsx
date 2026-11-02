@@ -9,7 +9,7 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { formatDate, formatDateTime, todayJst } from '@/lib/format';
 import { useCompanySearch } from './api';
-import { FlagBadge, GradeBadge } from './CallBadges';
+import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import {
   CallTargetFilters,
   type Choice,
@@ -184,6 +184,7 @@ function CompanyRow({ company, gradeLabel }: { company: CompanyListItem; gradeLa
               <span className="whitespace-nowrap tabular-nums">{company.phone}</span>
             )}
             <FlagBadge flag={company.flag} />
+            <SAreaBadge prefecture={company.prefecture} />
           </div>
         </div>
       </Td>

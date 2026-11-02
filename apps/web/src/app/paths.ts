@@ -8,6 +8,7 @@ export const paths = {
   callsImport: '/calls/import',
   callsImports: '/calls/imports',
   callsDuplicates: '/calls/duplicates',
+  callsAvoid: '/calls/avoid',
   company: (id: string) => `/calls/companies/${id}`,
   schedule: '/schedule',
   book: '/schedule/book',

@@ -30,6 +30,8 @@ export const Permission = {
   WriteShifts: 'shifts.write',
   ConfirmAllocation: 'allocation.confirm',
   EditAreaTable: 'area_table.edit',
+  /** Load the 回避企業 list and take a company back off it (anyone who calls can add one). */
+  ManageAvoidList: 'avoid_list.manage',
   /** Users, roles, option lists, holiday calendar, notice recipients, lock release. */
   Administer: 'admin.manage',
 } as const;
@@ -59,7 +61,12 @@ const telema: Permission[] = [
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   [Role.Telema]: telema,
   // A lead is a telemarketer with extra permissions.
-  [Role.TelemaLead]: [...telema, Permission.ImportLists, Permission.ConfirmAllocation],
+  [Role.TelemaLead]: [
+    ...telema,
+    Permission.ImportLists,
+    Permission.ConfirmAllocation,
+    Permission.ManageAvoidList,
+  ],
   [Role.Sales]: [
     ...everyone,
     // Q-02 (10/20): sales do not import new lists (an admin can still grant it).

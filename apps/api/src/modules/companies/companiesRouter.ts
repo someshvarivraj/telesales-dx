@@ -1,4 +1,5 @@
 import {
+  avoidListQuerySchema,
   commitListImportRequestSchema,
   companySearchRequestSchema,
   createCallRecordRequestSchema,
@@ -24,6 +25,7 @@ import type { CallRecordExportService } from '../callRecords/CallRecordExportSer
 import type { CallRecordService } from '../callRecords/CallRecordService.js';
 import type { CommentService } from '../comments/CommentService.js';
 import type { FileService } from '../files/FileService.js';
+import type { AvoidListService } from './AvoidListService.js';
 import type { CompanyService } from './CompanyService.js';
 import type { ListImportService } from './ListImportService.js';
 
@@ -31,6 +33,7 @@ export interface CompaniesDeps {
   authenticator: Authenticator;
   companies: CompanyService;
   imports: ListImportService;
+  avoidList: AvoidListService;
   callRecords: CallRecordService;
   callExports: CallRecordExportService;
   comments: CommentService;
@@ -205,6 +208,33 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       sendFile(res, record, content);
     },
   );
+
+  // 回避企業 (Sano 10/28 ⑥, 10/30): anyone who calls adds; a lead or an admin loads and removes.
+  const manageAvoid = auth.requireAnyPermission(Permission.ManageAvoidList);
+  router.get('/avoid-phones', view, async (req, res) => {
+    res.json(await deps.avoidList.list(parseQuery(avoidListQuerySchema, req)));
+  });
+  router.post('/avoid-phones/import', manageAvoid, uploadSingleFile, async (req, res) => {
+    if (!req.file) {
+      throw new ValidationError({ file: ['required'] });
+    }
+    res.json(await deps.avoidList.importFile(currentUserOf(req), req.file));
+  });
+  router.delete('/avoid-phones/:id', manageAvoid, async (req, res) => {
+    await deps.avoidList.remove(currentUserOf(req), idParam(req));
+    res.status(204).end();
+  });
+  router.post(
+    '/companies/:id/avoid',
+    auth.requireAnyPermission(Permission.WriteCallRecords),
+    async (req, res) => {
+      res.status(201).json(await deps.avoidList.addCompany(currentUserOf(req), idParam(req)));
+    },
+  );
+  router.delete('/companies/:id/avoid', manageAvoid, async (req, res) => {
+    await deps.avoidList.removeForCompany(currentUserOf(req), idParam(req));
+    res.status(204).end();
+  });
 
   router.get('/comments', view, async (req, res) => {
     res.json(await deps.comments.list(parseQuery(commentQuery, req)));

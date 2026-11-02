@@ -27,6 +27,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CallsLayout } from '@/features/calls/CallsLayout';
 import { CallTargetsPage } from '@/features/calls/CallTargetsPage';
 import { CompanyPage } from '@/features/calls/CompanyPage';
+import { AvoidListPage } from '@/features/calls/AvoidListPage';
 import { DuplicatesPage } from '@/features/calls/DuplicatesPage';
 import { ImportHistoryPage } from '@/features/calls/ImportHistoryPage';
 import { ListImportPage } from '@/features/calls/ListImportPage';
@@ -90,6 +91,7 @@ export const routes: RouteObject[] = [
             path: 'duplicates',
             element: guard([Permission.ResolveDuplicates], <DuplicatesPage />),
           },
+          { path: 'avoid', element: <AvoidListPage /> },
         ],
       },
       { path: '/calls/companies/:id', element: guard(view, <CompanyPage />) },

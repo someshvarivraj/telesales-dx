@@ -1,4 +1,4 @@
-import { CompanyFlag } from '@telesales/shared';
+import { CompanyFlag, isSArea } from '@telesales/shared';
 import { cn } from '@/components/ui/cn';
 import { StatusLabel } from '@/components/ui/StatusLabel';
 import { ja } from '@/i18n/ja';
@@ -70,5 +70,18 @@ export function FlagBadge({ flag }: { flag: CompanyFlag }) {
     <StatusLabel tone={flag === CompanyFlag.Duplicate ? 'danger' : 'warning'} secondary>
       {ja.companyFlag[flag]}
     </StatusLabel>
+  );
+}
+
+/** 「s」: Kyoto, Shiga and Nara (Sano 10/28 ②) — a label only, calling is not blocked. */
+export function SAreaBadge({ prefecture }: { prefecture: string | null }) {
+  if (!isSArea(prefecture)) return null;
+  return (
+    <span
+      title="京都・滋賀・奈良（商圏チェック）"
+      className="inline-grid h-5 min-w-5 place-items-center border border-schedule px-1 text-xs leading-none font-bold text-schedule"
+    >
+      s<span className="sr-only">：京都・滋賀・奈良（商圏チェック）</span>
+    </span>
   );
 }

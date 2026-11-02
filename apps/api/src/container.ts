@@ -52,6 +52,7 @@ import { FeedbackService } from './modules/feedback/FeedbackService.js';
 import { createFeedbackRouter } from './modules/feedback/feedbackRouter.js';
 import { createCompaniesRouter } from './modules/companies/companiesRouter.js';
 import { CompanyService } from './modules/companies/CompanyService.js';
+import { AvoidListService } from './modules/companies/AvoidListService.js';
 import { ListImportService } from './modules/companies/ListImportService.js';
 import { DashboardService } from './modules/dashboard/DashboardService.js';
 import { FileService } from './modules/files/FileService.js';
@@ -149,6 +150,7 @@ export class Container {
     // ① Calls
     const companies = new CompanyService(prisma, this.audit, this.clock);
     const listImports = new ListImportService(prisma, files, options, notifications, this.audit);
+    const avoidList = new AvoidListService(prisma, this.audit);
     const callRecords = new CallRecordService(prisma, policy, this.audit, this.clock);
     const callExports = new CallRecordExportService(prisma, options, this.clock);
     const comments = new CommentService(prisma, notifications);
@@ -258,6 +260,7 @@ export class Container {
         authenticator,
         companies,
         imports: listImports,
+        avoidList,
         callRecords,
         callExports,
         comments,

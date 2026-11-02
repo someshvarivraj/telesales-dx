@@ -1,4 +1,6 @@
 import type {
+  AvoidListImportResult,
+  AvoidPhoneDto,
   CallRecordDto,
   CommentDto,
   CommitListImportRequest,
@@ -28,6 +30,7 @@ export const callsKeys = {
   importRows: (id: string, status: string) => ['list-imports', id, 'rows', status] as const,
   flagged: ['companies', 'flagged'] as const,
   listNames: ['companies', 'list-names'] as const,
+  avoid: (keyword: string) => ['avoid-phones', keyword] as const,
   comments: (target: { appointmentId?: string; callRecordId?: string }) =>
     ['comments', target] as const,
 };
@@ -209,4 +212,59 @@ export async function downloadCallResults(filter: {
       '架電結果.xlsx',
     ),
   );
+}
+
+/** 回避企業 (Sano 10/28 ⑥, 10/30). */
+export function useAvoidList(keyword: string) {
+  return useQuery({
+    queryKey: callsKeys.avoid(keyword),
+    queryFn: ({ signal }) =>
+      apiClient.get<AvoidPhoneDto[]>(
+        `/avoid-phones${toQuery({ keyword: keyword || undefined })}`,
+        signal,
+      ),
+  });
+}
+
+function useAvoidInvalidation() {
+  const client = useQueryClient();
+  return () => {
+    void client.invalidateQueries({ queryKey: ['avoid-phones'] });
+    void client.invalidateQueries({ queryKey: ['companies'] });
+  };
+}
+
+export function useImportAvoidList() {
+  const invalidate = useAvoidInvalidation();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return apiClient.upload<AvoidListImportResult>('/avoid-phones/import', form);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveAvoidPhone() {
+  const invalidate = useAvoidInvalidation();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete<unknown>(`/avoid-phones/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+/** 「回避企業に追加」 on the call screen, and (lead / admin) taking it back off. */
+export function useCompanyAvoid(companyId: string) {
+  const invalidate = useAvoidInvalidation();
+  return useMutation({
+    mutationFn: async (avoid: boolean) => {
+      if (avoid) {
+        await apiClient.post<AvoidPhoneDto>(`/companies/${companyId}/avoid`, {});
+      } else {
+        await apiClient.delete<unknown>(`/companies/${companyId}/avoid`);
+      }
+    },
+    onSuccess: invalidate,
+  });
 }

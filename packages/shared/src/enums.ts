@@ -89,6 +89,10 @@ export const ListImportRowStatus = {
   Duplicate: 'DUPLICATE',
   NeedsCheck: 'NEEDS_CHECK',
   Invalid: 'INVALID',
+  /** Phone on the 回避企業 list: never imported. */
+  Avoided: 'AVOIDED',
+  /** Phone blank or 「不明」: removed and counted. */
+  NoPhone: 'NO_PHONE',
 } as const;
 export type ListImportRowStatus = (typeof ListImportRowStatus)[keyof typeof ListImportRowStatus];
 export const LIST_IMPORT_ROW_STATUSES = valuesOf(ListImportRowStatus);
