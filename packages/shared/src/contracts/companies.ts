@@ -6,6 +6,7 @@ import {
   type ListImportRowStatus,
 } from '../enums.js';
 import { dateString, optionalText, requiredText, type UserRef } from './common.js';
+import type { EditableListField, ListRowFix, ListRowProblem } from './listRows.js';
 
 /** Phone = 10–11 digits once hyphens and spaces are removed (spec §9-1). */
 export const PHONE_DIGITS_PATTERN = /^\d{10,11}$/;
@@ -24,6 +25,7 @@ export const companyFieldsSchema = z.object({
   department: optionalText(100),
   phone: optionalText(32),
   url: optionalText(500),
+  sourceUrl: optionalText(1000),
   address: optionalText(300),
   prefecture: optionalText(10),
   city: optionalText(50),
@@ -124,6 +126,8 @@ export interface CompanyListItem {
 export interface CompanyDetail extends CompanyListItem {
   department: string | null;
   url: string | null;
+  /** 掲載元のURL: where the list maker found the company (the list's 「引用先URL」). */
+  sourceUrl: string | null;
   address: string | null;
   nearestStation: string | null;
   clientNo: string | null;
@@ -135,6 +139,8 @@ export interface CompanyDetail extends CompanyListItem {
   companyGroupId: string | null;
   extra: Record<string, string> | null;
   formerNames: string[];
+  /** On the 回避企業 list (by phone): who put it there and when. */
+  avoided: { by: UserRef | null; at: string; source: 'LIST' | 'CALL' } | null;
   /** Same name, phone differs only in the last 1–2 digits (warning only, spec §7). */
   similarNumbers: { id: string; name: string; phone: string | null }[];
   /** Companies this one was flagged against on import. */
@@ -192,14 +198,37 @@ export interface ListImportRowIssue {
   message: string;
 }
 
+/** A row that cannot be imported as it is: shown so it can be corrected on screen. */
+export interface ListImportProblemRow {
+  row: number;
+  /** The editable values after the automatic fixes. */
+  values: Record<EditableListField, string>;
+  problems: ListRowProblem[];
+  /** The row as read, by header, for the CSV of rows left out. */
+  raw: Record<string, string>;
+}
+
 export interface ListImportPreview {
   fileId: string;
   fileName: string;
+  /** Excel row the headers were found on (1 or 2: the Telema template has a note above). */
+  headerRow: number;
   rowCount: number;
   validCount: number;
   duplicateCount: number;
   checkCount: number;
-  errors: ListImportRowIssue[];
+  /** Rows on the 回避企業 list: left out. */
+  avoided: { row: number; name: string; phone: string }[];
+  /** Rows with a blank or 「不明」 phone: left out. */
+  noPhoneCount: number;
+  /** Rows changed by the automatic fixes, and a few examples. */
+  fixedCount: number;
+  fixSamples: ({ row: number } & ListRowFix)[];
+  /** Companies in Kyoto, Shiga or Nara (the 「s」 label). */
+  sAreaCount: number;
+  problems: ListImportProblemRow[];
+  /** Headers of the file in order, for the CSV of rows left out. */
+  headers: string[];
   /** Header names found in the file and the field each one maps to (null = kept as extra). */
   columns: { header: string; field: string | null }[];
   sample: {
@@ -219,6 +248,18 @@ export const commitListImportRequestSchema = z.object({
   listName: requiredText(180),
   /** 「自動割り振りする」: the companies go into the morning automatic allocation. */
   autoAllocate: z.boolean().default(true),
+  /** Corrections made on the import screen, by Excel row. */
+  fixes: z
+    .array(
+      z.object({
+        row: z.number().int().min(1),
+        name: z.string().max(200).optional(),
+        phone: z.string().max(32).optional(),
+        url: z.string().max(500).optional(),
+      }),
+    )
+    .max(5000)
+    .default([]),
 });
 
 /** 「20261030_」: the import date put in front of every list name (request 10/29). */
@@ -242,6 +283,8 @@ export interface ListImportDto {
   duplicateCount: number;
   checkCount: number;
   errorCount: number;
+  avoidedCount: number;
+  noPhoneCount: number;
   createdAt: string;
 }
 

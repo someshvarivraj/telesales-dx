@@ -206,6 +206,9 @@
 }
 .check-input:disabled {
   cursor: not-allowed;
+}
+/* A ticked box keeps its tick when it cannot be changed. */
+.check-input:disabled:not(:checked) {
   background-color: var(--color-column);
 }
 

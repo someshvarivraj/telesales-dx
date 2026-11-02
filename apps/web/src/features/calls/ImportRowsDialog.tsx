@@ -21,6 +21,8 @@ const STATUS_TONE: Record<ListImportRowStatus, BadgeTone> = {
   [ListImportRowStatus.Duplicate]: 'danger',
   [ListImportRowStatus.NeedsCheck]: 'warning',
   [ListImportRowStatus.Invalid]: 'danger',
+  [ListImportRowStatus.Avoided]: 'neutral',
+  [ListImportRowStatus.NoPhone]: 'neutral',
 };
 
 const STATUS_OPTIONS = LIST_IMPORT_ROW_STATUSES.map((status) => ({

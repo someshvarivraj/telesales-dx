@@ -22,6 +22,7 @@ export function CallsLayout() {
     ...(permissions.includes(Permission.ResolveDuplicates)
       ? [{ to: paths.callsDuplicates, label: '重複・要確認' }]
       : []),
+    { to: paths.callsAvoid, label: '回避企業' },
   ];
   return (
     <>

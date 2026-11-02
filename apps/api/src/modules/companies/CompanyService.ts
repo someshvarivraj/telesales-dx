@@ -71,6 +71,7 @@ export function companyWriteData(fields: CompanyFields) {
     phone: fields.phone,
     phoneDigits: phoneDigitsOf(fields.phone),
     url: fields.url,
+    sourceUrl: fields.sourceUrl,
     address: fields.address,
     prefecture: fields.prefecture ?? parts.prefecture,
     city: fields.city ?? parts.city,
@@ -167,10 +168,17 @@ export class CompanyService {
           take: 50,
         })
       : [];
+    const avoided = company.phoneDigits
+      ? await this.prisma.avoidPhone.findUnique({
+          where: { phoneDigits: company.phoneDigits },
+          include: { createdBy: userRefSelect },
+        })
+      : null;
     return {
       ...this.toListItem(company),
       department: company.department,
       url: company.url,
+      sourceUrl: company.sourceUrl,
       address: company.address,
       nearestStation: company.nearestStation,
       clientNo: company.clientNo,
@@ -182,6 +190,9 @@ export class CompanyService {
       companyGroupId: company.companyGroupId,
       extra: (company.extra as Record<string, string> | null) ?? null,
       formerNames: company.formerNames.map((former) => former.name),
+      avoided: avoided
+        ? { by: userRef(avoided.createdBy), at: iso(avoided.createdAt), source: avoided.source }
+        : null,
       similarNumbers: sameName
         .filter((other) => isSimilarNumber(other.phoneDigits, company.phoneDigits))
         .map(({ id: otherId, name, phone }) => ({ id: otherId, name, phone })),

@@ -16,6 +16,7 @@ const FIELDS = [
   ['department', '部署'],
   ['phone', '電話番号'],
   ['url', 'URL'],
+  ['sourceUrl', '掲載元のURL'],
   ['address', '住所'],
   ['prefecture', '都道府県'],
   ['city', '市区町村'],

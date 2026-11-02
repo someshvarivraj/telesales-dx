@@ -2,9 +2,10 @@ import { parse } from 'csv-parse/sync';
 import ExcelJS from 'exceljs';
 import { FileUnreadableError } from '../../http/errors/AppError.js';
 import { decodeJapaneseText } from '../calendar/HolidayCsvParser.js';
+import { fieldForHeader, splitHeaderCell } from './listColumns.js';
 
 export interface TableRow {
-  /** Row number as the user sees it in Excel (header = 1). */
+  /** Row number as the user sees it in Excel. */
   row: number;
   values: Record<string, string>;
   /** Text written in red, by header (Excel only): the parent company in 「NTT上系」. */
@@ -13,7 +14,36 @@ export interface TableRow {
 
 export interface Table {
   headers: string[];
+  /** Instructions written under a header name, by header (the Telema template). */
+  notes: Record<string, string>;
+  /** Row the headers were found on. */
+  headerRow: number;
   rows: TableRow[];
+}
+
+/** Rows looked at for the headers: the Telema template has a file-name note in row 1. */
+const HEADER_SEARCH_ROWS = 10;
+
+/** The first row where at least two cells are known column names; row 1 if none is. */
+function findHeaderRow(rows: string[][]): number {
+  const index = rows.slice(0, HEADER_SEARCH_ROWS).findIndex(
+    (cells) =>
+      cells.filter((cell) => {
+        const { header, note } = splitHeaderCell(cell);
+        return header && fieldForHeader(header, note);
+      }).length >= 2,
+  );
+  return Math.max(index, 0);
+}
+
+function headersOf(cells: string[]): { headers: string[]; notes: Record<string, string> } {
+  const notes: Record<string, string> = {};
+  const headers = cells.map((cell) => {
+    const { header, note } = splitHeaderCell(cell);
+    if (header && note) notes[header] = note;
+    return header;
+  });
+  return { headers, notes };
 }
 
 function cellText(value: ExcelJS.CellValue): string {
@@ -62,10 +92,6 @@ function redText(cell: ExcelJS.Cell): string {
   return isRed(cell.font?.color) ? cellText(value).trim() : '';
 }
 
-function normalizeHeader(header: string): string {
-  return header.normalize('NFKC').replace(/^﻿/, '').trim();
-}
-
 /**
  * Reads the first sheet of an .xlsx file or a CSV (UTF-8 or Shift_JIS) into rows keyed by
  * header name, so columns are matched by name and new columns can be added later (spec §9-1).
@@ -92,14 +118,19 @@ async function readXlsx(content: Buffer): Promise<Table> {
   if (!sheet || sheet.rowCount < 1) {
     throw new FileUnreadableError({ reason: 'empty' });
   }
-  const headerRow = sheet.getRow(1);
-  const headers: string[] = [];
-  headerRow.eachCell({ includeEmpty: true }, (cell, column) => {
-    headers[column - 1] = normalizeHeader(cellText(cell.value));
-  });
+  const top: string[][] = [];
+  for (let number = 1; number <= Math.min(HEADER_SEARCH_ROWS, sheet.rowCount); number++) {
+    const cells: string[] = [];
+    sheet.getRow(number).eachCell({ includeEmpty: true }, (cell, column) => {
+      cells[column - 1] = cellText(cell.value);
+    });
+    top.push(Array.from(cells, (cell) => cell ?? ''));
+  }
+  const headerRow = findHeaderRow(top) + 1;
+  const { headers, notes } = headersOf(top[headerRow - 1] ?? []);
   const rows: TableRow[] = [];
   sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-    if (rowNumber === 1) {
+    if (rowNumber <= headerRow) {
       return;
     }
     const values: Record<string, string> = {};
@@ -116,7 +147,7 @@ async function readXlsx(content: Buffer): Promise<Table> {
       rows.push({ row: rowNumber, values, ...(Object.keys(red).length > 0 ? { red } : {}) });
     }
   });
-  return { headers: headers.filter(Boolean), rows };
+  return { headers: headers.filter(Boolean), notes, headerRow, rows };
 }
 
 function readCsv(content: Buffer): Table {
@@ -130,22 +161,24 @@ function readCsv(content: Buffer): Table {
   } catch {
     throw new FileUnreadableError({ reason: 'broken_csv' });
   }
-  const [headerRecord, ...dataRecords] = records;
-  if (!headerRecord) {
+  if (records.length === 0) {
     throw new FileUnreadableError({ reason: 'empty' });
   }
-  const headers = headerRecord.map(normalizeHeader);
-  const rows = dataRecords.map((record, index) => {
+  const headerIndex = findHeaderRow(records);
+  const { headers, notes } = headersOf(records[headerIndex] ?? []);
+  const rows = records.slice(headerIndex + 1).map((record, index) => {
     const values: Record<string, string> = {};
     headers.forEach((header, column) => {
       if (header) {
         values[header] = (record[column] ?? '').trim();
       }
     });
-    return { row: index + 2, values };
+    return { row: headerIndex + index + 2, values };
   });
   return {
     headers: headers.filter(Boolean),
+    notes,
+    headerRow: headerIndex + 1,
     rows: rows.filter((r) => Object.values(r.values).some(Boolean)),
   };
 }

@@ -65,6 +65,11 @@ export function ImportHistoryPage() {
                     <Td className="text-xs whitespace-nowrap text-ink-sub">
                       登録 {item.createdCount} ／ 重複 {item.duplicateCount} ／ 要確認{' '}
                       {item.checkCount} ／ 不備 {item.errorCount}
+                      {item.avoidedCount + item.noPhoneCount > 0 && (
+                        <span className="block">
+                          {`除外：回避企業 ${item.avoidedCount} ／ 電話番号なし ${item.noPhoneCount}`}
+                        </span>
+                      )}
                     </Td>
                     <Td className="max-md:hidden">{item.importedBy.name}</Td>
                     <Td className="break-all max-lg:hidden">{item.fileName}</Td>

@@ -10,10 +10,19 @@ import {
   ListImportRowStatus,
   NoticeCode,
   OptionCategory,
-  PHONE_DIGITS_PATTERN,
   phoneDigitsOf,
   datedListName,
   jstDate,
+  cleanListRow,
+  type EditableListField,
+  isSArea,
+  isUnknownPhone,
+  type ListImportProblemRow,
+  type ListRowFix,
+  splitCompanyRank,
+  splitRankCell,
+  UNKNOWN_URL,
+  validateListRow,
 } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
@@ -52,19 +61,26 @@ interface AnalyzedRow {
   matchedName: string | null;
 }
 
-interface InvalidRow {
+interface LeftOutRow {
   row: number;
   raw: Record<string, string>;
-  messages: string[];
 }
 
 interface Analysis {
+  headerRow: number;
+  headers: string[];
   columns: { header: string; field: string | null }[];
   valid: AnalyzedRow[];
-  invalid: InvalidRow[];
-  errors: { row: number; message: string }[];
+  problems: (ListImportProblemRow & LeftOutRow)[];
+  avoided: (LeftOutRow & { name: string; phone: string })[];
+  noPhone: LeftOutRow[];
+  fixes: ({ row: number } & ListRowFix)[];
+  fixedCount: number;
+  sAreaCount: number;
   rowCount: number;
 }
+
+type RowFixes = CommitListImportRequest['fixes'];
 
 const ROW_STATUS_OF: Record<CompanyFlag, ListImportRowStatus> = {
   [CompanyFlag.None]: ListImportRowStatus.Imported,
@@ -72,8 +88,9 @@ const ROW_STATUS_OF: Record<CompanyFlag, ListImportRowStatus> = {
   [CompanyFlag.NeedsCheck]: ListImportRowStatus.NeedsCheck,
 };
 
-const MAX_ERRORS_SHOWN = 300;
+const MAX_PROBLEMS_SHOWN = 1000;
 const SAMPLE_SIZE = 20;
+const FIX_SAMPLES = 30;
 
 /**
  * New call lists (spec §9-1): read → show the person what was read (row errors,
@@ -95,15 +112,22 @@ export class ListImportService {
     const table = await readTableFile(upload.originalname, upload.buffer);
     const stored = await this.files.store(upload, actor.id);
     await this.ensureNotImported(stored.sha256, stored.id);
-    const analysis = await this.analyze(table);
+    const analysis = await this.analyze(table, []);
     return {
       fileId: stored.id,
       fileName: stored.originalName,
+      headerRow: analysis.headerRow,
       rowCount: analysis.rowCount,
       validCount: analysis.valid.length,
       duplicateCount: analysis.valid.filter((row) => row.flag === CompanyFlag.Duplicate).length,
       checkCount: analysis.valid.filter((row) => row.flag === CompanyFlag.NeedsCheck).length,
-      errors: analysis.errors.slice(0, MAX_ERRORS_SHOWN),
+      avoided: analysis.avoided.map(({ row, name, phone }) => ({ row, name, phone })),
+      noPhoneCount: analysis.noPhone.length,
+      fixedCount: analysis.fixedCount,
+      fixSamples: analysis.fixes.slice(0, FIX_SAMPLES),
+      sAreaCount: analysis.sAreaCount,
+      problems: analysis.problems.slice(0, MAX_PROBLEMS_SHOWN),
+      headers: analysis.headers,
       columns: analysis.columns,
       sample: analysis.valid.slice(0, SAMPLE_SIZE).map((row) => ({
         row: row.row,
@@ -120,7 +144,10 @@ export class ListImportService {
     const { record, content } = await this.files.read(input.fileId);
     await this.ensureNotImported(record.sha256, record.id);
     // Re-read: the register may have changed since the preview.
-    const analysis = await this.analyze(await readTableFile(record.originalName, content));
+    const analysis = await this.analyze(
+      await readTableFile(record.originalName, content),
+      input.fixes,
+    );
     if (analysis.valid.length === 0) {
       throw new FileUnreadableError({ reason: 'no_valid_rows' });
     }
@@ -142,7 +169,9 @@ export class ListImportService {
             createdCount: analysis.valid.length,
             duplicateCount: analysis.valid.filter((r) => r.flag === CompanyFlag.Duplicate).length,
             checkCount: analysis.valid.filter((r) => r.flag === CompanyFlag.NeedsCheck).length,
-            errorCount: analysis.invalid.length,
+            errorCount: analysis.problems.length,
+            avoidedCount: analysis.avoided.length,
+            noPhoneCount: analysis.noPhone.length,
           },
           include: { importedBy: userRefSelect, file: true },
         });
@@ -166,12 +195,26 @@ export class ListImportService {
               rawData: row.raw,
               status: ROW_STATUS_OF[row.flag],
             })),
-            ...analysis.invalid.map((row) => ({
+            ...analysis.problems.map((row) => ({
               listImportId: listImport.id,
               rowNumber: row.row,
               rawData: row.raw,
               status: ListImportRowStatus.Invalid,
-              errorMessage: row.messages.join('／'),
+              errorMessage: row.problems.map((problem) => problem.message).join('／'),
+            })),
+            ...analysis.avoided.map((row) => ({
+              listImportId: listImport.id,
+              rowNumber: row.row,
+              rawData: row.raw,
+              status: ListImportRowStatus.Avoided,
+              errorMessage: '回避企業の電話番号',
+            })),
+            ...analysis.noPhone.map((row) => ({
+              listImportId: listImport.id,
+              rowNumber: row.row,
+              rawData: row.raw,
+              status: ListImportRowStatus.NoPhone,
+              errorMessage: '電話番号が空か「不明」',
             })),
           ],
         });
@@ -193,6 +236,8 @@ export class ListImportService {
         duplicateCount: created.duplicateCount,
         checkCount: created.checkCount,
         errorCount: created.errorCount,
+        avoidedCount: created.avoidedCount,
+        noPhoneCount: created.noPhoneCount,
       },
     });
 
@@ -253,6 +298,8 @@ export class ListImportService {
       duplicateCount: row.duplicateCount,
       checkCount: row.checkCount,
       errorCount: row.errorCount,
+      avoidedCount: row.avoidedCount,
+      noPhoneCount: row.noPhoneCount,
       createdAt: iso(row.createdAt),
     };
   }
@@ -279,7 +326,8 @@ export class ListImportService {
       department: row.fields.department ?? null,
       phone: row.fields.phone ?? null,
       phoneDigits: row.phoneDigits,
-      url: row.fields.url ?? null,
+      url: row.fields.url && row.fields.url !== UNKNOWN_URL ? row.fields.url : null,
+      sourceUrl: row.fields.sourceUrl?.slice(0, 1000) ?? null,
       address,
       prefecture: row.fields.prefecture ?? parts.prefecture,
       city: row.fields.city ?? parts.city,
@@ -326,8 +374,11 @@ export class ListImportService {
     }
   }
 
-  private async analyze(table: Table): Promise<Analysis> {
-    const columns = table.headers.map((header) => ({ header, field: fieldForHeader(header) }));
+  private async analyze(table: Table, corrections: RowFixes): Promise<Analysis> {
+    const columns = table.headers.map((header) => ({
+      header,
+      field: fieldForHeader(header, table.notes[header]),
+    }));
     const mapped = new Set(columns.map((column) => column.field).filter(Boolean));
     const missing = REQUIRED_LIST_FIELDS.filter((field) => !mapped.has(field));
     if (missing.length > 0) {
@@ -336,39 +387,83 @@ export class ListImportService {
         columns: missing.map((field) => LIST_FIELD_LABEL[field]),
       });
     }
+    const corrected = new Map(corrections.map(({ row, ...values }) => [row, values]));
+    const rankColumn = columns.find((column) => column.field === 'companyRank');
 
-    const errors: { row: number; message: string }[] = [];
-    const invalid: InvalidRow[] = [];
+    const analysis: Analysis = {
+      headerRow: table.headerRow,
+      headers: table.headers,
+      columns,
+      valid: [],
+      problems: [],
+      avoided: [],
+      noPhone: [],
+      fixes: [],
+      fixedCount: 0,
+      sAreaCount: 0,
+      rowCount: table.rows.length,
+    };
     const candidates: AnalyzedRow[] = [];
     for (const { row, values, red } of table.rows) {
-      const fields: Partial<Record<ListField, string>> = {};
+      const read: Partial<Record<ListField, string>> = {};
       const extra: Record<string, string> = {};
       const raw: Record<string, string> = {};
       for (const column of columns) {
         const value = values[column.header] ?? '';
-        if (value) {
-          raw[column.header] = value;
-        }
+        if (!value) continue;
+        raw[column.header] = value;
         if (column.field) {
-          if (value) {
-            fields[column.field as ListField] = value;
-          }
-        } else if (value) {
+          read[column.field as ListField] = value;
+        } else {
           extra[column.header] = value;
         }
       }
-      // 「NTT上系」 with NTT in red: the rank is 上系 and the parent company NTT.
-      const rankColumn = columns.find((column) => column.field === 'companyRank');
+      // 住所1 + 住所2 (+ the start of 住所3 when the address ran on): one address (Sano 10/28 ④).
+      let addressTail = '';
+      if (read.companyRank) {
+        const { addressPart, rank } = splitRankCell(read.companyRank);
+        addressTail = addressPart;
+        read.companyRank = rank;
+      }
+      const address = [read.address, read.address2, addressTail].filter(Boolean).join(' ');
+      if (address) read.address = address;
+      delete read.address2;
+      Object.assign(read, corrected.get(row));
+
+      const { values: cleaned, fixes } = cleanListRow(read);
+      const fields = cleaned as Partial<Record<ListField, string>>;
+      if (fixes.length > 0) {
+        analysis.fixedCount++;
+        analysis.fixes.push(...fixes.map((fix) => ({ row, ...fix })));
+      }
+      // 「NTT上系」 with NTT in red, or 「上系島津製作所」: rank 上系 and the parent company.
       const parent = rankColumn ? red?.[rankColumn.header] : undefined;
       if (parent && fields.companyRank) {
         fields.companyRank = fields.companyRank.replace(parent, '').trim();
         fields.parentName ??= parent;
+      } else if (fields.companyRank) {
+        const split = splitCompanyRank(fields.companyRank);
+        fields.companyRank = split.rank;
+        if (split.parentName) fields.parentName ??= split.parentName;
       }
-      const rowErrors = validateRow(fields);
+
+      if (isUnknownPhone(fields.phone)) {
+        analysis.noPhone.push({ row, raw });
+        continue;
+      }
+      const problems = validateListRow(fields);
       const phoneDigits = phoneDigitsOf(fields.phone);
-      if (rowErrors.length > 0 || !fields.name || !phoneDigits) {
-        rowErrors.forEach((message) => errors.push({ row, message: `${row}行目：${message}` }));
-        invalid.push({ row, raw, messages: rowErrors });
+      if (problems.length > 0 || !fields.name || !phoneDigits) {
+        analysis.problems.push({
+          row,
+          raw,
+          problems,
+          values: {
+            name: fields.name ?? '',
+            phone: fields.phone ?? '',
+            url: fields.url ?? '',
+          } satisfies Record<EditableListField, string>,
+        });
         continue;
       }
       candidates.push({
@@ -385,8 +480,33 @@ export class ListImportService {
       });
     }
 
-    await this.flagDuplicates(candidates);
-    return { columns, valid: candidates, invalid, errors, rowCount: table.rows.length };
+    // Numbers on the 回避企業 list never come in (Sano 10/28 ⑥⑦).
+    const avoid = new Set(
+      (
+        await this.prisma.avoidPhone.findMany({
+          where: { phoneDigits: { in: candidates.map((row) => row.phoneDigits) } },
+          select: { phoneDigits: true },
+        })
+      ).map((entry) => entry.phoneDigits),
+    );
+    for (const row of candidates) {
+      if (avoid.has(row.phoneDigits)) {
+        analysis.avoided.push({
+          row: row.row,
+          raw: row.raw,
+          name: row.name,
+          phone: row.fields.phone ?? '',
+        });
+      } else {
+        analysis.valid.push(row);
+      }
+    }
+    analysis.sAreaCount = analysis.valid.filter((row) =>
+      isSArea(row.fields.prefecture ?? splitJapaneseAddress(row.fields.address ?? null).prefecture),
+    ).length;
+
+    await this.flagDuplicates(analysis.valid);
+    return analysis;
   }
 
   private async flagDuplicates(rows: AnalyzedRow[]): Promise<void> {
@@ -449,22 +569,4 @@ export class ListImportService {
       seenNames.set(row.nameKey, row);
     }
   }
-}
-
-function validateRow(fields: Partial<Record<ListField, string>>): string[] {
-  const errors: string[] = [];
-  if (!fields.name) {
-    errors.push('会社名が空です');
-  }
-  if (!fields.phone) {
-    errors.push('電話番号が空です');
-  } else if (!PHONE_DIGITS_PATTERN.test(phoneDigitsOf(fields.phone) ?? '')) {
-    errors.push('電話番号は数字10〜11桁で入力してください');
-  }
-  if (!fields.url) {
-    errors.push('URLが空です');
-  } else if (!/^https?:\/\/\S+$/i.test(fields.url)) {
-    errors.push('URLは http:// または https:// で始めてください');
-  }
-  return errors;
 }

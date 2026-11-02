@@ -49,6 +49,7 @@ model User {
   telemarketer         TelemarketerProfile?
   callRecords          CallRecord[]
   companiesCreated     Company[]
+  avoidPhones          AvoidPhone[]
   listImports          ListImport[]
   appointmentsAsRep    Appointment[]            @relation("AppointmentRep")
   appointmentsBooked   Appointment[]            @relation("AppointmentBooker")
@@ -402,6 +403,8 @@ model Company {
   /// Digits only, used for duplicate checks
   phoneDigits    String?     @map("phone_digits") @db.VarChar(15)
   url            String?     @db.VarChar(500)
+  /// 掲載元のURL: the list's 「引用先URL」 (where the list maker found the company)
+  sourceUrl      String?     @map("source_url") @db.VarChar(1000)
   address        String?     @db.VarChar(300)
   prefecture     String?     @db.VarChar(10)
   city           String?     @db.VarChar(50)
@@ -486,6 +489,8 @@ model ListImport {
   duplicateCount Int               @map("duplicate_count")
   checkCount     Int               @map("check_count")
   errorCount     Int               @map("error_count")
+  avoidedCount   Int               @default(0) @map("avoided_count")
+  noPhoneCount   Int               @default(0) @map("no_phone_count")
   /// 「自動割り振りする」 chosen on import (request 10/29 ②)
   autoAllocate   Boolean           @default(true) @map("auto_allocate")
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -507,6 +512,10 @@ enum ListImportRowStatus {
   NEEDS_CHECK
   /// Not registered: required values missing or invalid
   INVALID
+  /// Not registered: the phone is on the 回避企業 list
+  AVOIDED
+  /// Not registered: the phone is blank or 「不明」
+  NO_PHONE
 }
 
 /// One row of an imported file: what was read, how it was judged, and which company it became.
@@ -1104,4 +1113,32 @@ model FeedbackAttachment {
 
   @@unique([feedbackId, fileId])
   @@map("feedback_attachments")
+}
+
+enum AvoidSource {
+  /// Loaded from the team's 回避企業電話番号.xlsx
+  LIST
+  /// Ticked 「回避企業に追加」 on the call screen
+  CALL
+}
+
+/// 回避企業: phone numbers never called or imported again (Sano 10/28 ⑥⑦, 10/30).
+/// Matched by digits only, so 「03‑5825‑0760」 and 「0358250760」 are the same number.
+/// Taking a number off is recorded in the audit log.
+model AvoidPhone {
+  id            String      @id @default(uuid()) @db.Uuid
+  phoneDigits   String      @unique @map("phone_digits") @db.VarChar(15)
+  phone         String      @db.VarChar(32)
+  companyName   String?     @map("company_name") @db.VarChar(200)
+  source        AvoidSource
+  /// The company it was ticked on (call screen only)
+  companyId     String?     @map("company_id") @db.Uuid
+  /// Companies taken out of the call targets because of this number, put back if it is removed
+  untargetedIds String[]    @default([]) @map("untargeted_ids") @db.Uuid
+  createdById   String?     @map("created_by_id") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("avoid_phones")
 }

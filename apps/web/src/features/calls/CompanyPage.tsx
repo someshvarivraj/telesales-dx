@@ -28,7 +28,8 @@ import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useCallRecords, useCompany, useSaveTelemaMemo } from './api';
-import { FlagBadge, GradeBadge } from './CallBadges';
+import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
+import { AvoidCheckbox } from './CompanyAvoid';
 import { CallRecordForm } from './CallRecordForm';
 import { CompanyEditDialog } from './CompanyEditDialog';
 import { FindRepDialog } from './FindRepDialog';
@@ -145,6 +146,7 @@ export function CompanyPage() {
               <span className="flex flex-wrap items-center gap-2">
                 {data.name}
                 <FlagBadge flag={data.flag} />
+                <SAreaBadge prefecture={data.prefecture} />
               </span>
             }
             actions={
@@ -171,6 +173,11 @@ export function CompanyPage() {
           />
 
           <div className="mb-5 flex flex-col gap-2">
+            {data.avoided && (
+              <Alert tone="warning">
+                回避企業です。架電しないでください（架電対象から外れています）。
+              </Alert>
+            )}
             {data.similarNumbers.length > 0 && (
               <Alert tone="warning">
                 同じ会社の近い番号があります。架電するか判断してください。
@@ -208,9 +215,15 @@ export function CompanyPage() {
                     {
                       label: '電話番号',
                       value: data.phone ? (
-                        <a className="text-link" href={`tel:${data.phone}`}>
-                          {data.phone}
-                        </a>
+                        <div className="flex flex-col">
+                          <a
+                            className="self-start text-link tabular-nums"
+                            href={`tel:${data.phone}`}
+                          >
+                            {data.phone}
+                          </a>
+                          <AvoidCheckbox company={data} />
+                        </div>
                       ) : null,
                     },
                     {
@@ -223,6 +236,20 @@ export function CompanyPage() {
                           rel="noreferrer noopener"
                         >
                           {data.url}
+                        </a>
+                      ) : null,
+                      wide: true,
+                    },
+                    {
+                      label: '掲載元のURL',
+                      value: data.sourceUrl ? (
+                        <a
+                          className="break-all text-link"
+                          href={data.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          {data.sourceUrl}
                         </a>
                       ) : null,
                       wide: true,
