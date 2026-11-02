@@ -172,7 +172,10 @@ export class AppointmentBookingService {
             visitAddress:
               command.visitAddress ??
               (command.format === MeetingFormat.Visit ? company.address : null),
+            onlineTool: command.format === MeetingFormat.Online ? command.onlineTool : null,
+            formatNote: command.format === MeetingFormat.Other ? command.formatNote : null,
             contactName: command.contactName,
+            meetingPersonName: command.meetingPersonName,
             contactDepartment: command.contactDepartment ?? company.department,
             contactPhone: command.contactPhone,
             contactEmail: command.contactEmail,
@@ -249,7 +252,10 @@ export class AppointmentBookingService {
     const data = {
       format: command.format,
       visitAddress: command.visitAddress,
+      onlineTool: command.format === MeetingFormat.Online ? command.onlineTool : null,
+      formatNote: command.format === MeetingFormat.Other ? command.formatNote : null,
       contactName: command.contactName,
+      meetingPersonName: command.meetingPersonName,
       contactDepartment: command.contactDepartment,
       contactPhone: command.contactPhone,
       contactEmail: command.contactEmail,
@@ -257,6 +263,7 @@ export class AppointmentBookingService {
       customerType: command.customerType,
       listName: command.listName,
       isNewAppointment: command.isNewAppointment,
+      ...(command.bookedById ? { bookedById: command.bookedById } : {}),
     };
     await this.prisma.$transaction(async (tx) => {
       const result = await tx.appointment.updateMany({

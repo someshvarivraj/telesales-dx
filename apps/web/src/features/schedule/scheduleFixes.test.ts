@@ -39,7 +39,8 @@ describe('schedule (feedback 10/30)', () => {
       plan({ allDay: true, startsAt: '2026-11-03T15:00:00Z', endsAt: '2026-11-04T15:00:00Z' }),
     );
     expect(freeMinutes(allDay, '2026-11-04')).toBe(0);
-    expect(freeMinutes([], '2026-11-04')).toBe(9 * 60);
+    // 9:00–18:00 without the lunch hour.
+    expect(freeMinutes([], '2026-11-04')).toBe(8 * 60);
   });
 
   it('people added to a tentative plan show it as tentative too', () => {

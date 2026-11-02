@@ -12,6 +12,7 @@ export const paths = {
   company: (id: string) => `/calls/companies/${id}`,
   schedule: '/schedule',
   book: '/schedule/book',
+  schedulePrint: '/schedule/print',
   appointments: '/appointments',
   appointment: (id: string) => `/appointments/${id}`,
   appointmentMail: (id: string, kind: 'booking' | 'cancellation' | 'dayBefore') =>

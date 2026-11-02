@@ -5,6 +5,9 @@ import { jstMinutesOfDay } from '@telesales/shared';
 /** Office hours drawn white on the grid and used for 空き (free time). */
 export const WORK_START = 9 * 60;
 export const WORK_END = 18 * 60;
+/** Lunch break: drawn in its own grey and not offered as 空き (11/2). */
+export const LUNCH_START = 12 * 60;
+export const LUNCH_END = 13 * 60;
 /** Free stretches shorter than this are not worth offering. */
 export const MIN_FREE_MINUTES = 60;
 
@@ -76,7 +79,7 @@ export function busyRanges(events: CalendarEvent[], date: string): [number, numb
   return merged;
 }
 
-/** Free stretches inside office hours, at least MIN_FREE_MINUTES long. */
+/** Free stretches inside office hours outside lunch, at least MIN_FREE_MINUTES long. */
 export function freeRanges(
   events: CalendarEvent[],
   date: string,
@@ -84,7 +87,10 @@ export function freeRanges(
 ): [number, number][] {
   const free: [number, number][] = [];
   let cursor = from;
-  for (const [start, end] of busyRanges(events, date)) {
+  const busy = [...busyRanges(events, date), [LUNCH_START, LUNCH_END] as [number, number]].sort(
+    (a, b) => a[0] - b[0],
+  );
+  for (const [start, end] of busy) {
     if (end <= cursor) continue;
     if (start >= to) break;
     if (start - cursor >= min) free.push([cursor, Math.min(start, to)]);

@@ -2,6 +2,7 @@ import { jstMinutesOfDay, SLOT_MINUTES } from '@telesales/shared';
 import { Building2, Lock, Video } from 'lucide-react';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
+import { ja } from '@/i18n/ja';
 import { formatTime, todayJst } from '@/lib/format';
 import { type CalendarEvent, EVENT_STYLE } from '../events';
 import type { PeekBinder } from './EventPeek';
@@ -11,6 +12,8 @@ import {
   hoursLabel,
   placeEvents,
   toMinutes,
+  LUNCH_END,
+  LUNCH_START,
   visibleSpan,
   WORK_END,
   WORK_START,
@@ -226,17 +229,25 @@ export function TimeGrid({
                   className={cn(
                     'relative flex-1 border-l border-line select-none',
                     column.off ? 'bg-off' : 'bg-surface',
-                    onRange && 'cursor-cell',
+                    // Weekends and holidays cannot be booked (11/2).
+                    onRange && (column.off ? 'cursor-not-allowed' : 'cursor-cell'),
                   )}
                   style={{ height, minWidth: minColumnWidth }}
                   onKeyDown={(event) => {
+                    if (column.off) return;
                     if (onRange && (event.key === 'Enter' || event.key === ' ')) {
                       event.preventDefault();
                       finish(column, WORK_START + 60, WORK_START + 120);
                     }
                   }}
                   onPointerDown={(event) => {
-                    if (!onRange || event.button !== 0 || event.pointerType === 'touch') return;
+                    if (
+                      !onRange ||
+                      column.off ||
+                      event.button !== 0 ||
+                      event.pointerType === 'touch'
+                    )
+                      return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
                     const at = Math.floor(minutesAt(event) / SLOT_MINUTES) * SLOT_MINUTES;
@@ -260,7 +271,7 @@ export function TimeGrid({
                   onClick={(event) => {
                     // Touch: a tap makes a one-hour range (dragging would fight scrolling).
                     const native = event.nativeEvent as globalThis.PointerEvent;
-                    if (!onRange || native.pointerType !== 'touch') return;
+                    if (!onRange || column.off || native.pointerType !== 'touch') return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     const rect = event.currentTarget.getBoundingClientRect();
                     const at =
@@ -279,6 +290,17 @@ export function TimeGrid({
                     className="pointer-events-none absolute inset-x-0 bottom-0 bg-canvas/80"
                     style={{ top: y(WORK_END) }}
                   />
+                  {/* Lunch break, in its own grey */}
+                  {!column.off && (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bg-lunch"
+                      style={{ top: y(LUNCH_START), height: y(LUNCH_END) - y(LUNCH_START) }}
+                    >
+                      <span className="absolute top-0.5 right-1 text-[10px] text-ink-sub">
+                        昼休み
+                      </span>
+                    </div>
+                  )}
                   {/* Hour and half-hour lines */}
                   {hours.slice(1, -1).map((hour) => (
                     <div
@@ -396,7 +418,9 @@ export function TimeGrid({
                                 ) : (
                                   <Building2 aria-hidden="true" className="size-3" />
                                 )}
-                                {appointment.format === 'ONLINE' ? 'Web' : '訪問'}
+                                {appointment.format === 'ONLINE'
+                                  ? 'Web'
+                                  : ja.format[appointment.format]}
                               </span>
                             )}
                             {event.kind === 'lock' && (

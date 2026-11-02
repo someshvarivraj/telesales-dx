@@ -52,6 +52,8 @@ export const ja = {
   format: {
     [MeetingFormat.Visit]: '訪問',
     [MeetingFormat.Online]: 'オンライン',
+    [MeetingFormat.Phone]: '電話',
+    [MeetingFormat.Other]: 'その他',
   },
   appointmentStatus: {
     [AppointmentStatus.Scheduled]: '予定',

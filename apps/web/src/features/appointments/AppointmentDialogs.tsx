@@ -1,5 +1,6 @@
 import {
   type AppointmentDetail,
+  AppointmentSource,
   type ChangeReason,
   ChangeReason as Reason,
   jstDate,
@@ -22,7 +23,13 @@ import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatRange, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
-import { AppointmentFields, type AppointmentValues } from './AppointmentFields';
+import {
+  AppointmentFields,
+  appointmentRequestFields,
+  type AppointmentValues,
+  appointmentValuesOf,
+  missingAppointmentFields,
+} from './AppointmentFields';
 import {
   useCancelAppointment,
   useMeetingUrl,
@@ -252,38 +259,25 @@ export function ChangeRequestDialog({ appointment, onClose }: DialogProps) {
   );
 }
 
-export function EditDetailsDialog({ appointment, onClose }: DialogProps) {
+export function EditDetailsDialog({
+  appointment,
+  onClose,
+  onSaved = onClose,
+  saveLabel = '保存する',
+}: DialogProps & { onSaved?: () => void; saveLabel?: string }) {
   const update = useUpdateAppointment(appointment.id);
-  const [values, setValues] = useState<AppointmentValues>({
-    format: appointment.format,
-    visitAddress: appointment.visitAddress ?? '',
-    contactName: appointment.contactName ?? '',
-    contactDepartment: appointment.contactDepartment ?? '',
-    contactPhone: appointment.contactPhone ?? '',
-    contactEmail: appointment.contactEmail ?? '',
-    handoverNotes: appointment.handoverNotes ?? '',
-    customerType: appointment.customerType ?? '',
-    listName: appointment.listName ?? '',
-    isNewAppointment: appointment.isNewAppointment,
-    bookedById: '',
-    bookedOn: '',
-  });
+  const telema = appointment.source !== AppointmentSource.SalesBooked;
+  const [values, setValues] = useState<AppointmentValues>(() => appointmentValuesOf(appointment));
+  const missing = missingAppointmentFields(values, telema);
   const submit = () =>
     update.mutate(
       {
         expectedVersion: appointment.version,
         format: values.format || appointment.format,
-        visitAddress: values.visitAddress || null,
-        contactName: values.contactName || null,
-        contactDepartment: values.contactDepartment || null,
-        contactPhone: values.contactPhone || null,
-        contactEmail: values.contactEmail || null,
-        handoverNotes: values.handoverNotes || null,
-        customerType: values.customerType || null,
-        listName: values.listName || null,
-        isNewAppointment: values.isNewAppointment,
+        ...appointmentRequestFields(values),
+        ...(telema && values.bookedById ? { bookedById: values.bookedById } : {}),
       },
-      { onSuccess: onClose },
+      { onSuccess: onSaved },
     );
   return (
     <Dialog
@@ -296,18 +290,23 @@ export function EditDetailsDialog({ appointment, onClose }: DialogProps) {
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
-          <Button loading={update.isPending} onClick={submit}>
-            保存する
+          <Button loading={update.isPending} disabled={missing.length > 0} onClick={submit}>
+            {saveLabel}
           </Button>
         </>
       }
     >
+      {missing.length > 0 && (
+        <Alert tone="warning" className="mb-4">
+          {`入力してください：${missing.join('、')}`}
+        </Alert>
+      )}
       {update.isError && (
         <Alert tone="error" className="mb-4">
           {errorMessageOf(update.error)}
         </Alert>
       )}
-      <AppointmentFields values={values} onChange={setValues} />
+      <AppointmentFields values={values} onChange={setValues} telema={telema} />
       <p className="mt-4 text-xs text-ink-sub">
         メール（N1）を送ったあとに内容を直した場合は、メール画面から【再送】できます。
       </p>

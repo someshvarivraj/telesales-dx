@@ -14,12 +14,15 @@ export interface MailAppointment {
   startsAt: Date;
   endsAt: Date;
   format: MeetingFormat;
+  onlineTool: string | null;
+  formatNote: string | null;
   customerTypeLabel: string | null;
   listName: string | null;
   bookedAt: Date;
   bookerName: string;
   repName: string;
   contactName: string | null;
+  meetingPersonName: string | null;
   contactDepartment: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
@@ -46,7 +49,22 @@ export interface MailContent {
 const FORMAT_IN_MAIL: Record<MeetingFormat, string> = {
   [MeetingFormat.Visit]: '訪問',
   [MeetingFormat.Online]: 'Web',
+  [MeetingFormat.Phone]: '電話',
+  [MeetingFormat.Other]: 'その他',
 };
+
+/** 「Web（Zoom）」「その他（来社）」. */
+function formatInMail(appointment: MailAppointment): string {
+  const detail =
+    appointment.format === MeetingFormat.Online
+      ? appointment.onlineTool
+      : appointment.format === MeetingFormat.Other
+        ? appointment.formatNote
+        : null;
+  return detail
+    ? `${FORMAT_IN_MAIL[appointment.format]}（${detail}）`
+    : FORMAT_IN_MAIL[appointment.format];
+}
 
 const DAY_BEFORE_LABEL: Record<DayBeforeResult, string> = {
   [DayBeforeResult.Confirmed]: '確認済み',
@@ -81,7 +99,7 @@ export function bookingMail(
     `[対応者] ${appointment.repName}`,
     `[訪問日時] ${formatJstDateTime(appointment.startsAt)}`,
     `[取引区分] ${value(appointment.customerTypeLabel)}`,
-    `[訪問形態] ${FORMAT_IN_MAIL[appointment.format]}`,
+    `[訪問形態] ${formatInMail(appointment)}`,
     `[会社名] ${companyLine(appointment)}`,
     `[最寄駅] ${value(appointment.company.nearestStation)}${
       appointment.company.walkMinutes != null ? ` 徒歩${appointment.company.walkMinutes}分` : ''
@@ -90,6 +108,8 @@ export function bookingMail(
     `[代表TEL] ${value(appointment.company.phone)}`,
     `[部署] ${value(appointment.contactDepartment ?? appointment.company.department)}`,
     `[氏名] ${value(appointment.contactName)}`,
+    // Only when the person met is not the person on the phone (11/2).
+    ...(appointment.meetingPersonName ? [`[面談者] ${appointment.meetingPersonName}`] : []),
     `[TEL] ${value(appointment.contactPhone)}`,
     `[Mail] ${value(appointment.contactEmail)}`,
     '',
@@ -111,7 +131,7 @@ export function cancellationMail(appointment: MailAppointment, note: string | nu
     '',
     `[対応者] ${appointment.repName}`,
     `[訪問日時] ${formatJstDateTime(appointment.startsAt)}`,
-    `[訪問形態] ${FORMAT_IN_MAIL[appointment.format]}`,
+    `[訪問形態] ${formatInMail(appointment)}`,
     `[会社名] ${companyLine(appointment)}`,
     `[氏名] ${value(appointment.contactName)}`,
     `[理由] ${value(note)}`,
@@ -135,7 +155,7 @@ export function dayBeforeResultMail(
     '',
     `[会社名] ${companyLine(appointment)}`,
     `[訪問日時] ${formatJstDateTime(appointment.startsAt)}`,
-    `[訪問形態] ${FORMAT_IN_MAIL[appointment.format]}`,
+    `[訪問形態] ${formatInMail(appointment)}`,
     `[確認結果] ${DAY_BEFORE_LABEL[result]}`,
     `[確認した人] ${checkerName}`,
   ];
@@ -148,7 +168,7 @@ export function dayBeforeResultMail(
 function scheduleLine(appointment: MailAppointment, appBaseUrl: string): string[] {
   const day = jstDate(appointment.startsAt);
   return [
-    `■ ${formatSlashDate(day)}（${weekdayJa(day)}） ${jstTime(appointment.startsAt)}〜${jstTime(appointment.endsAt)}　${FORMAT_IN_MAIL[appointment.format]}`,
+    `■ ${formatSlashDate(day)}（${weekdayJa(day)}） ${jstTime(appointment.startsAt)}〜${jstTime(appointment.endsAt)}　${formatInMail(appointment)}`,
     `　${companyLine(appointment)}　${value(appointment.contactName)}`,
     appointment.format === MeetingFormat.Online
       ? `　会議URL：${appointment.meetingUrl ?? '未登録'}`

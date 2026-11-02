@@ -115,7 +115,7 @@ export const EXACT: Readonly<Record<string, string>> = {
     'Enter time off, late start, early leave or telemarketing stop',
   '期間中は毎日、下の時間帯が営業枠になります。':
     'Every day in the period, the time band below is kept for sales.',
-  'テレマの画面ではこの時間が「埋まり（営業枠）」になり、アポを入れられません。自分の予定は入れられます。':
+  'テレマの画面ではこの時間が「営業予定あり」になり、アポを入れられません。自分の予定は入れられます。':
     'Telemarketing sees this time as taken (sales time) and cannot book it. You can still add your own plans.',
   今すぐ実行: 'Run now',
   定時処理: 'Scheduled job',
@@ -1703,14 +1703,56 @@ export const EXACT: Readonly<Record<string, string>> = {
   'チェックした件を同じ会社の部署・事業所としてまとめる':
     'Group the ticked ones as departments / offices',
   '同じ会社の別の部署・事業所としてまとめる': 'Group as another department / office',
+  // Booking, mail and calendar (11/2)
+  先方へ伺う: 'Go to the client',
+  'Zoom・Meet など': 'Zoom, Meet, etc.',
+  電話で話す: 'By phone',
+  来社など: 'They come to us, etc.',
+  使うツール: 'Tool',
+  'その他（入力）': 'Other (type in)',
+  '例：Webex、先方の会議システム': 'e.g. Webex, the client’s own system',
+  その他の内容: 'What kind',
+  '例：先方が当社へ来社': 'e.g. the client visits our office',
+  来社: 'Visit to our office',
+  '先方担当者（電話で話した方）': 'Client contact (person on the phone)',
+  面談される方: 'Person to meet',
+  '電話で話した方と違うときだけ入力します。': 'Only when different from the person on the phone.',
+  'は必ず入力してください。': 'must be filled in.',
+  '空のときは自分になります。登録する人と違うときは選んでください。':
+    'Empty = you. Choose if someone else got the appointment.',
+  'アポを取ったテレマ。登録した人と違うときは直してください。':
+    'The telemarketer who got it. Change it if different from who registered it.',
+  '先方担当者・TEL・伝達事項を入れる': 'Enter contact, phone and handover notes',
+  保存してメールに戻る: 'Save and back to the mail',
+  下書き保存: 'Save draft',
+  'メール（N1）を下書きとして保存しました。': 'Mail (N1) saved as a draft.',
+  '営業さんへのメール（N1）はまだ送っていません。上の「確認して送る」から送れます。':
+    'The mail to the rep (N1) has not been sent. Send it with 「確認して送る」 above.',
+  '宛先がありません。管理者に「通知の宛先」の設定を頼んでください。':
+    'No recipients. Ask an admin to set the notice recipients.',
+  作り直しています: 'Remaking',
+  '内容を確かめて「送信」を押してください。この画面では内容を変えられません。直すときは「戻って直す」でアポの内容を直すと、メールも作り直されます。':
+    'Check the content and press Send. It cannot be changed here: to fix it, use 「戻って直す」 to edit the appointment and the mail is made again.',
+  '同じメールは二度送られません。': 'The same mail is never sent twice.',
+  営業予定あり: 'Sales plans',
+  昼休み: 'Lunch',
+  '昼休み（12:00–13:00）': 'Lunch (12:00–13:00)',
+  '土日祝・会社の休日（予定は入れられません）':
+    'Weekends, holidays, company days off (cannot be booked)',
+  週間予定を印刷: 'Print the week',
+  印刷する: 'Print',
+  前の週: 'Previous week',
+  次の週: 'Next week',
+  '横向きA4・1枚に収まるように印刷します。表示する人はスケジュール画面で選んだ人です。':
+    'Prints on one landscape A4 page. The people are those chosen on the schedule screen.',
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
   [
-    '埋まり（営業枠）：営業がテレマアポ停止にしている時間です（{0}）。',
+    '営業予定あり：営業がテレマアポ停止にしている時間です（{0}）。',
     'Taken (sales time): the rep has stopped telemarketing bookings ({0}).',
   ],
-  ['埋まり（営業枠）：{0}', 'Taken (sales time): {0}'],
+  ['営業予定あり：{0}', 'Sales plans: {0}'],
   [
     '送りました：メール {0} 通、画面のお知らせ {1} 件。',
     'Sent: {0} e-mails, {1} on-screen notices.',
@@ -1962,4 +2004,11 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
     'チェックした{0}件を同じ会社の部署・事業所としてまとめる',
     'Group the {0} ticked as departments / offices',
   ],
+  // Booking, mail and calendar (11/2)
+  ['入力してください：{0}', 'Please enter: {0}'],
+  ['{0}に送信しました。', 'Sent at {0}.'],
+  ['営業スケジュール　{0}〜{1}', 'Sales schedule {0} – {1}'],
+  ['印刷日 {0}', 'Printed {0}'],
+  ['オンライン（{0}）', 'Online ({0})'],
+  ['その他（{0}）', 'Other ({0})'],
 ];

@@ -42,6 +42,8 @@ export function mailAppointmentOf(
     startsAt: row.startsAt,
     endsAt: row.endsAt,
     format: row.format,
+    onlineTool: row.onlineTool,
+    formatNote: row.formatNote,
     customerTypeLabel: row.customerType
       ? (customerTypeLabels.get(row.customerType) ?? row.customerType)
       : null,
@@ -50,6 +52,7 @@ export function mailAppointmentOf(
     bookerName: row.bookedBy.name,
     repName: row.salesRep.name,
     contactName: row.contactName,
+    meetingPersonName: row.meetingPersonName,
     contactDepartment: row.contactDepartment,
     contactPhone: row.contactPhone,
     contactEmail: row.contactEmail,

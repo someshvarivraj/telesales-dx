@@ -5,7 +5,13 @@ function valuesOf<T extends Record<string, string>>(object: T): T[keyof T][] {
   return Object.values(object) as T[keyof T][];
 }
 
-export const MeetingFormat = { Visit: 'VISIT', Online: 'ONLINE' } as const;
+/** 訪問・オンライン, and 電話 / その他 (written in) since 11/2. */
+export const MeetingFormat = {
+  Visit: 'VISIT',
+  Online: 'ONLINE',
+  Phone: 'PHONE',
+  Other: 'OTHER',
+} as const;
 export type MeetingFormat = (typeof MeetingFormat)[keyof typeof MeetingFormat];
 export const MEETING_FORMATS = valuesOf(MeetingFormat);
 
@@ -218,7 +224,39 @@ export const AVOID_MONTH_CHOICES = [
 export const APPOINTMENT_PLAN_TYPE: Record<MeetingFormat, string> = {
   [MeetingFormat.Visit]: 'VISIT',
   [MeetingFormat.Online]: 'ONLINE',
+  [MeetingFormat.Phone]: 'OTHER',
+  [MeetingFormat.Other]: 'OTHER',
 };
+
+/** Choices offered for an online meeting; anything else can be typed in. */
+export const ONLINE_TOOLS: readonly string[] = ['Zoom', 'Google Meet', 'Microsoft Teams'];
+
+/** Choices offered for 「その他」; anything else can be typed in. */
+export const OTHER_FORMAT_EXAMPLES: readonly string[] = ['来社', '展示会'];
+
+const FORMAT_LABEL: Record<MeetingFormat, string> = {
+  VISIT: '訪問',
+  ONLINE: 'オンライン',
+  PHONE: '電話',
+  OTHER: 'その他',
+};
+
+/** 「オンライン（Zoom）」「その他（来社）」: the format with its detail, for screens and mail. */
+export function meetingFormatLabel(appointment: {
+  format: MeetingFormat;
+  onlineTool?: string | null;
+  formatNote?: string | null;
+}): string {
+  const detail =
+    appointment.format === 'ONLINE'
+      ? appointment.onlineTool
+      : appointment.format === 'OTHER'
+        ? appointment.formatNote
+        : null;
+  return detail
+    ? `${FORMAT_LABEL[appointment.format]}（${detail}）`
+    : FORMAT_LABEL[appointment.format];
+}
 
 /** Customer type code meaning "current client" (現取) — used by the area table. */
 export const CURRENT_CUSTOMER_TYPE = 'CURRENT';
