@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useHref, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
@@ -142,6 +142,10 @@ export function SchedulePage() {
   const canTelemaBook = usePermission(Permission.ManageTelemaAppointments);
 
   const { from, to } = rangeFor(view, date);
+  // useHref adds the path the app is served under (e.g. /telesales-dx/); a bare path 404s there.
+  const printHref = useHref(
+    `${paths.schedulePrint}?${new URLSearchParams({ date, people: chosen.join(',') }).toString()}`,
+  );
   const schedule = useSchedule(from, to, []);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [planDialog, setPlanDialog] = useState<{
@@ -438,15 +442,7 @@ export function SchedulePage() {
         <Button
           variant="secondary"
           icon={<Printer className="size-4" aria-hidden="true" />}
-          onClick={() =>
-            window.open(
-              `${paths.schedulePrint}?${new URLSearchParams({
-                date,
-                people: chosen.join(','),
-              }).toString()}`,
-              '_blank',
-            )
-          }
+          onClick={() => window.open(printHref, '_blank')}
         >
           週間予定を印刷
         </Button>
