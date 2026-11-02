@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { FormField } from '@/components/ui/FormField';
 import { QueryState } from '@/components/ui/QueryState';
 import { RoleBadges } from '@/components/ui/RoleBadge';
@@ -21,6 +22,7 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDateTime } from '@/lib/format';
+import { useDraft } from '@/lib/drafts';
 import { ja } from '@/i18n/ja';
 import {
   useAdminUsers,
@@ -90,7 +92,8 @@ function UserDialog({
 }) {
   const create = useCreateUser();
   const update = useUpdateUser();
-  const [values, setValues] = useState({
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft(`user:${user?.id ?? 'new'}`, {
     name: user?.name ?? '',
     email: user?.email ?? '',
     employeeNo: user?.employeeNo ?? '',
@@ -100,6 +103,8 @@ function UserDialog({
     isAllocationTarget: user?.telemarketer?.isAllocationTarget ?? true,
     territory: user?.telemarketer?.territory ?? ([] as string[]),
   });
+  const values = draft.value;
+  const setValues = draft.set;
   const error = create.error ?? update.error;
   const isTelema = values.roles.includes(Role.Telema) || values.roles.includes(Role.TelemaLead);
   const toggle = <T,>(list: T[], value: T, on: boolean) =>
@@ -125,11 +130,17 @@ function UserDialog({
               : null,
           },
         },
-        { onSuccess: onClose },
+        {
+          onSuccess: () => {
+            draft.reset();
+            onClose();
+          },
+        },
       );
     } else {
       create.mutate(base, {
         onSuccess: (result) => {
+          draft.reset();
           onCreated(result);
           onClose();
         },
@@ -145,6 +156,7 @@ function UserDialog({
       onClose={onClose}
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -158,6 +170,7 @@ function UserDialog({
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       <div className="flex flex-col gap-4">
         {error && (
           <Alert tone="error">

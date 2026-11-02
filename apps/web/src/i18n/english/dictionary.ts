@@ -1753,6 +1753,16 @@ export const EXACT: Readonly<Record<string, string>> = {
     'Anything you are typing is not saved when you are logged out. To keep working, press "Stay logged in" (you stay logged in for another week).',
   'ログインの有効期限が切れたため、ログアウトしました。もう一度ログインしてください。':
     'Your login expired, so you were logged out. Please log in again.',
+  // Drafts, reset and undo import (11/2)
+  前回の入力を戻しました: 'Your previous input was restored',
+  最初から入力する: 'Start over',
+  入力をリセット: 'Reset input',
+  取り込みを取り消す: 'Undo import',
+  '取り込みを取り消しますか？': 'Undo this import?',
+  'この取り込みで登録した企業を削除し、取り込み履歴からも消します。ほかのリストでも取り込まれている企業は残します。取り消したあと、同じファイルをもう一度取り込めます。':
+    'The companies registered by this import are deleted and it leaves the import history. Companies that also came in on another list stay. The same file can then be imported again.',
+  'まだ誰も架電・アポ登録・割り振りの確定をしていないときだけ取り消せます。取り消したことは履歴に残ります。':
+    'Only possible while nobody has called, booked or confirmed an allocation for it. The undo is kept in the history.',
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
@@ -2021,4 +2031,19 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['その他（{0}）', 'Other ({0})'],
   // Session warning (11/2)
   ['あと{0}分でログアウトします。', 'Logging out in {0} min.'],
+  // Drafts, reset and undo import (11/2)
+  ['前回の入力を戻しました（{0}）', 'Your previous input was restored ({0})'],
+  ['（{0}・登録 {1}件）', ' ({0}, {1} registered)'],
+  [
+    'この取り込みの企業には、すでに架電 {0}件・アポ {1}件・確定した割り振り {2}件があるため、取り消せません（記録が消えてしまうため）。',
+    'Companies from this import already have {0} calls, {1} appointments and {2} confirmed allocations, so it cannot be undone (the records would be lost).',
+  ],
+  [
+    '「{0}」の取り込みを取り消しました（企業 {1}件を削除・ほかのリストにもある {2}件は残しました）。同じファイルをもう一度取り込めます。',
+    'Undid the import of 「{0}」 ({1} companies deleted, {2} also on other lists kept). The same file can be imported again.',
+  ],
+  [
+    '「{0}」の取り込みを取り消しました（企業 {1}件を削除）。同じファイルをもう一度取り込めます。',
+    'Undid the import of 「{0}」 ({1} companies deleted). The same file can be imported again.',
+  ],
 ];

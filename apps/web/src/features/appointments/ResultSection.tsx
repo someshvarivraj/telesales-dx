@@ -2,6 +2,7 @@ import { type AppointmentDetail, jstDate, OptionCategory } from '@telesales/shar
 import { useState } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DescriptionList } from '@/components/ui/DescriptionList';
@@ -13,6 +14,7 @@ import { TextInput } from '@/components/ui/TextInput';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useOptionList } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { useAddResult } from './api';
 
@@ -22,8 +24,8 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
   const add = useAddResult(appointment.id);
   const responses = useOptionList(OptionCategory.MeetingResponse);
   const deals = useOptionList(OptionCategory.DealStatus);
-  const [open, setOpen] = useState(false);
-  const [values, setValues] = useState({
+  // Kept through a refresh until saved (request 11/2); reopens if something was typed.
+  const draft = useDraft(`meeting-result:${appointment.id}`, {
     visitedOn: jstDate(new Date(appointment.startsAt)),
     attendee: user.name,
     discussion: '',
@@ -32,6 +34,9 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
     nextAction: '',
     nextActionDate: '',
   });
+  const values = draft.value;
+  const setValues = draft.set;
+  const [open, setOpen] = useState(draft.dirty);
   const set = <K extends keyof typeof values>(key: K, value: string) =>
     setValues((v) => ({ ...v, [key]: value }));
 
@@ -49,6 +54,7 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
       <div className="flex flex-col gap-4">
         {open && (
           <div className="flex flex-col gap-4 rounded-(--radius-control) border border-main/40 p-4">
+            <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
             {add.isError && <Alert tone="error">{errorMessageOf(add.error)}</Alert>}
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="訪問日" required>
@@ -124,7 +130,8 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
                 )}
               </FormField>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
               <Button variant="secondary" onClick={() => setOpen(false)}>
                 キャンセル
               </Button>
@@ -134,7 +141,12 @@ export function ResultSection({ appointment }: { appointment: AppointmentDetail 
                 onClick={() =>
                   add.mutate(
                     { ...values, nextActionDate: values.nextActionDate || null },
-                    { onSuccess: () => setOpen(false) },
+                    {
+                      onSuccess: () => {
+                        draft.reset();
+                        setOpen(false);
+                      },
+                    },
                   )
                 }
               >

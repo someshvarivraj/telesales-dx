@@ -13,6 +13,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { FormField } from '@/components/ui/FormField';
 import { Textarea } from '@/components/ui/Textarea';
 import { TextInput } from '@/components/ui/TextInput';
@@ -21,6 +22,7 @@ import { slotProblemText } from '@/features/schedule/slotProblems';
 import { useSlotLock } from '@/features/schedule/useSlotLock';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { formatRange, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import {
@@ -166,7 +168,9 @@ export function RescheduleDialog({
 export function CancelDialog({ appointment, onClose }: DialogProps) {
   const cancel = useCancelAppointment(appointment.id);
   const navigate = useNavigate();
-  const [note, setNote] = useState('');
+  const draft = useDraft(`appointment-cancel:${appointment.id}`, '');
+  const note = draft.value;
+  const setNote = draft.set;
   return (
     <Dialog
       open
@@ -174,6 +178,7 @@ export function CancelDialog({ appointment, onClose }: DialogProps) {
       title="アポを取り消しますか？"
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             やめる
           </Button>
@@ -184,7 +189,10 @@ export function CancelDialog({ appointment, onClose }: DialogProps) {
               cancel.mutate(
                 { expectedVersion: appointment.version, note },
                 {
-                  onSuccess: () => navigate(paths.appointmentMail(appointment.id, 'cancellation')),
+                  onSuccess: () => {
+                    draft.reset();
+                    navigate(paths.appointmentMail(appointment.id, 'cancellation'));
+                  },
                 },
               )
             }
@@ -195,6 +203,7 @@ export function CancelDialog({ appointment, onClose }: DialogProps) {
       }
     >
       <div className="flex flex-col gap-4">
+        <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
         {cancel.isError && <Alert tone="error">{errorMessageOf(cancel.error)}</Alert>}
         <p className="text-sm">
           {appointment.company.name}（{formatRange(appointment.startsAt, appointment.endsAt)}
@@ -214,7 +223,9 @@ export function CancelDialog({ appointment, onClose }: DialogProps) {
 /** Sales ask telemarketing to change the appointment (N7 to all telemarketers). */
 export function ChangeRequestDialog({ appointment, onClose }: DialogProps) {
   const request = useRequestChange(appointment.id);
-  const [message, setMessage] = useState('');
+  const draft = useDraft(`change-request:${appointment.id}`, '');
+  const message = draft.value;
+  const setMessage = draft.set;
   return (
     <Dialog
       open
@@ -222,13 +233,21 @@ export function ChangeRequestDialog({ appointment, onClose }: DialogProps) {
       title="変更依頼を出す"
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
           <Button
             loading={request.isPending}
             disabled={!message.trim()}
-            onClick={() => request.mutate(message.trim(), { onSuccess: onClose })}
+            onClick={() =>
+              request.mutate(message.trim(), {
+                onSuccess: () => {
+                  draft.reset();
+                  onClose();
+                },
+              })
+            }
           >
             依頼する
           </Button>
@@ -236,6 +255,7 @@ export function ChangeRequestDialog({ appointment, onClose }: DialogProps) {
       }
     >
       <div className="flex flex-col gap-4">
+        <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
         {request.isError && <Alert tone="error">{errorMessageOf(request.error)}</Alert>}
         <p className="text-sm text-ink-sub">
           テレマが取ったアポは営業からは変えられません。依頼はテレマ全員に届き、対応する人が日時を変えます。
@@ -267,7 +287,11 @@ export function EditDetailsDialog({
 }: DialogProps & { onSaved?: () => void; saveLabel?: string }) {
   const update = useUpdateAppointment(appointment.id);
   const telema = appointment.source !== AppointmentSource.SalesBooked;
-  const [values, setValues] = useState<AppointmentValues>(() => appointmentValuesOf(appointment));
+  const draft = useDraft<AppointmentValues>(`appointment-edit:${appointment.id}`, () =>
+    appointmentValuesOf(appointment),
+  );
+  const values = draft.value;
+  const setValues = draft.set;
   const missing = missingAppointmentFields(values, telema);
   const submit = () =>
     update.mutate(
@@ -277,7 +301,12 @@ export function EditDetailsDialog({
         ...appointmentRequestFields(values),
         ...(telema && values.bookedById ? { bookedById: values.bookedById } : {}),
       },
-      { onSuccess: onSaved },
+      {
+        onSuccess: () => {
+          draft.reset();
+          onSaved();
+        },
+      },
     );
   return (
     <Dialog
@@ -287,6 +316,7 @@ export function EditDetailsDialog({
       title="アポの内容を編集"
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -296,6 +326,7 @@ export function EditDetailsDialog({
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       {missing.length > 0 && (
         <Alert tone="warning" className="mb-4">
           {`入力してください：${missing.join('、')}`}

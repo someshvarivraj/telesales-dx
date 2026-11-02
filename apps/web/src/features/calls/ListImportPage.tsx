@@ -4,7 +4,7 @@ import {
   type ListImportPreview,
   ListImportPurpose,
 } from '@telesales/shared';
-import { useMemo, useState } from 'react';
+import { type SetStateAction, useMemo } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -12,11 +12,13 @@ import { MoraBot, MoraBotProgress } from '@/components/brand/MoraBot';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { FileDrop } from '@/components/ui/FileDrop';
 import { FormField } from '@/components/ui/FormField';
 import { TextInput } from '@/components/ui/TextInput';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { useCommitImport, usePreviewImport } from './api';
 import { checkRows, ImportReview, type RowEdits } from './ImportReview';
 
@@ -52,12 +54,39 @@ function importErrorMessage(error: unknown): string {
 export function ListImportPage() {
   const preview = usePreviewImport();
   const commit = useCommitImport();
-  const [result, setResult] = useState<ListImportPreview | null>(null);
-  const [purpose, setPurpose] = useState<ListImportPurpose>(ListImportPurpose.CallRequest);
-  const [listName, setListName] = useState('');
-  const [autoAllocate, setAutoAllocate] = useState(true);
-  const [groupDepartments, setGroupDepartments] = useState(true);
-  const [edits, setEdits] = useState<RowEdits>({});
+  // The file read, the corrections and the choices are kept through a refresh until imported
+  // (request 11/2): the file itself is already stored on the server.
+  const draft = useDraft<{
+    result: ListImportPreview | null;
+    purpose: ListImportPurpose;
+    listName: string;
+    autoAllocate: boolean;
+    groupDepartments: boolean;
+    edits: RowEdits;
+  }>('list-import', {
+    result: null,
+    purpose: ListImportPurpose.CallRequest,
+    listName: '',
+    autoAllocate: true,
+    groupDepartments: true,
+    edits: {},
+  });
+  const { result, purpose, listName, autoAllocate, groupDepartments, edits } = draft.value;
+  const field =
+    <K extends keyof typeof draft.value>(key: K) =>
+    (next: SetStateAction<(typeof draft.value)[K]>) =>
+      draft.set((current) => ({
+        ...current,
+        [key]:
+          typeof next === 'function'
+            ? (next as (previous: (typeof draft.value)[K]) => (typeof draft.value)[K])(current[key])
+            : next,
+      }));
+  const setPurpose = field('purpose');
+  const setListName = field('listName');
+  const setAutoAllocate = field('autoAllocate');
+  const setGroupDepartments = field('groupDepartments');
+  const setEdits = field('edits');
   const checked = useMemo(() => (result ? checkRows(result, edits) : []), [result, edits]);
   const fixes = checked
     .filter((row) => edits[row.source.row] && row.problems.length === 0 && !row.noPhone)
@@ -70,11 +99,13 @@ export function ListImportPage() {
     if (!file) return;
     commit.reset();
     preview.mutate(file, {
-      onSuccess: (data) => {
-        setResult(data);
-        setEdits({});
-        setListName(data.fileName.replace(/\.(xlsx|csv|txt)$/i, ''));
-      },
+      onSuccess: (data) =>
+        draft.set((current) => ({
+          ...current,
+          result: data,
+          edits: {},
+          listName: data.fileName.replace(/\.(xlsx|csv|txt)$/i, ''),
+        })),
     });
   };
 
@@ -103,7 +134,7 @@ export function ListImportPage() {
               onClick={() => {
                 commit.reset();
                 preview.reset();
-                setResult(null);
+                draft.reset();
               }}
             >
               続けて取り込む
@@ -122,7 +153,22 @@ export function ListImportPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card title="1. ファイルを選ぶ">
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
+      <Card
+        title="1. ファイルを選ぶ"
+        actions={
+          result ? (
+            <ResetButton
+              dirty={draft.dirty}
+              onReset={() => {
+                commit.reset();
+                preview.reset();
+                draft.reset();
+              }}
+            />
+          ) : undefined
+        }
+      >
         <FileDrop
           accept=".xlsx,.csv,text/csv"
           hint="Excel（.xlsx）または CSV。必須の列は 会社名・電話番号・URL の3つです。テレマのリスト様式（2行目が見出し）もそのまま読めます。"
@@ -219,14 +265,17 @@ export function ListImportPage() {
                   loading={commit.isPending}
                   disabled={!listName.trim() || importCount === 0}
                   onClick={() =>
-                    commit.mutate({
-                      fileId: result.fileId,
-                      purpose,
-                      listName: listName.trim(),
-                      autoAllocate,
-                      groupDepartments,
-                      fixes,
-                    })
+                    commit.mutate(
+                      {
+                        fileId: result.fileId,
+                        purpose,
+                        listName: listName.trim(),
+                        autoAllocate,
+                        groupDepartments,
+                        fixes,
+                      },
+                      { onSuccess: draft.reset },
+                    )
                   }
                 >
                   {importCount}件を取り込む

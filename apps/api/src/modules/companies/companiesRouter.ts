@@ -224,6 +224,13 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
         );
     },
   );
+  router.delete(
+    '/list-imports/:id',
+    auth.requireAnyPermission(Permission.ImportLists),
+    async (req, res) => {
+      res.json(await deps.imports.undo(currentUserOf(req), idParam(req)));
+    },
+  );
   // Raw rows can hold more than the register shows, so only those who import or resolve see them.
   router.get(
     '/list-imports/:id/rows',

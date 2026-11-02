@@ -7,9 +7,10 @@ import {
   jstDate,
   OptionCategory,
 } from '@telesales/shared';
-import { useState } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
+import { useDraft } from '@/lib/drafts';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { FormField } from '@/components/ui/FormField';
@@ -45,14 +46,19 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
   const grades = useOptionList(OptionCategory.CallGrade);
   const results = useOptionList(OptionCategory.CallResult);
   const interest = useOptionList(OptionCategory.InterestLevel);
-  const [values, setValues] = useState<CreateCallRecordRequest>(
-    editing
-      ? {
-          ...editing,
-          avoidMonths: editing.avoidMonths as CreateCallRecordRequest['avoidMonths'],
-        }
-      : empty,
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft<CreateCallRecordRequest>(
+    `call-record:${companyId}:${editing?.id ?? 'new'}`,
+    () =>
+      editing
+        ? {
+            ...editing,
+            avoidMonths: editing.avoidMonths as CreateCallRecordRequest['avoidMonths'],
+          }
+        : empty,
   );
+  const values = draft.value;
+  const setValues = draft.set;
   const gradeResults = results.items.filter((item) => gradeOfResult(item.code) === values.grade);
   const chooseGrade = (grade: string) =>
     setValues((v) => ({
@@ -80,7 +86,7 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
       },
       {
         onSuccess: (record) => {
-          if (!editing) setValues(empty);
+          draft.reset();
           onSaved(record);
         },
       },
@@ -90,6 +96,7 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       {save.isError && <Alert tone="error">{errorMessageOf(save.error)}</Alert>}
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
       <fieldset>
         <legend className="mb-1.5 text-sm font-bold">判定</legend>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-2">
@@ -210,7 +217,8 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
           />
         )}
       </FormField>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
+        <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
         {onCancel && (
           <Button variant="secondary" onClick={onCancel}>
             キャンセル

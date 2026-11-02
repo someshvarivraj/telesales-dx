@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { applyLanguage } from './i18n/english/language';
+import { pruneDrafts } from './lib/drafts';
 import './styles/index.css';
 
 const container = document.getElementById('root');
@@ -11,6 +12,8 @@ if (!container) {
 
 // Temporary English for the team (see i18n/english).
 applyLanguage(document.body);
+// Drafts older than a week are dropped (request 11/2).
+pruneDrafts();
 
 createRoot(container).render(
   <StrictMode>

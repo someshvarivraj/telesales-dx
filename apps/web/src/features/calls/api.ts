@@ -298,3 +298,16 @@ export function useCompanyGroup(companyId: string) {
     }),
   };
 }
+
+/** 取り込みを取り消す (request 11/2). */
+export function useUndoImport() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient.delete<{ removedCompanies: number; keptCompanies: number }>(`/list-imports/${id}`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['companies'] });
+      void client.invalidateQueries({ queryKey: callsKeys.imports });
+    },
+  });
+}

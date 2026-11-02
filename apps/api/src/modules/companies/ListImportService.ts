@@ -34,6 +34,7 @@ import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import {
   DuplicateFileError,
   FileUnreadableError,
+  InvalidStateError,
   NotFoundError,
 } from '../../http/errors/AppError.js';
 import { iso, userRef, userRefSelect } from '../../http/mappers.js';
@@ -275,6 +276,71 @@ export class ListImportService {
       include: { importedBy: userRefSelect, file: true },
     });
     return rows.map((row) => this.toDto(row));
+  }
+
+  /**
+   * 取り込みを取り消す (request 11/2): a list imported by mistake can be taken back while nobody
+   * has worked on it yet. The companies it created go (a company that also came in on another list
+   * stays); the file can then be imported again. Refused once any company from it has a call,
+   * an appointment or a confirmed allocation, so no work is ever lost.
+   */
+  async undo(
+    actor: Actor,
+    id: string,
+  ): Promise<{ removedCompanies: number; keptCompanies: number }> {
+    const listImport = await this.prisma.listImport.findUnique({
+      where: { id },
+      include: { rows: { select: { companyId: true } } },
+    });
+    if (!listImport) {
+      throw new NotFoundError();
+    }
+    const companyIds = [
+      ...new Set(listImport.rows.flatMap((row) => (row.companyId ? [row.companyId] : []))),
+    ];
+    const onOtherLists = new Set(
+      (
+        await this.prisma.listImportRow.findMany({
+          where: { companyId: { in: companyIds }, listImportId: { not: id } },
+          select: { companyId: true },
+        })
+      ).flatMap((row) => (row.companyId ? [row.companyId] : [])),
+    );
+    const own = companyIds.filter((companyId) => !onOtherLists.has(companyId));
+    const [calls, appointments, allocations] = await Promise.all([
+      this.prisma.callRecord.count({
+        where: { OR: [{ companyId: { in: own } }, { listImportId: id }] },
+      }),
+      this.prisma.appointment.count({ where: { companyId: { in: own } } }),
+      this.prisma.allocation.count({ where: { companyId: { in: own }, status: 'CONFIRMED' } }),
+    ]);
+    if (calls + appointments + allocations > 0) {
+      throw new InvalidStateError({ reason: 'list_in_use', calls, appointments, allocations });
+    }
+    await this.prisma.$transaction(
+      async (tx) => {
+        await tx.allocation.deleteMany({ where: { companyId: { in: own } } });
+        await tx.company.updateMany({ where: { parentId: { in: own } }, data: { parentId: null } });
+        await tx.companyFormerName.deleteMany({ where: { companyId: { in: own } } });
+        await tx.listImport.delete({ where: { id } });
+        await tx.company.deleteMany({ where: { id: { in: own } } });
+      },
+      { timeout: 60_000 },
+    );
+    await this.audit.record({
+      action: AuditAction.ListImportUndone,
+      actorUserId: actor.id,
+      targetType: 'list_import',
+      targetId: id,
+      before: {
+        listName: listImport.listName,
+        rowCount: listImport.rowCount,
+        createdCount: listImport.createdCount,
+        fileId: listImport.fileId,
+      },
+      after: { removedCompanies: own.length, keptCompanies: companyIds.length - own.length },
+    });
+    return { removedCompanies: own.length, keptCompanies: companyIds.length - own.length };
   }
 
   /** The rows of one import as they were read and judged. */

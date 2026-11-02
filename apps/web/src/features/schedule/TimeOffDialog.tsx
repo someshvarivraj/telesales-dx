@@ -1,9 +1,9 @@
 import { addDays, type TimeOffKind, TimeOffKind as Kind } from '@telesales/shared';
-import { useState } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { FormField } from '@/components/ui/FormField';
 import { Select } from '@/components/ui/Select';
 import { TimePicker } from '@/components/ui/TimePicker';
@@ -11,6 +11,7 @@ import { TextInput } from '@/components/ui/TextInput';
 import { usePeople } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { toInstant } from '@/lib/format';
+import { useDraft } from '@/lib/drafts';
 import { ja } from '@/i18n/ja';
 import { useSaveTimeOff } from './api';
 
@@ -30,7 +31,8 @@ export function TimeOffDialog({
 }) {
   const save = useSaveTimeOff();
   const people = usePeople();
-  const [values, setValues] = useState({
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft(`time-off:${defaults.userId}:${defaults.date}`, {
     userId: defaults.userId,
     kind: Kind.DayOff as TimeOffKind,
     date: defaults.date,
@@ -39,6 +41,8 @@ export function TimeOffDialog({
     end: '12:00',
     note: '',
   });
+  const values = draft.value;
+  const setValues = draft.set;
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
   const allDay = values.kind === Kind.DayOff;
@@ -63,7 +67,12 @@ export function TimeOffDialog({
         // テレマアポ停止: the same time band on every day of the period.
         repeatUntil: stop && lastDay > values.date ? lastDay : null,
       },
-      { onSuccess: onClose },
+      {
+        onSuccess: () => {
+          draft.reset();
+          onClose();
+        },
+      },
     );
   };
 
@@ -74,6 +83,7 @@ export function TimeOffDialog({
       title="休み・遅刻・早退・テレマアポ停止を入力"
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -87,6 +97,7 @@ export function TimeOffDialog({
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       <div className="flex flex-col gap-4">
         {save.isError && <Alert tone="error">{errorMessageOf(save.error)}</Alert>}
         <FormField label="誰の予定" required>

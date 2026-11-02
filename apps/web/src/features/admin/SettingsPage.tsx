@@ -1,6 +1,6 @@
 import type { AppSettingsDto } from '@telesales/shared';
-import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import { TimePicker } from '@/components/ui/TimePicker';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { useAdminSettings, useSaveSettings } from './api';
 
 const REMINDER_MINUTES = [30, 60, 120, 180, 240, 480].map((minutes) => ({
@@ -28,9 +29,12 @@ export function SettingsPage() {
 
 function SettingsForm({ initial }: { initial: AppSettingsDto }) {
   const save = useSaveSettings();
-  const [values, setValues] = useState(initial);
+  const draft = useDraft('admin-settings', initial);
+  const values = draft.value;
+  const setValues = draft.set;
   return (
     <div className="flex flex-col gap-5">
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
       {save.isError && <Alert tone="error">{errorMessageOf(save.error)}</Alert>}
       {save.isSuccess && <Alert tone="success">保存しました。</Alert>}
       <Card title="移動時間">
@@ -104,10 +108,14 @@ function SettingsForm({ initial }: { initial: AppSettingsDto }) {
           </FormField>
         </div>
       </Card>
-      <div>
-        <Button loading={save.isPending} onClick={() => save.mutate(values)}>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          loading={save.isPending}
+          onClick={() => save.mutate(values, { onSuccess: draft.commit })}
+        >
           保存する
         </Button>
+        <ResetButton dirty={draft.dirty} onReset={draft.reset} />
       </div>
     </div>
   );

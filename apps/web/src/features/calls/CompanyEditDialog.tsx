@@ -1,6 +1,6 @@
 import { type CompanyDetail, formatCapital, OptionCategory, parseCapital } from '@telesales/shared';
-import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { FormField } from '@/components/ui/FormField';
@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { TextInput } from '@/components/ui/TextInput';
 import { useOptionList } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { useUpdateCompany } from './api';
 
 const FIELDS = [
@@ -40,19 +41,26 @@ export function CompanyEditDialog({
   const update = useUpdateCompany(company.id);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const ranks = useOptionList(OptionCategory.CompanyRank);
-  const [values, setValues] = useState<Record<Key, string>>(() => {
+  // Kept through a refresh until saved (request 11/2).
+  const draft = useDraft(`company-edit:${company.id}`, () => {
     const initial = {} as Record<Key, string>;
     for (const [key] of FIELDS) initial[key] = company[key] ?? '';
     initial.customerType = company.customerType ?? '';
     initial.companyRank = company.companyRank ?? '';
-    return initial;
+    return {
+      fields: initial,
+      walk: company.walkMinutes === null ? '' : String(company.walkMinutes),
+      // 資本金 can be typed as 「1億2000万」 or 「120000000」; it is shown back in 億・万 (11/2).
+      capital: company.capital === null ? '' : String(company.capital),
+    };
   });
-  const set = (key: Key, value: string) => setValues((current) => ({ ...current, [key]: value }));
-  const [walk, setWalk] = useState(company.walkMinutes === null ? '' : String(company.walkMinutes));
-  // 資本金 can be typed as 「1億2000万」 or 「120000000」; it is shown back in 億・万 (11/2).
-  const [capitalText, setCapitalText] = useState(
-    company.capital === null ? '' : String(company.capital),
-  );
+  const values = draft.value.fields;
+  const set = (key: Key, value: string) =>
+    draft.set((current) => ({ ...current, fields: { ...current.fields, [key]: value } }));
+  const walk = draft.value.walk;
+  const setWalk = (walk: string) => draft.set((current) => ({ ...current, walk }));
+  const capitalText = draft.value.capital;
+  const setCapitalText = (capital: string) => draft.set((current) => ({ ...current, capital }));
   const capital = parseCapital(capitalText);
   const capitalInvalid = capitalText.trim() !== '' && capital === null;
   const walkMinutes = walk.trim() === '' ? null : Number(walk.normalize('NFKC'));
@@ -70,7 +78,12 @@ export function CompanyEditDialog({
         companyGroupId: company.companyGroupId,
         expectedUpdatedAt: company.updatedAt,
       },
-      { onSuccess: onClose },
+      {
+        onSuccess: () => {
+          draft.reset();
+          onClose();
+        },
+      },
     );
 
   return (
@@ -81,6 +94,7 @@ export function CompanyEditDialog({
       size="lg"
       footer={
         <>
+          <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
           <Button variant="secondary" onClick={onClose}>
             キャンセル
           </Button>
@@ -94,6 +108,7 @@ export function CompanyEditDialog({
         </>
       }
     >
+      <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} className="mb-4" />
       {update.isError && (
         <Alert tone="error" className="mb-4">
           {errorMessageOf(update.error)}

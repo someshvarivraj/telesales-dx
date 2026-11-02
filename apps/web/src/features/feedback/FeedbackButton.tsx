@@ -29,6 +29,8 @@ import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { Dialog } from '@/components/ui/Dialog';
+import { ResetButton } from '@/components/ui/DraftBar';
+import { useDraft } from '@/lib/drafts';
 import { FormField } from '@/components/ui/FormField';
 import { Textarea } from '@/components/ui/Textarea';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
@@ -131,8 +133,15 @@ function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const { name } = useCurrentUser();
   const send = useSendFeedback();
   const mine = useMyFeedback(open);
-  const [type, setType] = useState<FeedbackType | null>(null);
-  const [body, setBody] = useState('');
+  // The kind and the text are kept through a refresh until sent (request 11/2).
+  const draft = useDraft<{ type: FeedbackType | null; body: string }>('feedback', {
+    type: null,
+    body: '',
+  });
+  const { type, body } = draft.value;
+  const setType = (next: FeedbackType | null) =>
+    draft.set((current) => ({ ...current, type: next }));
+  const setBody = (next: string) => draft.set((current) => ({ ...current, body: next }));
   const [files, setFiles] = useState<Attachment[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -191,8 +200,7 @@ function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const reset = () => {
     files.forEach((item) => item.preview && URL.revokeObjectURL(item.preview));
     setSent(null);
-    setType(null);
-    setBody('');
+    draft.reset();
     setFiles([]);
     setFileError(null);
     setTried(false);
@@ -214,7 +222,12 @@ function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () => void 
         screenName: currentScreen().slice(0, 100),
         files: files.map((item) => item.file),
       },
-      { onSuccess: setSent },
+      {
+        onSuccess: (feedback) => {
+          draft.reset();
+          setSent(feedback);
+        },
+      },
     );
   };
 
@@ -253,6 +266,11 @@ function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () => void 
           </>
         ) : (
           <>
+            <ResetButton
+              dirty={draft.dirty || files.length > 0}
+              onReset={reset}
+              className="mr-auto"
+            />
             <Button variant="secondary" onClick={close}>
               キャンセル
             </Button>

@@ -2,21 +2,26 @@ import type { AppointmentDetail } from '@telesales/shared';
 import { Paperclip } from 'lucide-react';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
+import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FileDrop } from '@/components/ui/FileDrop';
 import { Textarea } from '@/components/ui/Textarea';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { useDraft } from '@/lib/drafts';
 import { formatBytes, formatDateTime } from '@/lib/format';
 import { downloadAppointmentFile, useAddPreparation } from './api';
 
 /** Sales preparation: notes and files (later the place for AI-generated materials, spec §2-6). */
 export function PreparationSection({ appointment }: { appointment: AppointmentDetail }) {
   const add = useAddPreparation(appointment.id);
-  const [note, setNote] = useState('');
+  // The note is kept through a refresh (files cannot be: they are chosen again).
+  const draft = useDraft(`preparation:${appointment.id}`, '');
+  const note = draft.value;
+  const setNote = draft.set;
   const [files, setFiles] = useState<File[]>([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(draft.dirty);
 
   return (
     <Card
@@ -33,6 +38,7 @@ export function PreparationSection({ appointment }: { appointment: AppointmentDe
         {open && (
           <div className="flex flex-col gap-3 rounded-(--radius-control) border border-main/40 p-4">
             {add.isError && <Alert tone="error">{errorMessageOf(add.error)}</Alert>}
+            <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
             <Textarea
               rows={3}
               value={note}
@@ -67,7 +73,15 @@ export function PreparationSection({ appointment }: { appointment: AppointmentDe
                 ))}
               </ul>
             )}
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <ResetButton
+                dirty={draft.dirty || files.length > 0}
+                onReset={() => {
+                  draft.reset();
+                  setFiles([]);
+                }}
+                className="mr-auto"
+              />
               <Button variant="secondary" onClick={() => setOpen(false)}>
                 キャンセル
               </Button>
@@ -79,7 +93,7 @@ export function PreparationSection({ appointment }: { appointment: AppointmentDe
                     { note: note.trim(), files },
                     {
                       onSuccess: () => {
-                        setNote('');
+                        draft.reset();
                         setFiles([]);
                         setOpen(false);
                       },
