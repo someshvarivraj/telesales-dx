@@ -28,7 +28,10 @@ export const repeatSchema = z.object({
 export const planRequestSchema = z.object({
   ownerId: z.uuid(),
   type: requiredText(48),
+  /** 件名 (社内会議, 資料作成 …); for a visit it may repeat the company name. */
   title: requiredText(200),
+  /** The other company, for a visit or online meeting (PLAN_TYPES_WITH_COMPANY). */
+  companyName: optionalText(200),
   startsAt: instantString,
   endsAt: instantString,
   allDay: z.boolean().default(false),
@@ -67,6 +70,7 @@ export interface PlanDto {
   createdBy: UserRef;
   type: string;
   title: string;
+  companyName: string | null;
   startsAt: string;
   endsAt: string;
   allDay: boolean;
@@ -142,3 +146,13 @@ export type SlotProblem =
 export const confirmCandidateRequestSchema = z.object({
   planId: z.uuid(),
 });
+
+/** Plan types that are with another company: the plan names it (feedback 11/2). */
+export const PLAN_TYPES_WITH_COMPANY: readonly string[] = ['VISIT', 'ONLINE'];
+
+/** 「会社名・件名」, or whichever of the two there is. */
+export function planLabel(plan: { title: string; companyName: string | null }): string {
+  const company = plan.companyName?.trim();
+  if (!company) return plan.title;
+  return plan.title && plan.title !== company ? `${company}・${plan.title}` : company;
+}

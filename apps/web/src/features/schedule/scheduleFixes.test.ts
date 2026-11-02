@@ -13,6 +13,7 @@ function plan(patch: Partial<PlanDto>): PlanDto {
     createdBy: owner,
     type: 'OTHER',
     title: '社内作業',
+    companyName: null,
     startsAt: '2026-11-04T01:00:00Z',
     endsAt: '2026-11-04T02:00:00Z',
     allDay: false,
@@ -52,5 +53,16 @@ describe('schedule (feedback 10/30)', () => {
   it('people added to a fixed plan still show 同席', () => {
     const list = events(plan({ attendees: [other] }));
     expect(list.find((event) => event.personId === 'rep2')?.kind).toBe('attending');
+  });
+});
+
+describe('plans with another company (feedback 11/2)', () => {
+  it('shows 「会社名・件名」, or the one there is', () => {
+    const [visit] = events(plan({ type: 'VISIT', companyName: 'A社', title: '提案' }));
+    expect(visit?.title).toBe('A社・提案');
+    const [onlyCompany] = events(plan({ type: 'VISIT', companyName: 'A社', title: 'A社' }));
+    expect(onlyCompany?.title).toBe('A社');
+    const [internal] = events(plan({ title: '社内会議' }));
+    expect(internal?.title).toBe('社内会議');
   });
 });

@@ -32,11 +32,15 @@ export const callsKeys = {
     ['comments', target] as const,
 };
 
-export function useCompanySearch(request: Partial<CompanySearchRequest>) {
+export function useCompanySearch(
+  request: Partial<CompanySearchRequest>,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: callsKeys.search(request),
     queryFn: () => apiClient.post<Page<CompanyListItem>>('/companies/search', request),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 

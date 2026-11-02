@@ -833,6 +833,8 @@ model SchedulePlan {
   endsAt           DateTime   @map("ends_at") @db.Timestamptz(6)
   allDay           Boolean    @default(false) @map("all_day")
   title            String     @db.VarChar(200)
+  /// The other company of a visit / online meeting (typed, or picked from registered companies)
+  companyName      String?    @map("company_name") @db.VarChar(200)
   status           PlanStatus @default(FIXED)
   candidateGroupId String?    @map("candidate_group_id") @db.Uuid
   holidayWork      Boolean    @default(false) @map("holiday_work")

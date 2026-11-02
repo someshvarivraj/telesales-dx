@@ -8,7 +8,9 @@ import {
   jstDate,
   NoticeCode,
   OptionCategory,
+  PLAN_TYPES_WITH_COMPANY,
   type PlanDto,
+  planLabel,
   PlanStatus,
   Role,
   type ScheduleResponse,
@@ -58,6 +60,11 @@ const planInclude = {
 } satisfies Prisma.SchedulePlanInclude;
 
 type PlanRow = Prisma.SchedulePlanGetPayload<{ include: typeof planInclude }>;
+
+/** Only visits and online meetings name another company. */
+function companyOf(input: { type: string; companyName?: string | null }): string | null {
+  return PLAN_TYPES_WITH_COMPANY.includes(input.type) ? (input.companyName ?? null) : null;
+}
 
 function planAudit(row: {
   title: string;
@@ -215,6 +222,7 @@ export class ScheduleService {
               createdById: actor.id,
               type: input.type,
               title: input.title,
+              companyName: companyOf(input),
               startsAt: occurrence.startsAt,
               endsAt: occurrence.endsAt,
               allDay: input.allDay,
@@ -279,6 +287,7 @@ export class ScheduleService {
           ownerId: input.ownerId,
           type: input.type,
           title: input.title,
+          companyName: companyOf(input),
           startsAt,
           endsAt,
           allDay: input.allDay,
@@ -483,6 +492,7 @@ export class ScheduleService {
       createdBy: userRef(row.createdBy),
       type: row.type,
       title: row.title,
+      companyName: row.companyName,
       startsAt: iso(row.startsAt),
       endsAt: iso(row.endsAt),
       allDay: row.allDay,
@@ -580,7 +590,7 @@ export class ScheduleService {
     if (newAttendeeIds.length > 0 && verb !== 'deleted') {
       await this.notifications.notify({
         code: NoticeCode.AddedAsAttendee,
-        title: `同席者に入りました：${plan.title}（${when}）`,
+        title: `同席者に入りました：${planLabel(plan)}（${when}）`,
         linkPath: link,
         actorId: actor.id,
         context: { ATTENDEES: newAttendeeIds },
@@ -590,7 +600,7 @@ export class ScheduleService {
       const label = { added: '追加', changed: '変更', deleted: '削除' }[verb];
       await this.notifications.notify({
         code: NoticeCode.PlanChangedByOther,
-        title: `予定が${label}されました：${plan.title}（${when}）`,
+        title: `予定が${label}されました：${planLabel(plan)}（${when}）`,
         linkPath: link,
         actorId: actor.id,
         context: { PLAN_OWNER: [plan.ownerId] },

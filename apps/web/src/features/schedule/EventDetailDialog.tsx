@@ -120,7 +120,18 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
         {plan && (
           <DescriptionList
             items={[
-              { label: '会社名・タイトル', value: plan.title, wide: true },
+              ...(plan.companyName
+                ? [
+                    {
+                      label: plan.type === 'ONLINE' ? '相手の会社' : '訪問先の会社',
+                      value: plan.companyName,
+                      wide: true,
+                    },
+                  ]
+                : []),
+              ...(plan.title !== plan.companyName
+                ? [{ label: '件名', value: plan.title, wide: true }]
+                : []),
               {
                 label: '日時',
                 value: plan.allDay
