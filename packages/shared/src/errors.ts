@@ -44,3 +44,7 @@ export interface ApiErrorBody {
 /** Header every state-changing request must carry (CSRF mitigation for same-origin cookies). */
 export const CSRF_HEADER = 'X-Requested-With';
 export const CSRF_HEADER_VALUE = 'telesales-web';
+/** When the session ends if nothing else happens (ISO time), on every signed-in response. */
+export const SESSION_EXPIRES_HEADER = 'X-Session-Expires';
+/** Warned this long before the session ends (request 11/2). */
+export const SESSION_WARNING_MS = 10 * 60_000;

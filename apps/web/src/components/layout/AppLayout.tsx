@@ -7,6 +7,7 @@ import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
+import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useSystemStatus } from '@/features/system/useSystemStatus';
 import { ja } from '@/i18n/ja';
@@ -48,6 +49,7 @@ export function AppLayout() {
         </div>
         <MobileNav />
         <AssistantWidget />
+        <SessionExpiryWarning />
       </div>
     </ThemeProvider>
   );

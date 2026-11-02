@@ -1704,6 +1704,14 @@ export const EXACT: Readonly<Record<string, string>> = {
   次の週: 'Next week',
   '横向きA4・1枚に収まるように印刷します。表示する人はスケジュール画面で選んだ人です。':
     'Prints on one landscape A4 page. The people are those chosen on the schedule screen.',
+  // Session warning (11/2)
+  まもなく自動でログアウトします: 'You will be logged out soon',
+  ログアウトする: 'Log out',
+  ログインを続ける: 'Stay logged in',
+  '入力中の内容は、ログアウトすると保存されません。作業を続けるときは「ログインを続ける」を押してください（ここから1週間ログインしたままになります）。':
+    'Anything you are typing is not saved when you are logged out. To keep working, press "Stay logged in" (you stay logged in for another week).',
+  'ログインの有効期限が切れたため、ログアウトしました。もう一度ログインしてください。':
+    'Your login expired, so you were logged out. Please log in again.',
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
@@ -1952,4 +1960,6 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['印刷日 {0}', 'Printed {0}'],
   ['オンライン（{0}）', 'Online ({0})'],
   ['その他（{0}）', 'Other ({0})'],
+  // Session warning (11/2)
+  ['あと{0}分でログアウトします。', 'Logging out in {0} min.'],
 ];

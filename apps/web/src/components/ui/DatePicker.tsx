@@ -348,6 +348,8 @@ export function DatePicker({
                     !inMonth && 'text-ink-disabled',
                     inMonth && dow === 6 && 'text-saturday',
                     inMonth && dow === 0 && 'text-sunday',
+                    // Weekends in the same grey as every calendar (11/2).
+                    inMonth && (dow === 0 || dow === 6) && !selected && 'bg-off',
                     !selected && !blocked && 'hover:bg-main-soft',
                     isToday && !selected && 'font-bold ring-1 ring-ink/70 ring-inset',
                     selected && 'bg-main font-bold text-white',

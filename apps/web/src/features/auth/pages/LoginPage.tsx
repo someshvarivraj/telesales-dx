@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -5,6 +6,7 @@ import { paths, safeRedirectTarget } from '@/app/paths';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { FullPageSpinner } from '@/components/layout/FullPageSpinner';
 import { Alert } from '@/components/ui/Alert';
+import { sessionExpiry } from '@/lib/api/sessionExpiry';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { PasswordInput, TextInput } from '@/components/ui/TextInput';
@@ -19,6 +21,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = safeRedirectTarget(searchParams.get('redirect'));
+  // Read once: the session ended by itself (not a logout), so say why the person is here.
+  const [ended] = useState(() => sessionExpiry.takeEnded());
 
   const {
     register,
@@ -62,6 +66,11 @@ export function LoginPage() {
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
         {login.isError && <Alert tone="error">{errorMessageOf(login.error)}</Alert>}
+        {ended && !login.isError && (
+          <Alert tone="info">
+            ログインの有効期限が切れたため、ログアウトしました。もう一度ログインしてください。
+          </Alert>
+        )}
 
         <FormField label={ja.auth.email} error={errors.email?.message}>
           {(control) => (

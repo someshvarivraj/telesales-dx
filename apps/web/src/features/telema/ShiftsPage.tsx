@@ -106,7 +106,7 @@ export function ShiftsPage() {
                             title={day.holidayName ?? undefined}
                             className={cn(
                               'min-w-14 border-b border-r border-line px-1 py-1 text-center font-medium',
-                              !day.businessDay && 'bg-column text-ink-sub',
+                              !day.businessDay && 'bg-off text-ink-sub',
                               day.date === today && 'bg-main-soft text-ink',
                             )}
                           >
@@ -156,7 +156,7 @@ export function ShiftsPage() {
                                 key={day.date}
                                 className={cn(
                                   'border-b border-r border-line p-0 text-center',
-                                  !day.businessDay && 'bg-column',
+                                  !day.businessDay && 'bg-off',
                                 )}
                               >
                                 <button
