@@ -1,5 +1,6 @@
 import {
   jstDate,
+  planLabel,
   jstMinutesOfDay,
   type PlanDto,
   type ScheduleResponse,
@@ -94,7 +95,7 @@ export function buildEvents(data: ScheduleResponse): CalendarEvent[] {
       startsAt: plan.startsAt,
       endsAt: plan.endsAt,
       allDay: plan.allDay,
-      title: plan.title,
+      title: planLabel(plan),
       plan,
     });
     for (const attendee of plan.attendees) {
@@ -106,7 +107,7 @@ export function buildEvents(data: ScheduleResponse): CalendarEvent[] {
         startsAt: plan.startsAt,
         endsAt: plan.endsAt,
         allDay: plan.allDay,
-        title: `${plan.title}（${plan.owner.name}）`,
+        title: `${planLabel(plan)}（${plan.owner.name}）`,
         plan,
       });
     }

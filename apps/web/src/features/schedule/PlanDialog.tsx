@@ -1,13 +1,14 @@
 import {
   addDays,
   OptionCategory,
+  PLAN_TYPES_WITH_COMPANY,
   type PlanDto,
   type PlanRequest,
   PlanStatus,
   Role,
 } from '@telesales/shared';
-import { AlignLeft, Clock, Repeat, Tag, UserRound, Users } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { AlignLeft, Building2, Clock, Repeat, Tag, UserRound, Users } from 'lucide-react';
+import { type ReactNode, useDeferredValue, useId, useState } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +16,9 @@ import { cn } from '@/components/ui/cn';
 import { Dialog } from '@/components/ui/Dialog';
 import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
+import { TextInput } from '@/components/ui/TextInput';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { useCompanySearch } from '@/features/calls/api';
 import { Textarea } from '@/components/ui/Textarea';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
@@ -44,7 +47,9 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
   const [values, setValues] = useState({
     ownerId: plan?.owner.id ?? defaults?.ownerId ?? '',
     type: plan?.type ?? 'INTERNAL',
-    title: plan?.title ?? '',
+    // An old visit kept the company as its title: start with an empty 件名 then.
+    title: plan && plan.title !== plan.companyName ? plan.title : '',
+    companyName: plan?.companyName ?? '',
     date: initialDate,
     endDate: plan ? jstDate(new Date(new Date(plan.endsAt).getTime() - 1)) : initialDate,
     start: plan && !plan.allDay ? formatTime(plan.startsAt) : (defaults?.time ?? '10:00'),
@@ -61,6 +66,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
   });
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
+  const withCompany = PLAN_TYPES_WITH_COMPANY.includes(values.type);
 
   const submit = () => {
     const startsAt = values.allDay
@@ -69,10 +75,13 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
     const endsAt = values.allDay
       ? toInstant(addDays(values.endDate < values.date ? values.date : values.endDate, 1), '00:00')
       : toInstant(values.date, values.end);
+    const company = withCompany ? values.companyName.trim() : '';
     const request: PlanRequest = {
       ownerId: values.ownerId,
       type: values.type,
-      title: values.title,
+      // A visit needs no separate 件名: the company name stands in.
+      title: values.title.trim() || company,
+      companyName: company || null,
       startsAt,
       endsAt,
       allDay: values.allDay,
@@ -113,7 +122,11 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
           <Button
             onClick={submit}
             loading={save.isPending}
-            disabled={!values.ownerId || !values.title.trim() || !values.date}
+            disabled={
+              !values.ownerId ||
+              !(values.title.trim() || (withCompany && values.companyName.trim())) ||
+              !values.date
+            }
           >
             保存する
           </Button>
@@ -134,15 +147,17 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
           </Alert>
         )}
 
-        {/* Title first and large, as in a desk calendar. */}
+        {/* 件名 first and large, as in a desk calendar. */}
         <input
           autoFocus
           value={values.title}
           onChange={(e) => set('title', e.target.value)}
           maxLength={200}
-          aria-label="会社名またはタイトル"
-          aria-required
-          placeholder="会社名またはタイトルを入力"
+          aria-label="件名"
+          aria-required={!withCompany}
+          placeholder={
+            withCompany ? '件名（任意。例：初回ご挨拶、提案）' : '件名（例：社内会議、資料作成）'
+          }
           className="mb-2 h-12 w-full border-0 border-b-2 border-line bg-transparent px-0.5 text-xl font-bold placeholder:font-normal placeholder:text-ink-disabled focus:border-main focus:outline-none"
         />
 
@@ -170,6 +185,15 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
             })}
           </div>
         </Row>
+
+        {withCompany && (
+          <Row
+            icon={<Building2 className="size-4" />}
+            label={values.type === 'ONLINE' ? '相手の会社' : '訪問先の会社'}
+          >
+            <CompanyField value={values.companyName} onChange={(v) => set('companyName', v)} />
+          </Row>
+        )}
 
         <Row icon={<Clock className="size-4" />} label="日時">
           <div className="flex flex-col gap-2">
@@ -332,5 +356,33 @@ function Row({ icon, label, children }: { icon: ReactNode; label: string; childr
         {children}
       </div>
     </div>
+  );
+}
+
+/** The other company: typed freely, with registered companies suggested as you type. */
+function CompanyField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const listId = useId();
+  const keyword = useDeferredValue(value.trim());
+  const search = useCompanySearch(
+    { keyword, callTargetsOnly: false, page: 1, pageSize: 8 },
+    { enabled: keyword.length >= 2 },
+  );
+  const names = [...new Set((search.data?.items ?? []).map((company) => company.name))];
+  return (
+    <>
+      <TextInput
+        aria-label="会社名"
+        className="max-w-md"
+        value={value}
+        maxLength={200}
+        list={listId}
+        autoComplete="off"
+        placeholder="会社名を入力（登録済みの会社は候補に出ます）"
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <datalist id={listId}>
+        {keyword.length >= 2 && names.map((name) => <option key={name} value={name} />)}
+      </datalist>
+    </>
   );
 }

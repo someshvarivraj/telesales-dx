@@ -587,6 +587,12 @@ export const EXACT: Readonly<Record<string, string>> = {
   取込日: 'Import date',
   テレマIDNo: 'Telema ID No.',
   '片方だけでも絞り込めます。': 'You can fill in just one side.',
+  '件名（任意。例：初回ご挨拶、提案）': 'Subject (optional, e.g. first visit, proposal)',
+  '件名（例：社内会議、資料作成）': 'Subject (e.g. internal meeting, preparing materials)',
+  訪問先の会社: 'Company to visit',
+  相手の会社: 'Other company',
+  '会社名を入力（登録済みの会社は候補に出ます）':
+    'Company name (registered companies are suggested)',
   何で絞り込みますか: 'Filter by',
   項目を選び直す: 'Pick another field',
   '入れた文字を含むものを探します。': 'Finds values containing this text.',
