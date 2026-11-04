@@ -15,6 +15,12 @@ export function formatDate(date: string): string {
 }
 
 /** 10/15（木） */
+/** 「2027年4月30日」 */
+export function formatDateKanji(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return `${year}年${month}月${day}日`;
+}
+
 export function formatShortDate(date: string): string {
   const [, month, day] = date.split('-');
   return `${Number(month)}/${Number(day)}（${weekdayJa(date)}）`;
