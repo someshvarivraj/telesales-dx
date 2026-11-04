@@ -6,7 +6,16 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/generated/**', '**/coverage/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/generated/**',
+      '**/coverage/**',
+      // Run outside the app: in a service worker, and by hand in Node.
+      'apps/web/public/**',
+      'apps/web/outage/**',
+      'apps/web/scripts/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.strict,

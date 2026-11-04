@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>メンテナンス中 | Telesales DX</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #05070d;
+        color: #e8ebf2;
+        font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', Meiryo, sans-serif;
+      }
+      #bot {
+        position: fixed;
+        top: 0;
+        left: 0;
+        will-change: transform;
+        transition: filter 0.25s;
+      }
+      #bot img {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      #note {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        text-align: center;
+        pointer-events: none;
+        /* Stays readable while MoraBot passes behind it. */
+        text-shadow:
+          0 0 6px #05070d,
+          0 0 12px #05070d;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(20px, 3.4vw, 32px);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      p {
+        margin: 10px 0 0;
+        max-width: 34em;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #a6adbd;
+      }
+      #until {
+        font-size: 16px;
+        font-weight: 700;
+        color: #e8ebf2;
+      }
+      #hits {
+        position: fixed;
+        right: 16px;
+        bottom: 12px;
+        font-size: 12px;
+        color: #6f7788;
+      }
+      #cheer {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 18px;
+        font-weight: 700;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .spark {
+        position: fixed;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bot" aria-hidden="true"><img id="pose" alt="" /></div>
+    <main id="note">
+      <h1 id="title">ただいまメンテナンス中です</h1>
+      <p id="until" hidden></p>
+      <p id="body">
+        終わると自動で元の画面に戻ります。入力中の下書きはこのブラウザに残っています。<br />
+        The system is down for maintenance. This page returns by itself when it is back.
+      </p>
+    </main>
+    <div id="cheer" role="status"></div>
+    <div id="hits"></div>
+    <script>
+      {{BOUNCE}}
+      (function () {
+        var POSES = {{POSES}};
+        var HAPPY = {{HAPPY}};
+        var COLORS = ['#ff5a5f', '#ffb020', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6'];
+        var SPEED = 170; // px per second
+        var CHECK_MS = 20000;
+
+        var bot = document.getElementById('bot');
+        var pose = document.getElementById('pose');
+        var cheer = document.getElementById('cheer');
+        var hits = document.getElementById('hits');
+        var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        var w, h, maxX, maxY;
+        function measure() {
+          w = Math.max(110, Math.min(190, window.innerWidth * 0.17));
+          h = w * (560 / 466);
+          maxX = Math.max(0, window.innerWidth - w);
+          maxY = Math.max(0, window.innerHeight - h);
+          bot.style.width = w + 'px';
+          bot.style.height = h + 'px';
+        }
+        measure();
+        window.addEventListener('resize', measure);
+
+        var angle = Math.PI / 4 + (Math.random() * Math.PI) / 8;
+        var state = {
+          x: maxX * Math.random(),
+          y: maxY * Math.random(),
+          vx: SPEED * Math.cos(angle),
+          vy: SPEED * Math.sin(angle),
+          walls: 0,
+        };
+        var poseAt = 0;
+        var colorAt = 0;
+        var corners = 0;
+        var cheerTimer = 0;
+
+        function paint() {
+          pose.src = POSES[poseAt];
+          bot.style.filter = 'drop-shadow(0 0 16px ' + COLORS[colorAt] + ')';
+        }
+        function nextLook() {
+          poseAt = (poseAt + 1) % POSES.length;
+          colorAt = (colorAt + 1) % COLORS.length;
+          paint();
+        }
+        paint();
+
+        function burst(cx, cy, color) {
+          for (var i = 0; i < 18; i++) {
+            (function () {
+              var dot = document.createElement('div');
+              dot.className = 'spark';
+              dot.style.left = cx + 'px';
+              dot.style.top = cy + 'px';
+              dot.style.background = color;
+              document.body.appendChild(dot);
+              var turn = Math.random() * Math.PI * 2;
+              var far = 60 + Math.random() * 140;
+              dot.animate(
+                [
+                  { transform: 'translate(0, 0)', opacity: 1 },
+                  {
+                    transform:
+                      'translate(' + Math.cos(turn) * far + 'px,' + Math.sin(turn) * far + 'px)',
+                    opacity: 0,
+                  },
+                ],
+                { duration: 700, easing: 'ease-out' },
+              ).onfinish = function () {
+                dot.remove();
+              };
+            })();
+          }
+        }
+
+        function hitCorner() {
+          corners += 1;
+          pose.src = HAPPY;
+          bot.style.filter = 'drop-shadow(0 0 28px #ffe066)';
+          burst(state.x + w / 2, state.y + h / 2, '#ffe066');
+          cheer.textContent = '角に当たりました！ / Corner hit!';
+          cheer.style.opacity = 1;
+          hits.textContent = '角に当たった回数：' + corners;
+          clearTimeout(cheerTimer);
+          cheerTimer = setTimeout(function () {
+            cheer.style.opacity = 0;
+          }, 1800);
+        }
+
+        var last = null;
+        function frame(now) {
+          var dt = last === null ? 0 : Math.min(0.05, (now - last) / 1000);
+          last = now;
+          var hit = stepBounce(state, dt, maxX, maxY, SPEED);
+          if (hit) nextLook();
+          if (hit === 'corner') hitCorner();
+          bot.style.transform = 'translate(' + state.x + 'px,' + state.y + 'px)';
+          window.requestAnimationFrame(frame);
+        }
+        if (reduced) {
+          bot.style.transform = 'translate(' + maxX / 2 + 'px,24px)';
+        } else {
+          window.requestAnimationFrame(frame);
+        }
+
+        // The announced end, if the app saw a notice before the server went away.
+        try {
+          var saved = JSON.parse(localStorage.getItem('planned-outage') || 'null');
+          if (saved && new Date(saved.endsAt) > new Date()) {
+            var until = document.getElementById('until');
+            until.hidden = false;
+            until.textContent =
+              new Date(saved.endsAt).toLocaleString('ja-JP', {
+                timeZone: 'Asia/Tokyo',
+                month: 'numeric',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }) + ' に終わる予定です';
+          }
+        } catch (e) {
+          // Not known: the page works without it.
+        }
+
+        function showConnection() {
+          if (navigator.onLine === false) {
+            document.getElementById('title').textContent = 'インターネットに接続されていません';
+            document.getElementById('body').textContent =
+              '接続が戻ると自動で元の画面に戻ります。 / You are offline. This page returns by itself.';
+          }
+        }
+        showConnection();
+        window.addEventListener('offline', showConnection);
+        window.addEventListener('online', function () {
+          window.location.reload();
+        });
+
+        // Back when the real page answers again (this request skips the fallback).
+        setInterval(function () {
+          fetch(window.location.href, { cache: 'no-store', credentials: 'same-origin' })
+            .then(function (response) {
+              if (response.ok) window.location.reload();
+            })
+            .catch(function () {});
+        }, CHECK_MS);
+      })();
+    </script>
+  </body>
+</html>

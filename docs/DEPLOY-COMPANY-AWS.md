@@ -566,3 +566,37 @@ the cause is fixed.
 | Quoted values in `.env.production` — Docker keeps the quotes                                   | values without quotes                                                                         |
 | Backup at the wrong hour on a UTC server                                                       | `30 18` UTC = 03:30 JST                                                                       |
 | The area table file (real names) left on the server or put in Git                              | copied as text, loaded, then `shred -u`                                                       |
+
+## Maintenance page instead of a 502 (optional, as root)
+
+nginx answers 502 when the app container is down but the machine is up. Browsers that have opened
+the app once already show the MoraBot page by themselves (service worker). This step also covers
+people opening it for the first time. It cannot help while the whole machine is off.
+
+The page has to live outside the container, so copy it while the app is up, and again if it changes.
+Use your real address and path, and do this in the same `location` block that has `proxy_pass`:
+
+```bash
+mkdir -p /var/www/telesales-outage
+curl -fsS https://dx.morabu.com/telesales-dx/outage.html -o /var/www/telesales-outage/outage.html
+```
+
+```nginx
+  # inside the telesales location:
+  error_page 502 503 504 /__telesales_outage.html;
+
+  # next to that location:
+  location = /__telesales_outage.html {
+    internal;
+    root /var/www/telesales-outage;
+    try_files /outage.html =502;
+    add_header Cache-Control "no-store" always;
+  }
+```
+
+```bash
+nginx -t && systemctl reload nginx
+```
+
+Do not add `proxy_intercept_errors`: without it only nginx's own errors get this page, and errors
+from the app stay as they are. To undo, remove these lines and reload.
