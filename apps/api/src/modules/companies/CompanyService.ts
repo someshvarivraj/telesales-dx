@@ -2,6 +2,8 @@ import {
   type CompanyDetail,
   type CompanyFields,
   CompanyFlag,
+  type BulkEditDto,
+  type BulkEditRequest,
   type CompanyFilterCondition,
   type CompanyListItem,
   type CompanySearchRequest,
@@ -111,6 +113,75 @@ export function companyWriteData(fields: CompanyFields) {
     companyRank: fields.companyRank,
     parentName: fields.parentName,
     companyGroupId: fields.companyGroupId ?? null,
+  };
+}
+
+const bulkEditInclude = {
+  actor: userRefSelect,
+  restoredBy: userRefSelect,
+  items: { select: { company: { select: { id: true, name: true } } } },
+} satisfies Prisma.CompanyBulkEditInclude;
+
+function toBulkEditDto(
+  row: Prisma.CompanyBulkEditGetPayload<{ include: typeof bulkEditInclude }>,
+): BulkEditDto {
+  return {
+    id: row.id,
+    actor: row.actor ? userRef(row.actor) : null,
+    changes: row.changes as BulkEditDto['changes'],
+    companyCount: row.companyCount,
+    companies: row.items.map((item) => item.company),
+    createdAt: iso(row.createdAt),
+    restoredAt: row.restoredAt ? iso(row.restoredAt) : null,
+    restoredBy: row.restoredBy ? userRef(row.restoredBy) : null,
+    skippedCount: row.skippedCount,
+  };
+}
+
+/** The columns one 一括修正 writes; derived columns follow the field they come from. */
+function bulkWriteData(changes: BulkEditRequest['changes']) {
+  const { capital, name, phone, address, ...rest } = changes;
+  const parts = address === undefined ? null : splitJapaneseAddress(address);
+  return {
+    ...rest,
+    ...(name ? { name, nameKey: normalizeCompanyName(name) } : {}),
+    ...(phone === undefined ? {} : { phone, phoneDigits: phoneDigitsOf(phone) }),
+    ...(address === undefined
+      ? {}
+      : {
+          address,
+          // Unless they are changed too, as on a single edit.
+          prefecture: rest.prefecture ?? parts?.prefecture ?? null,
+          city: rest.city ?? parts?.city ?? null,
+        }),
+    ...(capital === undefined ? {} : { capital: capital === null ? null : BigInt(capital) }),
+  };
+}
+
+/** Bigints do not go into JSON: 資本金 is kept as a number there. */
+function jsonValue(value: unknown): string {
+  return JSON.stringify(typeof value === 'bigint' ? Number(value) : (value ?? null));
+}
+
+function toJson(values: Record<string, unknown>): Prisma.InputJsonObject {
+  return JSON.parse(
+    JSON.stringify(values, (_key, value: unknown) =>
+      typeof value === 'bigint' ? Number(value) : value,
+    ),
+  ) as Prisma.InputJsonObject;
+}
+
+function pickColumns(company: Record<string, unknown>, columns: string[]): Record<string, unknown> {
+  return Object.fromEntries(columns.map((column) => [column, company[column] ?? null]));
+}
+
+function restoreData(before: Record<string, unknown>): Prisma.CompanyUpdateInput {
+  const { capital, ...rest } = before;
+  return {
+    ...rest,
+    ...(capital === undefined
+      ? {}
+      : { capital: capital === null ? null : BigInt(capital as number) }),
   };
 }
 
@@ -386,6 +457,140 @@ export class CompanyService {
       after: { flag: CompanyFlag.None, action: input.action },
     });
     return this.get(id);
+  }
+
+  /**
+   * 一括修正 (Sano 11/2): the same change to the chosen companies, one transaction. The previous
+   * values of every column written are kept per company so that it can be undone.
+   */
+  async bulkEdit(actor: Actor, input: BulkEditRequest): Promise<BulkEditDto> {
+    const { changes } = input;
+    const data = bulkWriteData(changes);
+    const columns = Object.keys(data);
+    const companies = await this.prisma.company.findMany({
+      where: { id: { in: input.companyIds } },
+    });
+    if (companies.length === 0) throw new NotFoundError();
+    const edit = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.companyBulkEdit.create({
+        data: {
+          actorId: actor.id,
+          applied: toJson(data),
+          changes: toJson(changes),
+          companyCount: companies.length,
+          items: {
+            create: companies.map((company) => ({
+              companyId: company.id,
+              before: toJson(pickColumns(company, columns)),
+            })),
+          },
+        },
+      });
+      await tx.company.updateMany({
+        where: { id: { in: companies.map((company) => company.id) } },
+        data,
+      });
+      // Renamed companies keep the former name, as with a single edit (spec §7).
+      if (data.name) {
+        await tx.companyFormerName.createMany({
+          data: companies
+            .filter((company) => company.name !== data.name)
+            .map((company) => ({
+              companyId: company.id,
+              name: company.name,
+              nameKey: company.nameKey,
+            })),
+        });
+      }
+      return created;
+    });
+    await this.audit.record({
+      action: AuditAction.CompanyBulkEdited,
+      actorUserId: actor.id,
+      targetType: 'company_bulk_edit',
+      targetId: edit.id,
+      after: toJson(changes),
+      metadata: { companyIds: companies.map((company) => company.id) },
+    });
+    return this.bulkEditDto(edit.id);
+  }
+
+  async listBulkEdits(): Promise<BulkEditDto[]> {
+    const rows = await this.prisma.companyBulkEdit.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: bulkEditInclude,
+    });
+    return rows.map(toBulkEditDto);
+  }
+
+  /**
+   * Puts the previous values back. A company where someone has since changed one of these fields
+   * is left alone and counted: their later work is not overwritten.
+   */
+  async restoreBulkEdit(actor: Actor, id: string): Promise<BulkEditDto> {
+    const edit = await this.prisma.companyBulkEdit.findUnique({
+      where: { id },
+      include: { items: { include: { company: true } } },
+    });
+    if (!edit) throw new NotFoundError();
+    if (edit.restoredAt) throw new InvalidStateError({ reason: 'already_restored' });
+    const applied = edit.applied as Record<string, unknown>;
+    const columns = Object.keys(applied);
+    const untouched = edit.items.filter((item) =>
+      columns.every(
+        (column) =>
+          jsonValue((item.company as Record<string, unknown>)[column]) ===
+          jsonValue(applied[column]),
+      ),
+    );
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of untouched) {
+        await tx.company.update({
+          where: { id: item.companyId },
+          data: restoreData(item.before as Record<string, unknown>),
+        });
+        // The former name this edit recorded is the current name again.
+        const before = item.before as { name?: string };
+        if (before.name && before.name !== applied.name) {
+          await tx.companyFormerName.deleteMany({
+            where: {
+              companyId: item.companyId,
+              name: before.name,
+              changedAt: { gte: edit.createdAt },
+            },
+          });
+        }
+      }
+      await tx.companyBulkEdit.update({
+        where: { id },
+        data: {
+          restoredAt: this.clock.now(),
+          restoredById: actor.id,
+          skippedCount: edit.items.length - untouched.length,
+        },
+      });
+    });
+    await this.audit.record({
+      action: AuditAction.CompanyBulkRestored,
+      actorUserId: actor.id,
+      targetType: 'company_bulk_edit',
+      targetId: id,
+      metadata: {
+        companyIds: untouched.map((item) => item.companyId),
+        skipped: edit.items.length - untouched.length,
+      },
+    });
+    return this.bulkEditDto(id);
+  }
+
+  private async bulkEditDto(id: string): Promise<BulkEditDto> {
+    return toBulkEditDto(
+      await this.prisma.companyBulkEdit.findUniqueOrThrow({
+        where: { id },
+        include: bulkEditInclude,
+      }),
+    );
   }
 
   /**

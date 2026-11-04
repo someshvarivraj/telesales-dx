@@ -10,6 +10,8 @@ export const AuditAction = {
   PasswordReset: 'user.password.reset',
   CompanyCreated: 'company.created',
   CompanyUpdated: 'company.updated',
+  CompanyBulkEdited: 'company.bulk_edited',
+  CompanyBulkRestored: 'company.bulk_restored',
   CompanyFlagResolved: 'company.flag.resolved',
   CompanyMerged: 'company.merged',
   ListImported: 'list.imported',

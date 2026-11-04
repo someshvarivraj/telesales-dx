@@ -1,4 +1,6 @@
 import type {
+  BulkEditDto,
+  BulkEditRequest,
   AvoidListImportResult,
   AvoidPhoneDto,
   CallRecordDto,
@@ -287,6 +289,33 @@ export function useSetCallTargets() {
   return useMutation({
     mutationFn: (request: SetCallTargetRequest) =>
       apiClient.post<SetCallTargetResult>('/companies/call-targets', request),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['companies'] }),
+  });
+}
+
+/** 一括修正 and undoing it (Sano 11/2). */
+export function useBulkEdit() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: BulkEditRequest) =>
+      apiClient.post<BulkEditDto>('/companies/bulk-edit', request),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['companies'] }),
+  });
+}
+
+export function useBulkEdits(enabled: boolean) {
+  return useQuery({
+    queryKey: ['companies', 'bulk-edits'] as const,
+    queryFn: ({ signal }) => apiClient.get<BulkEditDto[]>('/companies/bulk-edits', signal),
+    enabled,
+  });
+}
+
+export function useRestoreBulkEdit() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient.post<BulkEditDto>(`/companies/bulk-edits/${id}/restore`, {}),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['companies'] }),
   });
 }

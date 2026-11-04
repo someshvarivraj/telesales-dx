@@ -48,6 +48,52 @@ export const companyFieldsSchema = z.object({
 export const telemaMemoRequestSchema = z.object({ telemaMemo: optionalText(4000) });
 export type CompanyFields = z.infer<typeof companyFieldsSchema>;
 
+/** 一括修正 (Sano 11/2): every company field can be changed at once; it can be undone. */
+export const BULK_EDIT_FIELDS = [
+  'name',
+  'office',
+  'department',
+  'phone',
+  'url',
+  'sourceUrl',
+  'postalCode',
+  'address',
+  'prefecture',
+  'city',
+  'nearestStation',
+  'walkMinutes',
+  'capital',
+  'industry',
+  'customerType',
+  'clientNo',
+  'companyRank',
+  'parentName',
+] as const;
+export type BulkEditField = (typeof BULK_EDIT_FIELDS)[number];
+
+export const bulkEditRequestSchema = z.object({
+  companyIds: z.array(z.uuid()).min(1).max(200),
+  /** Only the fields present are written; null empties a field (not 会社名). */
+  changes: companyFieldsSchema
+    .omit({ companyGroupId: true, listingStatus: true })
+    .partial()
+    .refine((changes) => Object.keys(changes).length > 0)
+    .refine((changes) => !('name' in changes) || !!changes.name),
+});
+export type BulkEditRequest = z.infer<typeof bulkEditRequestSchema>;
+
+export interface BulkEditDto {
+  id: string;
+  actor: UserRef | null;
+  changes: BulkEditRequest['changes'];
+  companyCount: number;
+  companies: { id: string; name: string }[];
+  createdAt: string;
+  restoredAt: string | null;
+  restoredBy: UserRef | null;
+  skippedCount: number;
+}
+
 export const updateCompanyRequestSchema = companyFieldsSchema.extend({
   /** The updatedAt the editor started from; a newer value means someone else saved first. */
   expectedUpdatedAt: z.iso.datetime({ offset: true }),
