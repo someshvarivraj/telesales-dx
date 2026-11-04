@@ -1,7 +1,8 @@
 import { addDays, TimeOffKind } from '@telesales/shared';
-import { ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
+import { paths } from '@/app/paths';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { Spinner } from '@/components/ui/Spinner';
@@ -123,6 +124,16 @@ export function SchedulePrintPage() {
     eventsOn(events, date, personId).filter((event) => event.kind !== 'lock');
   const freeOf = (personId: string, date: string) =>
     holiday(date) ? 0 : freeMinutes(dayEvents(personId, date), date);
+  const navigate = useNavigate();
+  // The print page opens in its own tab: closing it returns to the schedule left open there.
+  // Opened on its own (a bookmark, a reload), the tab cannot be closed, so it goes to the schedule.
+  const backToSchedule = () => {
+    if (window.opener) {
+      window.close();
+    } else {
+      navigate(`${paths.schedule}?date=${monday}`);
+    }
+  };
   const move = (weeks: number) => {
     const next = new URLSearchParams(params);
     next.set('date', addDays(monday, weeks * 7));
@@ -135,6 +146,13 @@ export function SchedulePrintPage() {
         {'@page { size: A4 landscape; margin: 7mm; } html { -webkit-print-color-adjust: exact; }'}
       </style>
       <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
+        <Button
+          variant="secondary"
+          icon={<ArrowLeft className="size-4" aria-hidden="true" />}
+          onClick={backToSchedule}
+        >
+          スケジュールに戻る
+        </Button>
         <Button
           variant="secondary"
           aria-label="前の週"
