@@ -36,7 +36,13 @@ const listInclude = {
   callRecords: {
     orderBy: { calledAt: 'desc' },
     take: 1,
-    select: { calledAt: true, grade: true, nextCallDate: true, telemarketer: userRefSelect },
+    select: {
+      calledAt: true,
+      grade: true,
+      nextCallDate: true,
+      avoidUntil: true,
+      telemarketer: userRefSelect,
+    },
   },
 } satisfies Prisma.CompanyInclude;
 
@@ -594,6 +600,7 @@ export class CompanyService {
             calledAt: iso(last.calledAt),
             grade: last.grade,
             telemarketer: userRef(last.telemarketer),
+            avoidUntil: dateOnly(last.avoidUntil),
           }
         : null,
       nextCallDate: dateOnly(last?.nextCallDate ?? null),

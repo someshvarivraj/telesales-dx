@@ -352,9 +352,8 @@ export class AllocationService {
         )
         AND (
           NOT EXISTS (SELECT 1 FROM call_records r WHERE r.company_id = c.id)
+          -- Grade C (「C架電回避目安」) has no B次回架電日: it never comes back by itself (Sano 11/2).
           OR last_call.next_call_date <= ${toDbDate(date)}::date
-          -- Grade C with 「C架電回避目安」: back on the list once the time is up.
-          OR last_call.avoid_until <= ${toDbDate(date)}::date
         )
       ORDER BY c.prefecture NULLS LAST, c.city NULLS LAST, c.created_at, c.id
     `);

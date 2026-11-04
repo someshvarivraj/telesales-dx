@@ -29,7 +29,7 @@ import { AppointmentStatusBadge } from '@/features/appointments/AppointmentBadge
 import { useOptionList } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useDraft } from '@/lib/drafts';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { formatDate, formatDateKanji, formatDateTime, todayJst } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useCallRecords, useCompany, useSaveTelemaMemo } from './api';
 import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
@@ -96,8 +96,7 @@ function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyI
         {record.nextCallDate && <span>B次回架電日：{formatDate(record.nextCallDate)}</span>}
         {record.avoidUntil && (
           <span>
-            C架電回避目安：{AVOID_MONTH_CHOICES.find((c) => c.months === record.avoidMonths)?.label}
-            （{formatDate(record.avoidUntil)}から再開）
+            {`C架電回避目安：${AVOID_MONTH_CHOICES.find((c) => c.months === record.avoidMonths)?.label}（${formatDateKanji(record.avoidUntil)}までは架電回避）`}
           </span>
         )}
       </div>
@@ -181,6 +180,13 @@ export function CompanyPage() {
             {data.avoided && (
               <Alert tone="warning">
                 回避企業です。架電しないでください（架電対象から外れています）。
+              </Alert>
+            )}
+            {data.lastCall?.avoidUntil && (
+              <Alert tone="warning">
+                {data.lastCall.avoidUntil >= todayJst()
+                  ? `${formatDateKanji(data.lastCall.avoidUntil)}までは架電回避`
+                  : `${formatDateKanji(data.lastCall.avoidUntil)}まで架電回避でした（期間は過ぎています。自動割り振りには戻りません）`}
               </Alert>
             )}
             {data.similarNumbers.length > 0 && (
