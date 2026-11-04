@@ -250,6 +250,48 @@
    さくら theme (telemarketing, 10/27 test): pink actions and a faint blush on the
    page. White on main stays above 4.5:1. Status colours are left as they are.
    --------------------------------------------------------------------------- */
+/*
+ * 目にやさしい (request 11/2): warm paper instead of bright white, softer dark-brown text (still
+ * well above WCAG AA), a calm green instead of orange, less blue and gentler shadows. Event
+ * colours keep their hues so nothing can be mistaken; the moving grid stays still.
+ */
+html[data-theme='eyecare'] {
+  --color-main: #3d7458;
+  --color-main-hover: #2f5c45;
+  --color-main-soft: #eef3ea;
+  --color-main-line: #c9dcc9;
+  --color-main-focus: #5b9474;
+
+  --color-ink: #3a3631;
+  --color-ink-sub: #6b645a;
+  --color-ink-disabled: #aaa294;
+  --color-link: #3b6a82;
+
+  --color-canvas: #efe9dc;
+  --color-surface: #fbf8f1;
+  --color-column: #f6f1e6;
+  --color-hover: #f3eddf;
+  --color-line: #e2dacb;
+  --color-line-strong: #d3c9b6;
+
+  --color-off: #e9e2d3;
+  --color-off-line: #cfc5b1;
+  --color-lunch: #e6decb;
+  --color-free: #e8f0e1;
+
+  --color-schedule: #3b6a82;
+  --color-schedule-soft: #e6eef0;
+  --color-saturday: #3b6a82;
+
+  --shadow-card: 0 1px 2px rgb(58 54 49 / 0.05);
+  --shadow-popover:
+    0 0 0 1px rgb(58 54 49 / 0.08), 0 18px 40px -12px rgb(58 54 49 / 0.22),
+    0 4px 10px -4px rgb(58 54 49 / 0.08);
+}
+html[data-theme='eyecare'] .grid-backdrop {
+  display: none;
+}
+
 html[data-theme='sakura'] {
   --color-main: #be185d;
   --color-main-hover: #9d174d;
