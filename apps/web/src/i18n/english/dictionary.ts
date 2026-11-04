@@ -571,6 +571,11 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  サーバーにつながりません: 'Cannot reach the server',
+  'メンテナンス中かもしれません。つながると自動で元の画面に戻ります。入力中の内容はそのままです。':
+    'It may be under maintenance. This goes away by itself when the server is back. What you are typing is kept.',
+  '角に当たりました！': 'Corner hit!',
+  閉じて画面を見る: 'Close and see the page',
   メンテナンスのお知らせ: 'Maintenance notice',
   'サーバーが止まる予定を入れると、全員の画面とログイン画面に、保存した時から終わるまで表示します。30分前からは閉じられなくなります。':
     'Enter when the server will be down. Everyone sees it on every screen and on the login screen until it ends. It cannot be closed in the last 30 minutes.',

@@ -49,6 +49,16 @@ export function PlannedOutageBanner({
     return () => window.clearInterval(id);
   }, []);
   const [closedFor, setClosedFor] = useState<string | null>(null);
+  // The maintenance page reads this to say when it should end (not while the status is unknown).
+  useEffect(() => {
+    if (outage === undefined) return;
+    try {
+      if (outage) localStorage.setItem('planned-outage', JSON.stringify(outage));
+      else localStorage.removeItem('planned-outage');
+    } catch {
+      // The page works without it.
+    }
+  }, [outage]);
   if (!outage) return null;
 
   const starts = new Date(outage.startsAt).getTime();
