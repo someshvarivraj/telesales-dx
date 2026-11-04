@@ -1,4 +1,5 @@
 import { PHONE_DIGITS_PATTERN, phoneDigitsOf } from './companies.js';
+import { INDUSTRIES } from './companyValues.js';
 
 /**
  * The checks listcheck (the Telema team's .exe) did, done on import instead (request 10/28 ②):
@@ -9,7 +10,7 @@ import { PHONE_DIGITS_PATTERN, phoneDigitsOf } from './companies.js';
 export type ListRowValues = Partial<Record<string, string>>;
 
 /** Fields the import screen lets a person correct. */
-export const EDITABLE_LIST_FIELDS = ['name', 'phone', 'url'] as const;
+export const EDITABLE_LIST_FIELDS = ['name', 'phone', 'url', 'industry'] as const;
 export type EditableListField = (typeof EDITABLE_LIST_FIELDS)[number];
 
 const LEGAL_FORMS: [RegExp, string][] = [
@@ -105,6 +106,10 @@ export function validateListRow(values: ListRowValues): ListRowProblem[] {
   } else if (url !== UNKNOWN_URL && !/^https?:\/\/\S+$/i.test(url)) {
     problems.push({ field: 'url', message: 'URLは http:// か https:// で始めてください' });
   }
+  // A blank 業種 is fine; a written one must be on the fixed list (Sano 11/2).
+  if (values.industry && !INDUSTRIES.includes(values.industry)) {
+    problems.push({ field: 'industry', message: `業種「${values.industry}」は一覧にありません` });
+  }
   return problems;
 }
 
@@ -120,7 +125,7 @@ export function isSArea(prefecture: string | null | undefined): boolean {
  * 「ビル3F　上場」 → address part 「ビル3F」, rank 「上場」.
  */
 export function splitRankCell(value: string): { addressPart: string; rank: string } {
-  const match = /^(.*?)\s*(非上場|上場|優良|上系\s*\S+|上系|\S+上系)$/.exec(
+  const match = /^(.*?)\s*(非上場|上場|優良|中小企業|対象外|上系\s*\S+|上系|\S+上系)$/.exec(
     value.normalize('NFKC').trim(),
   );
   return match

@@ -259,6 +259,7 @@ export function CompanyPage() {
                       ) : null,
                       wide: true,
                     },
+                    { label: '郵便番号', value: data.postalCode },
                     { label: '住所', value: data.address, wide: true },
                     { label: '事業所', value: data.office },
                     { label: '部署', value: data.department },

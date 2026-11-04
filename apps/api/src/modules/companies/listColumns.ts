@@ -6,6 +6,7 @@ export type ListField =
   | 'sourceUrl'
   | 'office'
   | 'department'
+  | 'postalCode'
   | 'address'
   /** 住所2: joined onto 住所1 (the address stays one field, Sano 10/28 ④). */
   | 'address2'
@@ -40,6 +41,7 @@ const HEADER_ALIASES: Record<ListField, readonly string[]> = {
   sourceUrl: ['引用先URL', '掲載元URL', '掲載元のURL', '出典URL'],
   office: ['事業所', '事業所名', '支店名', '拠点'],
   department: ['部署', '部署名'],
+  postalCode: ['郵便番号', '〒'],
   address: ['住所', '所在地', '住所1'],
   address2: ['住所2'],
   prefecture: ['都道府県'],
@@ -101,6 +103,7 @@ export const LIST_FIELD_LABEL: Record<ListField, string> = {
   sourceUrl: '掲載元のURL',
   office: '事業所',
   department: '部署',
+  postalCode: '郵便番号',
   address: '住所',
   address2: '住所2',
   prefecture: '都道府県',

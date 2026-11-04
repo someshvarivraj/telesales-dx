@@ -1,6 +1,9 @@
 import {
   CompanyFlag,
   type CompanyListItem,
+  formatCapital,
+  gradeOfResult,
+  INDUSTRIES,
   OptionCategory,
   Permission,
   Role,
@@ -16,7 +19,7 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { formatDate, formatDateTime, todayJst } from '@/lib/format';
-import { useCompanySearch, useSetCallTargets } from './api';
+import { useCityNames, useCompanySearch, useSetCallTargets } from './api';
 import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import {
   CallTargetFilters,
@@ -27,13 +30,16 @@ import {
 } from './CallTargetFilters';
 
 /** Call target list with AND / OR filters (spec §6). */
+/** 事業所名 words offered in 詳細検索 (本社＋支社＋工場 …); anything else can be typed. */
+const OFFICE_WORDS = ['本社', '支社', '支店', '営業所', '事業所', '工場', '研究所', '出張所'];
+
 export function CallTargetsPage() {
   const [params] = useSearchParams();
   const initialList = params.get('list');
   const [name, setName] = useState('');
   const [keyword, setKeyword] = useState('');
   const [chips, setChips] = useState<FilterChip[]>(
-    initialList ? [{ key: 1, field: 'listName', value: initialList }] : [],
+    initialList ? [{ key: 1, field: 'listName', value: initialList, values: [] }] : [],
   );
   const [match, setMatch] = useState<'AND' | 'OR'>('AND');
   const [list, setList] = useState<CallList>(
@@ -50,10 +56,14 @@ export function CallTargetsPage() {
   const grades = useOptionList(OptionCategory.CallGrade);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const ranks = useOptionList(OptionCategory.CompanyRank);
+  const results = useOptionList(OptionCategory.CallResult);
+  const cities = useCityNames();
   const people = usePeople();
   const telemarketers = (people.data ?? []).filter((person) =>
     person.roles.some((role) => role === Role.Telema || role === Role.TelemaLead),
   );
+
+  const salesReps = (people.data ?? []).filter((person) => person.roles.includes(Role.Sales));
 
   // The list follows the keyword box shortly after typing stops.
   useEffect(() => {
@@ -73,6 +83,7 @@ export function CallTargetsPage() {
   const conditions = chips.map((chip) => ({
     field: chip.field,
     value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
+    values: chip.values,
   }));
   const query = useCompanySearch({
     keyword,
@@ -85,9 +96,20 @@ export function CallTargetsPage() {
     pageSize: 50,
   });
 
-  const choicesOf = (field: FilterField): Choice[] | null => {
+  const choicesOf = (field: FilterField): Choice[] => {
+    // Each grade with its detailed results under it (request 11/2 ②).
     if (field === 'lastGrade')
-      return grades.items.map((g) => ({ value: g.code, label: `${g.code}：${g.label}` }));
+      return grades.items.flatMap((g) => [
+        { value: g.code, label: `${g.code}：${g.label}` },
+        ...results.items
+          .filter((result) => gradeOfResult(result.code) === g.code)
+          .map((result) => ({ value: result.code, label: result.label, nested: true })),
+      ]);
+    if (field === 'industry') return INDUSTRIES.map((value) => ({ value, label: value }));
+    if (field === 'office') return OFFICE_WORDS.map((value) => ({ value, label: value }));
+    if (field === 'address') return (cities.data ?? []).map((value) => ({ value, label: value }));
+    if (field === 'salesRep')
+      return salesReps.map((person) => ({ value: person.id, label: person.name }));
     if (field === 'customerType') return customerTypes.selectOptions;
     if (field === 'companyRank') return ranks.selectOptions;
     if (field === 'telemarketer')
@@ -97,7 +119,7 @@ export function CallTargetsPage() {
         { value: CompanyFlag.Duplicate, label: '重複' },
         { value: CompanyFlag.NeedsCheck, label: '要確認' },
       ];
-    return null;
+    return [];
   };
 
   const selectable = canMove && list !== 'ALL';
@@ -198,7 +220,7 @@ export function CallTargetsPage() {
                       )}
                       <Th className={selectable ? undefined : 'pl-4'}>会社名</Th>
                       <Th>エリア</Th>
-                      <Th className="max-md:hidden">業種</Th>
+                      <Th className="max-md:hidden">業種・ランク・資本金</Th>
                       <Th className="max-lg:hidden">リスト名</Th>
                       <Th>最新の架電</Th>
                       <Th className="pr-4">B次回架電日</Th>
@@ -210,6 +232,7 @@ export function CallTargetsPage() {
                         key={company.id}
                         company={company}
                         gradeLabel={grades.labelOf(company.lastCall?.grade)}
+                        rankLabel={company.companyRank ? ranks.labelOf(company.companyRank) : null}
                         picked={selectable ? picked.has(company.id) : undefined}
                         onPick={(on) =>
                           setPicked((current) => {
@@ -244,10 +267,12 @@ export function CallTargetsPage() {
 function CompanyRow({
   company,
   gradeLabel,
+  rankLabel,
   picked,
   onPick,
 }: {
   company: CompanyListItem;
+  rankLabel: string | null;
   gradeLabel: string;
   /** Shown with a checkbox when companies can be moved between the lists. */
   picked?: boolean;
@@ -299,8 +324,18 @@ function CompanyRow({
         {company.prefecture}
         {company.city && <span className="ml-1 text-ink-sub">{company.city}</span>}
       </Td>
-      <Td className="max-w-36 truncate max-md:hidden" title={company.industry ?? undefined}>
-        {company.industry}
+      <Td className="max-w-44 max-md:hidden">
+        <div className="truncate" title={company.industry ?? undefined}>
+          {company.industry}
+        </div>
+        {(rankLabel || company.capital !== null) && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-sub">
+            {rankLabel && <span className="font-bold text-ink">{rankLabel}</span>}
+            {company.capital !== null && (
+              <span className="tabular-nums">{formatCapital(company.capital)}</span>
+            )}
+          </div>
+        )}
       </Td>
       <Td className="max-lg:hidden">
         {company.listName && (

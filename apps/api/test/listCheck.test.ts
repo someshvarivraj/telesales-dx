@@ -72,7 +72,7 @@ describe('reading the Telema list template (Sano 10/28 ②)', () => {
       'industry',
       'name',
       'phone',
-      null,
+      'postalCode',
       'address',
       'address2',
       'companyRank',
@@ -151,5 +151,21 @@ describe('row checks', () => {
   it('labels Kyoto, Shiga and Nara with 「s」', () => {
     expect(isSArea('京都府')).toBe(true);
     expect(isSArea('大阪府')).toBe(false);
+  });
+});
+
+describe('業種 and 企業ランク (Sano 11/2)', () => {
+  it('accepts a blank 業種 or one from the fixed list, and flags anything else', () => {
+    const row = { name: '株式会社A', phone: '06-6000-0000', url: '-' };
+    expect(validateListRow(row)).toEqual([]);
+    expect(validateListRow({ ...row, industry: '機械' })).toEqual([]);
+    expect(validateListRow({ ...row, industry: '製造業' })).toEqual([
+      { field: 'industry', message: '業種「製造業」は一覧にありません' },
+    ]);
+  });
+
+  it('keeps all six ranks when an address runs on into 住所3', () => {
+    expect(splitRankCell('ビル3F　中小企業')).toEqual({ addressPart: 'ビル3F', rank: '中小企業' });
+    expect(splitRankCell('対象外')).toEqual({ addressPart: '', rank: '対象外' });
   });
 });

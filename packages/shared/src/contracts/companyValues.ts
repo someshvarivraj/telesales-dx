@@ -3,6 +3,52 @@
  * compared, and shown the Japanese way.
  */
 
+/**
+ * 業種: the fixed list (the 業種 dropdown of the list template, the one listcheck checks against;
+ * Sano 11/2). Imports are checked against it and telemarketing picks from it.
+ */
+export const INDUSTRIES: readonly string[] = [
+  '水産・農林業',
+  '製造販売',
+  'アウトソーシング',
+  'コンサルタント',
+  '建築設備',
+  '官公庁',
+  'その他',
+  '鉱業',
+  '建設業',
+  '食料品',
+  '繊維製品',
+  'パルプ・紙',
+  '化学',
+  '医薬品',
+  '石油・石炭製品',
+  'ゴム製品',
+  'ガラス・土石製品',
+  '鉄鋼',
+  '非鉄金属',
+  '金属製品',
+  '機械',
+  '電気機器',
+  '輸送用機器',
+  '精密機器',
+  'その他製品',
+  '電気・ガス業',
+  '陸運業',
+  '海運業',
+  '空運業',
+  '倉庫・運輸関連業',
+  '情報・通信業',
+  '卸売業',
+  '小売業',
+  '銀行業',
+  '証券・商品先物取引業',
+  '保険業',
+  'その他金融業',
+  '不動産業',
+  'サービス業',
+];
+
 const UNITS: [string, number][] = [
   ['兆', 1_000_000_000_000],
   ['億', 100_000_000],
