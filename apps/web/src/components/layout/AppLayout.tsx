@@ -9,6 +9,7 @@ import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
 import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
+import { PlannedOutageBanner } from '@/features/system/PlannedOutageBanner';
 import { useSystemStatus } from '@/features/system/useSystemStatus';
 import { ja } from '@/i18n/ja';
 import { AppHeader } from './AppHeader';
@@ -30,6 +31,7 @@ export function AppLayout() {
         <AppSidebar />
         <div className="app-main flex min-h-dvh min-w-0 flex-col">
           <AppHeader />
+          <PlannedOutageBanner outage={status.data?.plannedOutage} className="sticky top-0 z-20" />
           {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
               MoraBot launcher in the corner. */}
           <main

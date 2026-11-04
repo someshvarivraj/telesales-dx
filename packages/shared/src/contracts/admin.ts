@@ -2,7 +2,14 @@ import { z } from 'zod';
 import type { HolidayKind, RecipientField, RecipientKind } from '../enums.js';
 import { ALL_PERMISSIONS, type Permission } from '../permissions.js';
 import { ALL_ROLES, type Role } from '../roles.js';
-import { dateString, optionalText, requiredText, timeString, type UserRef } from './common.js';
+import {
+  dateString,
+  instantString,
+  optionalText,
+  requiredText,
+  timeString,
+  type UserRef,
+} from './common.js';
 
 export type UserStatusValue = 'ACTIVE' | 'DISABLED';
 
@@ -251,6 +258,27 @@ export const updateAppRequestSchema = z.object({
 });
 export type UpdateAppRequest = z.input<typeof updateAppRequestSchema>;
 
+/** Announced downtime (e.g. AWS work): everyone is told beforehand (request 11/4). */
+export const plannedOutageRequestSchema = z
+  .object({
+    startsAt: instantString,
+    endsAt: instantString,
+    note: optionalText(200),
+  })
+  .refine((value) => new Date(value.endsAt) > new Date(value.startsAt), {
+    path: ['endsAt'],
+    message: 'must_be_after_start',
+  });
+export type PlannedOutageRequest = z.input<typeof plannedOutageRequestSchema>;
+
+export interface PlannedOutageDto {
+  startsAt: string;
+  endsAt: string;
+  note: string | null;
+}
+
 export interface SystemStatusResponse {
   maintenance: boolean;
+  /** Announced downtime that has not ended yet. */
+  plannedOutage: PlannedOutageDto | null;
 }

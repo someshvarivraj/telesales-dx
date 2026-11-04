@@ -1,5 +1,6 @@
 import {
   appSettingsRequestSchema,
+  plannedOutageRequestSchema,
   areaRuleRequestSchema,
   auditLogQuerySchema,
   RUNNABLE_JOBS,
@@ -253,6 +254,20 @@ export function createAdminRouter(deps: AdminDeps): Router {
     res.json(
       await deps.settings.update(currentUserOf(req), parseWith(appSettingsRequestSchema, req.body)),
     );
+  });
+
+  router.put('/planned-outage', admin, async (req, res) => {
+    const input = parseWith(plannedOutageRequestSchema, req.body);
+    await deps.settings.setPlannedOutage(currentUserOf(req), {
+      startsAt: input.startsAt,
+      endsAt: input.endsAt,
+      note: input.note,
+    });
+    res.status(204).end();
+  });
+  router.delete('/planned-outage', admin, async (req, res) => {
+    await deps.settings.setPlannedOutage(currentUserOf(req), null);
+    res.status(204).end();
   });
 
   router.get('/apps', admin, async (_req, res) => {
