@@ -20,6 +20,7 @@ import { TextInput } from '@/components/ui/TextInput';
 import { useOptionList } from '@/features/reference/useReference';
 import { gradeLook } from './CallBadges';
 import { errorMessageOf } from '@/lib/api/errorMessage';
+import { formatDateKanji } from '@/lib/format';
 import { useSaveCallRecord } from './api';
 
 const empty: CreateCallRecordRequest = {
@@ -170,7 +171,7 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
             label="C架電回避目安"
             hint={
               values.avoidMonths
-                ? `${addMonthsToDate(avoidFrom, values.avoidMonths).replaceAll('-', '/')} から架電リストに戻ります`
+                ? `${formatDateKanji(addMonthsToDate(avoidFrom, values.avoidMonths))}までは架電回避（期間が過ぎても自動割り振りには戻りません）`
                 : undefined
             }
           >

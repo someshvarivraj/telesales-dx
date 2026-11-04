@@ -126,7 +126,13 @@ export interface CompanyListItem {
   listName: string | null;
   flag: CompanyFlag;
   isCallTarget: boolean;
-  lastCall: { calledAt: string; grade: string; telemarketer: UserRef } | null;
+  lastCall: {
+    calledAt: string;
+    grade: string;
+    telemarketer: UserRef;
+    /** C架電回避目安: shown as 「○年○月○日までは架電回避」; nothing happens by itself when it ends. */
+    avoidUntil: string | null;
+  } | null;
   nextCallDate: string | null;
 }
 
@@ -228,7 +234,7 @@ export interface CallRecordDto {
   interestLevel: string | null;
   nextCallDate: string | null;
   avoidMonths: number | null;
-  /** Called again from this day (called date + avoidMonths). */
+  /** 架電回避 until this day (called date + avoidMonths). The company does not come back by itself. */
   avoidUntil: string | null;
   notes: string | null;
   commentCount: number;

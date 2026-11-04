@@ -15,7 +15,8 @@ import { QueryState } from '@/components/ui/QueryState';
 import { Table, Td, Th } from '@/components/ui/Table';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
-import { formatDate, formatDateTime, todayJst } from '@/lib/format';
+import { formatDate, formatDateKanji, formatDateTime, todayJst } from '@/lib/format';
+import { cn } from '@/components/ui/cn';
 import { useCompanySearch, useSetCallTargets } from './api';
 import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import {
@@ -319,6 +320,20 @@ function CompanyRow({
             <span className="text-xs text-ink-sub tabular-nums">
               {formatDateTime(company.lastCall.calledAt)}・{company.lastCall.telemarketer.name}
             </span>
+            {company.lastCall.avoidUntil && (
+              <span
+                className={cn(
+                  'w-fit px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
+                  company.lastCall.avoidUntil >= today
+                    ? 'bg-warning-soft text-warning-ink'
+                    : 'bg-column text-ink-sub',
+                )}
+              >
+                {company.lastCall.avoidUntil >= today
+                  ? `${formatDateKanji(company.lastCall.avoidUntil)}までは架電回避`
+                  : `${formatDateKanji(company.lastCall.avoidUntil)}まで架電回避（終了）`}
+              </span>
+            )}
           </div>
         ) : (
           <span className="inline-block border border-dashed border-line-strong px-1.5 py-0.5 text-xs text-ink-sub">
