@@ -58,6 +58,15 @@ export function useCompany(id: string) {
   });
 }
 
+/** Cities registered so far, for 住所 in 詳細検索. */
+export function useCityNames() {
+  return useQuery({
+    queryKey: ['companies', 'city-names'] as const,
+    queryFn: ({ signal }) => apiClient.get<string[]>('/companies/city-names', signal),
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useListNames() {
   return useQuery({
     queryKey: callsKeys.listNames,

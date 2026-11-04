@@ -69,6 +69,10 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       ),
     );
   });
+  router.get('/companies/city-names', view, async (_req, res) => {
+    res.json(await deps.companies.cityNames());
+  });
+
   router.get('/companies/list-names', view, async (_req, res) => {
     res.json(await deps.companies.listNames());
   });

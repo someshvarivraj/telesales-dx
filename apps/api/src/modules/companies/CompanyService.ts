@@ -8,6 +8,7 @@ import {
   jstDate,
   ListImportRowStatus,
   type Page,
+  BLANK_VALUE,
   phoneDigitsOf,
   splitRange,
   type GroupDepartmentsRequest,
@@ -55,6 +56,7 @@ function auditShape(company: Record<string, unknown>): Record<string, unknown> {
     'department',
     'phone',
     'url',
+    'postalCode',
     'address',
     'prefecture',
     'city',
@@ -90,6 +92,7 @@ export function companyWriteData(fields: CompanyFields) {
     phoneDigits: phoneDigitsOf(fields.phone),
     url: fields.url,
     sourceUrl: fields.sourceUrl,
+    postalCode: fields.postalCode,
     address: fields.address,
     prefecture: fields.prefecture ?? parts.prefecture,
     city: fields.city ?? parts.city,
@@ -230,7 +233,7 @@ export class CompanyService {
       ...this.toListItem(company),
       department: company.department,
       walkMinutes: company.walkMinutes,
-      capital: company.capital === null ? null : Number(company.capital),
+      postalCode: company.postalCode,
       url: company.url,
       sourceUrl: company.sourceUrl,
       address: company.address,
@@ -238,7 +241,6 @@ export class CompanyService {
       clientNo: company.clientNo,
       telemaIdNo: company.telemaIdNo,
       listingStatus: company.listingStatus,
-      companyRank: company.companyRank,
       parentName: company.parentName,
       telemaMemo: company.telemaMemo,
       companyGroupId: company.companyGroupId,
@@ -555,6 +557,17 @@ export class CompanyService {
     return this.get(targetId);
   }
 
+  /** Cities registered so far, to pick from when searching by address. */
+  async cityNames(): Promise<string[]> {
+    const rows = await this.prisma.company.findMany({
+      where: { city: { not: null } },
+      distinct: ['city'],
+      orderBy: { city: 'asc' },
+      select: { city: true },
+    });
+    return rows.flatMap((row) => (row.city ? [row.city] : []));
+  }
+
   async listNames(): Promise<string[]> {
     const rows = await this.prisma.company.findMany({
       where: { listName: { not: null } },
@@ -579,6 +592,8 @@ export class CompanyService {
       customerType: row.customerType,
       listName: row.listName,
       flag: row.flag,
+      companyRank: row.companyRank,
+      capital: row.capital === null ? null : Number(row.capital),
       isCallTarget: row.isCallTarget,
       lastCall: last
         ? {
@@ -596,6 +611,36 @@ export class CompanyService {
     condition: CompanyFilterCondition,
   ): Promise<Prisma.CompanyWhereInput | null> {
     const value = condition.value.trim();
+    // A condition holds one value or several picks; a company matches any of them.
+    const picks = condition.values.length > 0 ? condition.values : value ? [value] : [];
+    const words = picks.filter((pick) => pick !== BLANK_VALUE);
+    const blank = picks.includes(BLANK_VALUE);
+    /** Equal to one of the picks, or empty when 「空白」 is picked. */
+    const exactly = (field: 'industry' | 'companyRank' | 'prefecture' | 'customerType') =>
+      picks.length === 0
+        ? null
+        : {
+            OR: [
+              { [field]: { in: words } },
+              ...(blank ? [{ [field]: null }, { [field]: '' }] : []),
+            ],
+          };
+    /** Contains one of the picks, in any of these fields. */
+    const containing = (
+      ...fields: ('office' | 'department' | 'address' | 'city' | 'prefecture')[]
+    ) =>
+      picks.length === 0
+        ? null
+        : {
+            OR: [
+              ...words.flatMap((word) =>
+                fields.map((field) => ({
+                  [field]: { contains: word, mode: 'insensitive' as const },
+                })),
+              ),
+              ...(blank ? [{ [fields[0] as string]: null }, { [fields[0] as string]: '' }] : []),
+            ],
+          };
     switch (condition.field) {
       case 'name': {
         if (!value) return null;
@@ -609,11 +654,84 @@ export class CompanyService {
         };
       }
       case 'prefecture':
-        return value ? { prefecture: value } : null;
+        return exactly('prefecture');
       case 'city':
-        return value ? { city: { contains: value } } : null;
+        return containing('city');
       case 'industry':
-        return value ? { industry: { contains: value, mode: 'insensitive' } } : null;
+        return exactly('industry');
+      case 'office':
+        return containing('office');
+      case 'department':
+        return containing('department');
+      case 'address':
+        // 「大阪市」「神戸市」: the city is also kept apart from the written address.
+        return containing('address', 'city', 'prefecture');
+      case 'postalCode':
+        return value
+          ? {
+              OR: [
+                { postalCode: { contains: value } },
+                { postalCode: { contains: value.replace(/\D/g, '') || value } },
+              ],
+            }
+          : null;
+      case 'nearestStation':
+        return value ? { nearestStation: { contains: value, mode: 'insensitive' } } : null;
+      case 'phone': {
+        if (!value) return null;
+        const digits = phoneDigitsOf(value);
+        return {
+          OR: [
+            { phone: { contains: value } },
+            ...(digits ? [{ phoneDigits: { contains: digits } }] : []),
+          ],
+        };
+      }
+      case 'remarks': {
+        if (!value) return null;
+        const has = { contains: value, mode: 'insensitive' as const };
+        return {
+          OR: [
+            { telemaMemo: has },
+            { callRecords: { some: { OR: [{ notes: has }, { resultDetail: has }] } } },
+          ],
+        };
+      }
+      case 'salesRep': {
+        const ids = words.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+        return ids.length > 0 ? { appointments: { some: { salesRepId: { in: ids } } } } : null;
+      }
+      case 'visitDate': {
+        const range = dateRange(value);
+        if (!range) return null;
+        return {
+          appointments: {
+            some: {
+              status: { not: 'CANCELLED' },
+              startsAt: {
+                ...(range.from ? { gte: jstDayStart(range.from) } : {}),
+                ...(range.to ? { lt: jstDayStart(nextDay(range.to)) } : {}),
+              },
+            },
+          },
+        };
+      }
+      case 'capital': {
+        const { from, to } = splitRange(value);
+        const low = /^\d{1,15}$/.test(from) ? BigInt(from) : null;
+        const high = /^\d{1,15}$/.test(to) ? BigInt(to) : null;
+        if (low === null && high === null) return null;
+        return {
+          capital: {
+            ...(low !== null ? { gte: low } : {}),
+            ...(high !== null ? { lte: high } : {}),
+          },
+        };
+      }
+      case 'headOffice':
+        return { office: { contains: '本社' } };
+      case 'visitCancelled':
+        return { appointments: { some: { status: 'CANCELLED' } } };
       case 'listName':
         // A company can be on several lists; its own listName is the first one.
         return value
@@ -629,21 +747,29 @@ export class CompanyService {
             }
           : null;
       case 'customerType':
-        return value ? { customerType: value } : null;
+        return exactly('customerType');
       case 'flag':
-        return value ? { flag: value as CompanyFlag } : null;
+        return words.length > 0 ? { flag: { in: words as CompanyFlag[] } } : null;
       case 'neverCalled':
         return { callRecords: { none: {} } };
       case 'lastGrade': {
-        if (!value) return null;
-        const ids = await this.companyIdsByLatestCall(Prisma.sql`grade = ${value}`);
-        return { id: { in: ids } };
+        if (picks.length === 0) return null;
+        // A grade (「B」) or a result under it (「B-01」); 空白 = not called yet.
+        const ids = await this.companyIdsByLatestCall(
+          Prisma.sql`(grade = ANY(${words}::text[]) OR result_code = ANY(${words}::text[]))`,
+        );
+        return {
+          OR: [{ id: { in: ids } }, ...(blank ? [{ callRecords: { none: {} } }] : [])],
+        };
       }
       case 'companyRank':
-        return value ? { companyRank: value } : null;
+        return exactly('companyRank');
       case 'telemarketer': {
-        if (!/^[0-9a-f-]{36}$/i.test(value)) return null;
-        const ids = await this.companyIdsByLatestCall(Prisma.sql`telemarketer_id = ${value}::uuid`);
+        const people = words.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+        if (people.length === 0) return null;
+        const ids = await this.companyIdsByLatestCall(
+          Prisma.sql`telemarketer_id = ANY(${people}::uuid[])`,
+        );
         return { id: { in: ids } };
       }
       case 'telemaIdNo': {
@@ -723,7 +849,8 @@ export class CompanyService {
   private async companyIdsByLatestCall(predicate: Prisma.Sql): Promise<string[]> {
     const rows = await this.prisma.$queryRaw<{ company_id: string }[]>`
       SELECT company_id FROM (
-        SELECT DISTINCT ON (company_id) company_id, grade, next_call_date, telemarketer_id, called_at
+        SELECT DISTINCT ON (company_id)
+          company_id, grade, result_code, next_call_date, telemarketer_id, called_at
         FROM call_records
         ORDER BY company_id, called_at DESC
       ) latest

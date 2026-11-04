@@ -405,6 +405,7 @@ model Company {
   url            String?     @db.VarChar(500)
   /// 掲載元のURL: the list's 「引用先URL」 (where the list maker found the company)
   sourceUrl      String?     @map("source_url") @db.VarChar(1000)
+  postalCode     String?     @map("postal_code") @db.VarChar(10)
   address        String?     @db.VarChar(300)
   prefecture     String?     @db.VarChar(10)
   city           String?     @db.VarChar(50)

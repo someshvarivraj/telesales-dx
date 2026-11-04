@@ -1,4 +1,10 @@
-import { type CompanyDetail, formatCapital, OptionCategory, parseCapital } from '@telesales/shared';
+import {
+  type CompanyDetail,
+  formatCapital,
+  INDUSTRIES,
+  OptionCategory,
+  parseCapital,
+} from '@telesales/shared';
 import { Alert } from '@/components/ui/Alert';
 import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { Button } from '@/components/ui/Button';
@@ -18,16 +24,16 @@ const FIELDS = [
   ['phone', '電話番号'],
   ['url', 'URL'],
   ['sourceUrl', '掲載元のURL'],
+  ['postalCode', '郵便番号'],
   ['address', '住所'],
   ['prefecture', '都道府県'],
   ['city', '市区町村'],
   ['nearestStation', '最寄駅'],
-  ['industry', '業種'],
   ['clientNo', 'クライアントNo'],
   ['parentName', '親会社名'],
 ] as const;
 
-type Key = (typeof FIELDS)[number][0] | 'customerType' | 'companyRank';
+type Key = (typeof FIELDS)[number][0] | 'industry' | 'customerType' | 'companyRank';
 
 export function CompanyEditDialog({
   company,
@@ -45,6 +51,7 @@ export function CompanyEditDialog({
   const draft = useDraft(`company-edit:${company.id}`, () => {
     const initial = {} as Record<Key, string>;
     for (const [key] of FIELDS) initial[key] = company[key] ?? '';
+    initial.industry = company.industry ?? '';
     initial.customerType = company.customerType ?? '';
     initial.companyRank = company.companyRank ?? '';
     return {
@@ -127,6 +134,23 @@ export function CompanyEditDialog({
             )}
           </FormField>
         ))}
+        <FormField label="業種" hint="決まった一覧から選びます。">
+          {(c) => (
+            <Select
+              {...c}
+              value={values.industry}
+              placeholder="―"
+              options={[
+                // A value from before the fixed list stays visible until someone changes it.
+                ...(values.industry && !INDUSTRIES.includes(values.industry)
+                  ? [{ value: values.industry, label: values.industry }]
+                  : []),
+                ...INDUSTRIES.map((value) => ({ value, label: value })),
+              ]}
+              onChange={(e) => set('industry', e.target.value)}
+            />
+          )}
+        </FormField>
         <FormField
           label="駅から徒歩（分）"
           error={walkInvalid ? '0〜240の数字で入力してください' : undefined}

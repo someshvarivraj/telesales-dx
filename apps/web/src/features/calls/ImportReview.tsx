@@ -1,6 +1,7 @@
 import {
   cleanListRow,
   CompanyFlag,
+  INDUSTRIES,
   type EditableListField,
   isUnknownPhone,
   type ListImportPreview,
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/components/ui/cn';
 import { Table, Td, Th } from '@/components/ui/Table';
+import { Select } from '@/components/ui/Select';
 import { TextInput } from '@/components/ui/TextInput';
 import { FlagBadge } from './CallBadges';
 
@@ -26,6 +28,8 @@ const FIELD_LABEL: Record<string, string> = {
   sourceUrl: '掲載元のURL',
   office: '事業所',
   department: '部署',
+  postalCode: '郵便番号',
+  capital: '資本金',
   address: '住所',
   address2: '住所（続き）',
   prefecture: '都道府県',
@@ -42,6 +46,7 @@ const EDIT_COLUMNS: { field: EditableListField; label: string; inputMode?: 'tel'
   { field: 'name', label: '会社名' },
   { field: 'phone', label: '電話番号', inputMode: 'tel' },
   { field: 'url', label: 'URL（不明なら -）', inputMode: 'url' },
+  { field: 'industry', label: '業種' },
 ];
 
 export type RowEdits = Record<number, Record<EditableListField, string>>;
@@ -309,7 +314,7 @@ export function ImportReview({
           </p>
           <div
             role="row"
-            className="hidden border-b border-line pb-2 text-xs font-bold text-ink-sub md:grid md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_10rem] md:gap-3"
+            className="hidden border-b border-line pb-2 text-xs font-bold text-ink-sub md:grid md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_9rem_10rem] md:gap-3"
           >
             <span>行</span>
             {EDIT_COLUMNS.map((column) => (
@@ -325,7 +330,7 @@ export function ImportReview({
                 <li
                   key={row.source.row}
                   className={cn(
-                    'grid gap-2 py-3 md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_10rem] md:items-start md:gap-3',
+                    'grid gap-2 py-3 md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_9rem_10rem] md:items-start md:gap-3',
                     ok && 'bg-success-soft/40',
                   )}
                 >
@@ -333,18 +338,37 @@ export function ImportReview({
                   {EDIT_COLUMNS.map((column) => (
                     <label key={column.field} className="flex flex-col gap-1">
                       <span className="text-xs text-ink-sub md:sr-only">{column.label}</span>
-                      <TextInput
-                        className="h-9 text-sm"
-                        inputMode={column.inputMode}
-                        value={row.values[column.field]}
-                        aria-invalid={bad.has(column.field)}
-                        onChange={(event) =>
-                          onEdit(row.source.row, {
-                            ...(edits[row.source.row] ?? row.source.values),
-                            [column.field]: event.target.value,
-                          })
-                        }
-                      />
+                      {column.field === 'industry' ? (
+                        <Select
+                          size="sm"
+                          aria-label={column.label}
+                          value={
+                            INDUSTRIES.includes(row.values.industry) ? row.values.industry : ''
+                          }
+                          placeholder={row.values.industry || '選ぶ'}
+                          aria-invalid={bad.has('industry')}
+                          options={INDUSTRIES.map((value) => ({ value, label: value }))}
+                          onChange={(event) =>
+                            onEdit(row.source.row, {
+                              ...(edits[row.source.row] ?? row.source.values),
+                              industry: event.target.value,
+                            })
+                          }
+                        />
+                      ) : (
+                        <TextInput
+                          className="h-9 text-sm"
+                          inputMode={column.inputMode}
+                          value={row.values[column.field]}
+                          aria-invalid={bad.has(column.field)}
+                          onChange={(event) =>
+                            onEdit(row.source.row, {
+                              ...(edits[row.source.row] ?? row.source.values),
+                              [column.field]: event.target.value,
+                            })
+                          }
+                        />
+                      )}
                     </label>
                   ))}
                   <div className="pt-1.5 text-xs">

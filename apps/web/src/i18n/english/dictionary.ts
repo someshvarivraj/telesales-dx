@@ -571,6 +571,24 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  詳細検索: 'Advanced search',
+  '架電・担当': 'Calls and people',
+  '日付・金額': 'Dates and amounts',
+  担当者部署: 'Contact department',
+  営業担当者: 'Sales rep',
+  郵便番号: 'Postal code',
+  備考: 'Remarks',
+  テレマ予定日: 'Planned call date',
+  訪問確認日: 'Visit date',
+  本社: 'Head office',
+  訪問キャンセル: 'Visit cancelled',
+  B次回架電日が到来: 'B next call date reached',
+  複数選択: 'Select',
+  '入力・複数選択': 'Type or select',
+  '業種・ランク・資本金': 'Industry, rank, capital',
+  '入力して Enter で追加': 'Type and press Enter',
+  探す: 'Search',
+  '決まった一覧から選びます。': 'Pick from the fixed list.',
   キーワードで探す: 'Search by keyword',
   'キーワード（会社名・住所・電話番号・メモ など）': 'Keyword (company, address, phone, notes…)',
   'スペースで区切ると、すべての言葉を含む企業を探します':
@@ -1781,6 +1799,9 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['{0}件を選択（どれかに当てはまる）', '{0} selected (any of them)'],
+  ['「{0}」を含む', 'Contains "{0}"'],
+  ['業種「{0}」は一覧にありません', 'Industry "{0}" is not on the list'],
   [
     '営業予定あり：営業がテレマアポ停止にしている時間です（{0}）。',
     'Taken (sales time): the rep has stopped telemarketing bookings ({0}).',

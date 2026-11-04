@@ -26,6 +26,7 @@ export const companyFieldsSchema = z.object({
   phone: optionalText(32),
   url: optionalText(500),
   sourceUrl: optionalText(1000),
+  postalCode: optionalText(10),
   address: optionalText(300),
   prefecture: optionalText(10),
   city: optionalText(50),
@@ -88,9 +89,31 @@ export const companyFilterConditionSchema = z.object({
     'importedDate',
     /** テレマ予定日: B次回架電日 of the latest call. */
     'nextCallDate',
+    'office',
+    'department',
+    'postalCode',
+    'address',
+    'nearestStation',
+    'phone',
+    /** 備考: テレマメモ and the notes and details of its calls. */
+    'remarks',
+    /** 営業担当者: the rep of one of its appointments. */
+    'salesRep',
+    /** 訪問確認日: day of an appointment that was not cancelled. */
+    'visitDate',
+    /** 資本金 in yen, 「from~to」. */
+    'capital',
+    /** 本社: the office is 本社. */
+    'headOffice',
+    'visitCancelled',
   ]),
   value: z.string().max(200).default(''),
+  /** Several picks: a company matches any of them. BLANK_VALUE picks 「空白」. */
+  values: z.array(z.string().max(200)).max(200).default([]),
 });
+
+/** The 「空白」 pick of a multi-select condition: nothing is entered for the field. */
+export const BLANK_VALUE = '__blank__';
 
 /** 「from~to」 of a range condition; either side may be empty. */
 export function splitRange(value: string): { from: string; to: string } {
@@ -102,7 +125,7 @@ export type CompanyFilterCondition = z.infer<typeof companyFilterConditionSchema
 export const companySearchRequestSchema = z.object({
   /** Words searched across every company field; all words must match (request 10/30). */
   keyword: z.string().max(200).default(''),
-  conditions: z.array(companyFilterConditionSchema).max(10).default([]),
+  conditions: z.array(companyFilterConditionSchema).max(30).default([]),
   match: z.enum(['AND', 'OR']).default('AND'),
   callTargetsOnly: z.boolean().default(true),
   /** 架電対象外: companies registered for later (request 11/2). */
@@ -122,6 +145,8 @@ export interface CompanyListItem {
   prefecture: string | null;
   city: string | null;
   industry: string | null;
+  companyRank: string | null;
+  capital: number | null;
   customerType: string | null;
   listName: string | null;
   flag: CompanyFlag;
@@ -139,7 +164,7 @@ export interface CompanyListItem {
 export interface CompanyDetail extends CompanyListItem {
   department: string | null;
   walkMinutes: number | null;
-  capital: number | null;
+  postalCode: string | null;
   url: string | null;
   /** 掲載元のURL: where the list maker found the company (the list's 「引用先URL」). */
   sourceUrl: string | null;
@@ -148,7 +173,6 @@ export interface CompanyDetail extends CompanyListItem {
   clientNo: string | null;
   telemaIdNo: string | null;
   listingStatus: string | null;
-  companyRank: string | null;
   parentName: string | null;
   telemaMemo: string | null;
   companyGroupId: string | null;
@@ -308,6 +332,7 @@ export const commitListImportRequestSchema = z.object({
         name: z.string().max(200).optional(),
         phone: z.string().max(32).optional(),
         url: z.string().max(500).optional(),
+        industry: z.string().max(100).optional(),
       }),
     )
     .max(5000)

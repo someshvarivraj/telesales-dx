@@ -409,6 +409,7 @@ export class ListImportService {
       phoneDigits: row.phoneDigits,
       url: row.fields.url && row.fields.url !== UNKNOWN_URL ? row.fields.url : null,
       sourceUrl: row.fields.sourceUrl?.slice(0, 1000) ?? null,
+      postalCode: row.fields.postalCode?.slice(0, 10) ?? null,
       address,
       prefecture: row.fields.prefecture ?? parts.prefecture,
       city: row.fields.city ?? parts.city,
@@ -545,6 +546,7 @@ export class ListImportService {
             name: fields.name ?? '',
             phone: fields.phone ?? '',
             url: fields.url ?? '',
+            industry: fields.industry ?? '',
           } satisfies Record<EditableListField, string>,
         });
         continue;
