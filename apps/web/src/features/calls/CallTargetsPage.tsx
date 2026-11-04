@@ -1,5 +1,6 @@
 import {
   CompanyFlag,
+  type BulkEditDto,
   type CompanyListItem,
   formatCapital,
   gradeOfResult,
@@ -20,7 +21,8 @@ import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { cn } from '@/components/ui/cn';
 import { formatDate, formatDateKanji, formatDateTime, todayJst } from '@/lib/format';
-import { useCityNames, useCompanySearch, useSetCallTargets } from './api';
+import { useCityNames, useCompanySearch, useRestoreBulkEdit, useSetCallTargets } from './api';
+import { BulkEditDialog, BulkEditHistoryDialog } from './BulkEditDialog';
 import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import {
   CallTargetFilters,
@@ -49,6 +51,12 @@ export function CallTargetsPage() {
   const canImport = usePermission(Permission.ImportLists);
   const isAdmin = usePermission(Permission.Administer);
   const canMove = canImport || isAdmin;
+  // Leaders and admins, as with moving companies: it changes many at once, phone numbers too.
+  const canBulkEdit = canMove;
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [lastBulk, setLastBulk] = useState<BulkEditDto | null>(null);
+  const restore = useRestoreBulkEdit();
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const move = useSetCallTargets();
   // Today's confirmed allocation (priority 2); the home tile links here with ?mine=1.
@@ -123,7 +131,8 @@ export function CallTargetsPage() {
     return [];
   };
 
-  const selectable = canMove && list !== 'ALL';
+  const canMoveHere = canMove && list !== 'ALL';
+  const selectable = canMoveHere || canBulkEdit;
 
   return (
     <div className="flex flex-col gap-4">
@@ -160,10 +169,27 @@ export function CallTargetsPage() {
                     <span className="text-sm text-ink-sub">
                       {picked.size > 0
                         ? `${picked.size}件を選んでいます`
-                        : list === 'NON_TARGETS'
-                          ? '架電を始める企業を選んで「架電対象にする」を押してください。'
-                          : '今は架電しない企業を選んで「架電対象外にする」を押してください。'}
+                        : !canMoveHere
+                          ? '企業を選ぶと、まとめて修正できます。'
+                          : list === 'NON_TARGETS'
+                            ? '架電を始める企業を選んで「架電対象にする」を押してください。'
+                            : '今は架電しない企業を選ぶか、まとめて修正する企業を選んでください。'}
                     </span>
+                    {lastBulk && (
+                      <span className="flex flex-wrap items-center gap-2 text-sm text-success">
+                        {`${lastBulk.companyCount}社を修正しました`}
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          loading={restore.isPending}
+                          onClick={() =>
+                            restore.mutate(lastBulk.id, { onSuccess: () => setLastBulk(null) })
+                          }
+                        >
+                          元に戻す
+                        </Button>
+                      </span>
+                    )}
                     {move.data && !move.isPending && (
                       <span className="text-sm text-success">
                         {`${move.data.changed}件を移しました`}
@@ -171,21 +197,47 @@ export function CallTargetsPage() {
                           `（回避企業・重複の${move.data.skipped}件は移していません）`}
                       </span>
                     )}
-                    <Button
-                      className="ml-auto"
-                      size="sm"
-                      variant={list === 'NON_TARGETS' ? 'primary' : 'secondary'}
-                      disabled={picked.size === 0}
-                      loading={move.isPending}
-                      onClick={() =>
-                        move.mutate(
-                          { companyIds: [...picked], isCallTarget: list === 'NON_TARGETS' },
-                          { onSuccess: () => setPicked(new Set()) },
-                        )
-                      }
-                    >
-                      {list === 'NON_TARGETS' ? '架電対象にする' : '架電対象外にする'}
-                    </Button>
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                      {canBulkEdit && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              // It can be undone there; the shortcut here would go stale.
+                              setLastBulk(null);
+                              setHistoryOpen(true);
+                            }}
+                          >
+                            一括修正の履歴
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={picked.size === 0}
+                            onClick={() => setBulkOpen(true)}
+                          >
+                            一括修正
+                          </Button>
+                        </>
+                      )}
+                      {canMoveHere && (
+                        <Button
+                          size="sm"
+                          variant={list === 'NON_TARGETS' ? 'primary' : 'secondary'}
+                          disabled={picked.size === 0}
+                          loading={move.isPending}
+                          onClick={() =>
+                            move.mutate(
+                              { companyIds: [...picked], isCallTarget: list === 'NON_TARGETS' },
+                              { onSuccess: () => setPicked(new Set()) },
+                            )
+                          }
+                        >
+                          {list === 'NON_TARGETS' ? '架電対象にする' : '架電対象外にする'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
                 <div className="border-b border-line">
@@ -260,6 +312,19 @@ export function CallTargetsPage() {
           }
         </QueryState>
       </section>
+      {bulkOpen && (
+        <BulkEditDialog
+          open
+          companyIds={[...picked]}
+          onClose={() => setBulkOpen(false)}
+          onDone={(edit) => {
+            setBulkOpen(false);
+            setPicked(new Set());
+            setLastBulk(edit);
+          }}
+        />
+      )}
+      {historyOpen && <BulkEditHistoryDialog open onClose={() => setHistoryOpen(false)} />}
     </div>
   );
 }

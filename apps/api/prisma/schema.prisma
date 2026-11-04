@@ -51,6 +51,8 @@ model User {
   companiesCreated     Company[]
   avoidPhones          AvoidPhone[]
   listImports          ListImport[]
+  bulkEdits            CompanyBulkEdit[]        @relation("CompanyBulkEditActor")
+  bulkEditsRestored    CompanyBulkEdit[]        @relation("CompanyBulkEditRestorer")
   appointmentsAsRep    Appointment[]            @relation("AppointmentRep")
   appointmentsBooked   Appointment[]            @relation("AppointmentBooker")
   dayBeforeChecks      Appointment[]            @relation("AppointmentDayBeforeChecker")
@@ -442,18 +444,19 @@ model Company {
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  parent       Company?            @relation("CompanyParent", fields: [parentId], references: [id])
-  flagMatch    Company?            @relation("CompanyFlagMatch", fields: [flagMatchId], references: [id], onDelete: SetNull)
-  flaggedBy    Company[]           @relation("CompanyFlagMatch")
-  children     Company[]           @relation("CompanyParent")
-  companyGroup CompanyGroup?       @relation(fields: [companyGroupId], references: [id])
-  createdBy    User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  parent        Company?              @relation("CompanyParent", fields: [parentId], references: [id])
+  flagMatch     Company?              @relation("CompanyFlagMatch", fields: [flagMatchId], references: [id], onDelete: SetNull)
+  flaggedBy     Company[]             @relation("CompanyFlagMatch")
+  children      Company[]             @relation("CompanyParent")
+  companyGroup  CompanyGroup?         @relation(fields: [companyGroupId], references: [id])
+  createdBy     User?                 @relation(fields: [createdById], references: [id], onDelete: SetNull)
   /// Every list this company came in on (one company, many imports)
-  importRows   ListImportRow[]
-  formerNames  CompanyFormerName[]
-  callRecords  CallRecord[]
-  appointments Appointment[]
-  allocations  Allocation[]
+  importRows    ListImportRow[]
+  formerNames   CompanyFormerName[]
+  callRecords   CallRecord[]
+  appointments  Appointment[]
+  allocations   Allocation[]
+  bulkEditItems CompanyBulkEditItem[]
 
   @@index([phoneDigits])
   @@index([name])
@@ -462,6 +465,44 @@ model Company {
   @@index([prefecture, city])
   @@index([customerType])
   @@map("companies")
+}
+
+/// 一括修正: the same change to many companies; every company's previous values are kept so it can be undone (Sano 11/2)
+model CompanyBulkEdit {
+  id           String    @id @default(uuid()) @db.Uuid
+  actorId      String?   @map("actor_id") @db.Uuid
+  /// The columns written and their new values (derived columns included)
+  applied      Json
+  /// The fields the person changed, as they chose them
+  changes      Json
+  companyCount Int       @map("company_count")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  restoredAt   DateTime? @map("restored_at") @db.Timestamptz(6)
+  restoredById String?   @map("restored_by_id") @db.Uuid
+  /// Companies left as they were on restore: someone changed the same field afterwards
+  skippedCount Int       @default(0) @map("skipped_count")
+
+  actor      User?                 @relation("CompanyBulkEditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  restoredBy User?                 @relation("CompanyBulkEditRestorer", fields: [restoredById], references: [id], onDelete: SetNull)
+  items      CompanyBulkEditItem[]
+
+  @@index([createdAt])
+  @@map("company_bulk_edits")
+}
+
+model CompanyBulkEditItem {
+  id         String @id @default(uuid()) @db.Uuid
+  bulkEditId String @map("bulk_edit_id") @db.Uuid
+  companyId  String @map("company_id") @db.Uuid
+  /// The written columns as they were before
+  before     Json
+
+  bulkEdit CompanyBulkEdit @relation(fields: [bulkEditId], references: [id], onDelete: Cascade)
+  company  Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([bulkEditId])
+  @@index([companyId])
+  @@map("company_bulk_edit_items")
 }
 
 model CompanyFormerName {

@@ -1,6 +1,7 @@
 import {
   avoidListQuerySchema,
   commitListImportRequestSchema,
+  bulkEditRequestSchema,
   companySearchRequestSchema,
   createCallRecordRequestSchema,
   createCommentRequestSchema,
@@ -99,6 +100,18 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       );
     },
   );
+  const bulkEdit = auth.requireAnyPermission(Permission.ImportLists, Permission.Administer);
+  router.post('/companies/bulk-edit', bulkEdit, async (req, res) => {
+    res.json(
+      await deps.companies.bulkEdit(currentUserOf(req), parseWith(bulkEditRequestSchema, req.body)),
+    );
+  });
+  router.get('/companies/bulk-edits', bulkEdit, async (_req, res) => {
+    res.json(await deps.companies.listBulkEdits());
+  });
+  router.post('/companies/bulk-edits/:id/restore', bulkEdit, async (req, res) => {
+    res.json(await deps.companies.restoreBulkEdit(currentUserOf(req), idParam(req)));
+  });
   router.get('/companies/:id', view, async (req, res) => {
     res.json(await deps.companies.get(idParam(req)));
   });

@@ -571,6 +571,22 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  一括修正: 'Bulk edit',
+  一括修正の履歴: 'Bulk edit history',
+  元に戻す: 'Undo',
+  '企業を選ぶと、まとめて修正できます。': 'Select companies to edit them together.',
+  '今は架電しない企業を選ぶか、まとめて修正する企業を選んでください。':
+    'Select companies not to call for now, or companies to edit together.',
+  '変える項目にチェックを入れてください。チェックしていない項目は変わりません。あとで「一括修正の履歴」から元に戻せます。':
+    'Tick the items to change. Unticked items stay as they are. You can undo it later from the bulk edit history.',
+  空にする: 'Empty it',
+  空のままなら空にします: 'Left empty, the field is emptied',
+  '（空）': '(empty)',
+  '一括修正の履歴はまだありません。': 'No bulk edits yet.',
+  修正した企業を見る: 'Show the companies',
+  前の名前は旧社名として残ります: 'The old name is kept as a former name',
+  '都道府県・市区町村は住所から読み直します': 'Prefecture and city are read again from the address',
+  '「5000万」「1億2000万」でも入力できます': 'You can also type 5000万 or 1億2000万',
   詳細検索: 'Advanced search',
   '架電・担当': 'Calls and people',
   '日付・金額': 'Dates and amounts',
@@ -1798,6 +1814,18 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['{0}社を一括修正', 'Bulk edit {0} companies'],
+  ['{0}項目を{1}社に反映する', 'Apply {0} items to {1} companies'],
+  ['{0}社を修正しました', '{0} companies edited'],
+  [
+    '同じ電話番号が{0}社に入ります。重複の確認にも影響します。よければそのまま進めてください。',
+    'The same phone number goes into {0} companies, which also affects the duplicate check. Continue if that is what you want.',
+  ],
+  ['{0} に元に戻しました', 'Undone on {0}'],
+  [
+    '（そのあと変更された{0}社はそのままです）',
+    '({0} companies changed since then stay as they are)',
+  ],
   ['{0}件を選択（どれかに当てはまる）', '{0} selected (any of them)'],
   ['「{0}」を含む', 'Contains "{0}"'],
   ['業種「{0}」は一覧にありません', 'Industry "{0}" is not on the list'],
