@@ -21,6 +21,8 @@ export interface AppDependencies {
   authController: AuthController;
   /** Feature routers. Mounted under /api behind authentication. */
   apiRouters?: Router[];
+  /** Reachable before login. */
+  publicRouters?: Router[];
 }
 
 export function createApp(deps: AppDependencies): Express {
@@ -58,6 +60,9 @@ export function createApp(deps: AppDependencies): Express {
   api.use(deps.sessionMiddleware);
   api.use(csrfGuard);
   api.use('/auth', createAuthRouter(deps.authController, deps.authenticator));
+  for (const router of deps.publicRouters ?? []) {
+    api.use(router);
+  }
   api.use(deps.authenticator.requireAuth());
   for (const router of deps.apiRouters ?? []) {
     api.use(router);

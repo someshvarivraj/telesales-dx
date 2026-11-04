@@ -4,6 +4,7 @@ import type {
   CreateAppRequest,
   UpdateAppRequest,
   AppSettingsDto,
+  PlannedOutageRequest,
   AreaRuleDto,
   AreaRuleRequest,
   AuditLogQuery,
@@ -227,6 +228,14 @@ export const useSaveSettings = () =>
   useInvalidatingMutation([adminKeys.settings, ['settings']], (request: AppSettingsDto) =>
     apiClient.put<AppSettingsDto>('/admin/settings', request),
   );
+
+export const useSavePlannedOutage = () =>
+  useInvalidatingMutation([['system']], (request: PlannedOutageRequest) =>
+    apiClient.put<unknown>('/admin/planned-outage', request),
+  );
+
+export const useRemovePlannedOutage = () =>
+  useInvalidatingMutation([['system']], () => apiClient.delete<unknown>('/admin/planned-outage'));
 
 export const useApps = () =>
   useQuery({

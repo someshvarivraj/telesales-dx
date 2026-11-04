@@ -15,6 +15,7 @@ async function main(): Promise<void> {
     authenticator: container.authenticator,
     authController: container.authController,
     apiRouters: container.apiRouters,
+    publicRouters: container.publicRouters,
   });
 
   if (config.jobsEnabled) {

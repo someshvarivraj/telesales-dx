@@ -11,6 +11,7 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useApps, useCreateApp, useUpdateApp } from './api';
+import { PlannedOutageCard } from './PlannedOutageCard';
 
 /**
  * Apps that share the company-wide accounts, and maintenance mode (spec §6, priority 2).
@@ -70,6 +71,7 @@ export function AppsPage() {
           </Card>
         )}
       </QueryState>
+      <PlannedOutageCard />
       <AddApp />
 
       <Dialog

@@ -571,6 +571,18 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  メンテナンスのお知らせ: 'Maintenance notice',
+  'サーバーが止まる予定を入れると、全員の画面とログイン画面に、保存した時から終わるまで表示します。30分前からは閉じられなくなります。':
+    'Enter when the server will be down. Everyone sees it on every screen and on the login screen until it ends. It cannot be closed in the last 30 minutes.',
+  いま表示しているお知らせ: 'Notice showing now',
+  お知らせを取り下げる: 'Take the notice down',
+  お知らせを更新する: 'Update the notice',
+  お知らせを出す: 'Post the notice',
+  お知らせを閉じる: 'Close the notice',
+  開始時刻: 'Start time',
+  終了時刻: 'End time',
+  ひとこと: 'Note',
+  '例：AWS のメンテナンスのため': 'e.g. AWS maintenance',
   一括修正: 'Bulk edit',
   一括修正の履歴: 'Bulk edit history',
   元に戻す: 'Undo',
@@ -1815,6 +1827,18 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  [
+    'メンテナンスの時間です（{0}）。途中で使えなくなります。',
+    'Maintenance is under way ({0}). The system will stop working during this time.',
+  ],
+  [
+    'あと{0}分でメンテナンスが始まります（{1}）。入力中の内容を保存してください。',
+    'Maintenance starts in {0} minutes ({1}). Please save what you are working on.',
+  ],
+  [
+    '{0} はメンテナンスのためシステムを使えません。',
+    'The system is unavailable during {0} for maintenance.',
+  ],
   ['{0}社を一括修正', 'Bulk edit {0} companies'],
   ['{0}項目を{1}社に反映する', 'Apply {0} items to {1} companies'],
   ['{0}社を修正しました', '{0} companies edited'],

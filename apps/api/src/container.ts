@@ -31,7 +31,7 @@ import { createAppointmentsRouter } from './modules/appointments/appointmentsRou
 import { AppointmentWorkService } from './modules/appointments/AppointmentWorkService.js';
 import { NextActionService } from './modules/appointments/NextActionService.js';
 import { AppService } from './modules/apps/AppService.js';
-import { createSystemRouter } from './modules/apps/systemRouter.js';
+import { createPublicNoticeRouter, createSystemRouter } from './modules/apps/systemRouter.js';
 import { AreaTableService } from './modules/area/AreaTableService.js';
 import { createAssistantRouter } from './modules/assistant/assistantRouter.js';
 import { AssistantActionRunner } from './modules/assistant/AssistantActionRunner.js';
@@ -90,6 +90,7 @@ export class Container {
   readonly authController: AuthController;
   readonly jobs: ScheduledJobs;
   readonly apiRouters: Router[];
+  readonly publicRouters: Router[];
 
   private sessionInfra: SessionInfrastructure | undefined;
 
@@ -253,8 +254,9 @@ export class Container {
       this.clock,
       this.logger,
     );
+    this.publicRouters = [createPublicNoticeRouter(settings)];
     this.apiRouters = [
-      createSystemRouter(apps),
+      createSystemRouter(apps, settings),
       createReferenceRouter({ authenticator, options, users: adminUsers, calendar, settings }),
       createCompaniesRouter({
         authenticator,

@@ -13,11 +13,13 @@ import { PasswordInput, TextInput } from '@/components/ui/TextInput';
 import { ja } from '@/i18n/ja';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { type LoginFormValues, loginFormSchema } from '../formSchemas';
+import { usePublicPlannedOutage, PlannedOutageBanner } from '@/features/system/PlannedOutageBanner';
 import { useLogin, useSession } from '../hooks/useSession';
 
 export function LoginPage() {
   const session = useSession();
   const login = useLogin();
+  const outage = usePublicPlannedOutage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = safeRedirectTarget(searchParams.get('redirect'));
@@ -65,6 +67,7 @@ export function LoginPage() {
       mood={login.isError ? 'trouble' : 'default'}
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+        <PlannedOutageBanner outage={outage.data} />
         {login.isError && <Alert tone="error">{errorMessageOf(login.error)}</Alert>}
         {ended && !login.isError && (
           <Alert tone="info">

@@ -33,11 +33,13 @@ describe('LoginPage', () => {
   });
 
   it('shows the credential error returned by the API', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ error: { code: 'INVALID_CREDENTIALS' } }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+    // A new response each time: the login screen also asks for the maintenance notice.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ error: { code: 'INVALID_CREDENTIALS' } }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
     );
     renderLogin();
     await userEvent.type(screen.getByLabelText(ja.auth.email), 'tanaka@example.co.jp');

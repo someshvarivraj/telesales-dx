@@ -1,4 +1,4 @@
-import type { AppSettingsDto } from '@telesales/shared';
+import type { AppSettingsDto, PlannedOutageDto } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
@@ -6,6 +6,7 @@ import type { PrismaClient } from '../../generated/prisma/client.js';
 const TRAVEL_BUFFER_KEY = 'travel_buffer';
 const ALLOCATION_KEY = 'allocation';
 const CHANGE_REQUEST_REMINDER_KEY = 'change_request_reminder';
+const PLANNED_OUTAGE_KEY = 'planned_outage';
 
 const DEFAULTS: AppSettingsDto = {
   travelBufferMinutes: 0,
@@ -58,6 +59,48 @@ export class SettingsService {
           ? reminder.minutes
           : DEFAULTS.changeRequestReminderMinutes,
     };
+  }
+
+  /** The announced downtime, until it has ended. */
+  async plannedOutage(now = new Date()): Promise<PlannedOutageDto | null> {
+    const row = await this.prisma.appSetting.findUnique({ where: { key: PLANNED_OUTAGE_KEY } });
+    const value = row?.value;
+    if (
+      !isRecord(value) ||
+      typeof value.startsAt !== 'string' ||
+      typeof value.endsAt !== 'string' ||
+      new Date(value.endsAt) <= now
+    ) {
+      return null;
+    }
+    return {
+      startsAt: value.startsAt,
+      endsAt: value.endsAt,
+      note: typeof value.note === 'string' ? value.note : null,
+    };
+  }
+
+  /** null takes the announcement down. */
+  async setPlannedOutage(actor: Actor, input: PlannedOutageDto | null): Promise<void> {
+    const before = await this.plannedOutage();
+    if (input) {
+      const value = { startsAt: input.startsAt, endsAt: input.endsAt, note: input.note };
+      await this.prisma.appSetting.upsert({
+        where: { key: PLANNED_OUTAGE_KEY },
+        create: { key: PLANNED_OUTAGE_KEY, value },
+        update: { value },
+      });
+    } else {
+      await this.prisma.appSetting.deleteMany({ where: { key: PLANNED_OUTAGE_KEY } });
+    }
+    await this.audit.record({
+      action: AuditAction.SettingsChanged,
+      actorUserId: actor.id,
+      targetType: 'app_setting',
+      targetId: PLANNED_OUTAGE_KEY,
+      before: before ? { ...before } : undefined,
+      after: input ? { ...input } : undefined,
+    });
   }
 
   async update(actor: Actor, input: AppSettingsDto): Promise<AppSettingsDto> {
