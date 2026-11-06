@@ -19,6 +19,7 @@ import {
   isUnknownPhone,
   type ListImportProblemRow,
   type ListRowFix,
+  joinAddress,
   splitCompanyRank,
   splitRankCell,
   UNKNOWN_URL,
@@ -472,7 +473,6 @@ export class ListImportService {
       });
     }
     const corrected = new Map(corrections.map(({ row, ...values }) => [row, values]));
-    const rankColumn = columns.find((column) => column.field === 'companyRank');
 
     const analysis: Analysis = {
       headerRow: table.headerRow,
@@ -488,7 +488,7 @@ export class ListImportService {
       rowCount: table.rows.length,
     };
     const candidates: AnalyzedRow[] = [];
-    for (const { row, values, red } of table.rows) {
+    for (const { row, values } of table.rows) {
       const read: Partial<Record<ListField, string>> = {};
       const extra: Record<string, string> = {};
       const raw: Record<string, string> = {};
@@ -509,7 +509,7 @@ export class ListImportService {
         addressTail = addressPart;
         read.companyRank = rank;
       }
-      const address = [read.address, read.address2, addressTail].filter(Boolean).join(' ');
+      const address = joinAddress([read.address, read.address2, addressTail]);
       if (address) read.address = address;
       delete read.address2;
       Object.assign(read, corrected.get(row));
@@ -520,12 +520,8 @@ export class ListImportService {
         analysis.fixedCount++;
         analysis.fixes.push(...fixes.map((fix) => ({ row, ...fix })));
       }
-      // 「NTT上系」 with NTT in red, or 「上系島津製作所」: rank 上系 and the parent company.
-      const parent = rankColumn ? red?.[rankColumn.header] : undefined;
-      if (parent && fields.companyRank) {
-        fields.companyRank = fields.companyRank.replace(parent, '').trim();
-        fields.parentName ??= parent;
-      } else if (fields.companyRank) {
+      // 「上系AGC」: rank 上系, parent company AGC (Sano 11/6).
+      if (fields.companyRank) {
         const split = splitCompanyRank(fields.companyRank);
         fields.companyRank = split.rank;
         if (split.parentName) fields.parentName ??= split.parentName;

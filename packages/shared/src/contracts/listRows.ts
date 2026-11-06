@@ -133,6 +133,20 @@ export function splitRankCell(value: string): { addressPart: string; rank: strin
     : { addressPart: '', rank: value };
 }
 
+/**
+ * 住所1, 住所2 and what ran on into 住所3 as one address. A part ending in 「-」 was cut in the
+ * middle of the number (「1-1-」+「13ビル」), so it continues with no space.
+ */
+export function joinAddress(parts: (string | undefined)[]): string {
+  return parts
+    .filter(Boolean)
+    .reduce<string>(
+      (joined, part) =>
+        joined === '' || joined.endsWith('-') ? joined + part : `${joined} ${part}`,
+      '',
+    );
+}
+
 /** 「上系島津製作所」 or 「島津製作所上系」 → rank 上系, parent 島津製作所 (Sano 10/28 ③). */
 export function splitCompanyRank(rank: string): { rank: string; parentName: string | null } {
   const value = rank.trim();
