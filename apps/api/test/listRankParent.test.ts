@@ -1,33 +1,57 @@
 import ExcelJS from 'exceljs';
+import { joinAddress, splitCompanyRank, splitRankCell } from '@telesales/shared';
 import { describe, expect, it } from 'vitest';
 import { readTableFile } from '../src/modules/companies/TableFileReader.js';
 
-async function workbookWith(rank: ExcelJS.CellValue, font?: Partial<ExcelJS.Font>) {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('リスト');
-  sheet.addRow(['会社名', '電話番号', 'URL', '企業ランク']);
-  sheet.addRow(['テスト通信株式会社', '06-6000-0001', 'https://example.co.jp', rank]);
-  if (font) sheet.getCell('D2').font = font;
-  return Buffer.from(await workbook.xlsx.writeBuffer());
-}
-
-describe('企業ランク with the parent company in red (request 10/29 ④)', () => {
-  it('reads the red part of 「NTT上系」 separately', async () => {
-    const content = await workbookWith({
-      richText: [{ text: 'NTT', font: { color: { argb: 'FFFF0000' } } }, { text: '上系' }],
-    });
-    const table = await readTableFile('list.xlsx', content);
-    expect(table.rows[0]?.values['企業ランク']).toBe('NTT上系');
-    expect(table.rows[0]?.red).toEqual({ 企業ランク: 'NTT' });
+describe('企業ランク and 親会社名 (Sano 11/6)', () => {
+  it('takes what follows 上系 as the parent company', () => {
+    expect(splitCompanyRank('上系AGC')).toEqual({ rank: '上系', parentName: 'AGC' });
+    expect(splitCompanyRank('上系豊田合成')).toEqual({ rank: '上系', parentName: '豊田合成' });
+    expect(splitCompanyRank('上系')).toEqual({ rank: '上系', parentName: null });
   });
 
-  it('treats a cell in red font as all red, and black text as no parent', async () => {
-    const red = await readTableFile(
+  it('leaves the other ranks as they are', () => {
+    for (const rank of ['上場', '優良', '非上場', '中小企業', '対象外']) {
+      expect(splitCompanyRank(rank)).toEqual({ rank, parentName: null });
+    }
+  });
+
+  it('does not take 上系AGC apart at the address overflow step', () => {
+    expect(splitRankCell('上系AGC')).toEqual({ addressPart: '', rank: '上系AGC' });
+    expect(splitRankCell('ビル3F　上系AGC')).toEqual({ addressPart: 'ビル3F', rank: '上系AGC' });
+  });
+
+  it('ignores the text colour', async () => {
+    const book = new ExcelJS.Workbook();
+    const sheet = book.addWorksheet('リスト');
+    sheet.addRow(['会社名', '企業ランク', '電話番号']);
+    sheet.addRow(['株式会社A', '上系AGC', '06-6000-0000']);
+    sheet.getCell('B2').font = { color: { argb: 'FFFF0000' } };
+    const table = await readTableFile(
       'list.xlsx',
-      await workbookWith('トヨタ', { color: { argb: 'FFFF0000' } }),
+      Buffer.from((await book.xlsx.writeBuffer()) as ArrayBuffer),
     );
-    expect(red.rows[0]?.red).toEqual({ 企業ランク: 'トヨタ' });
-    const plain = await readTableFile('list.xlsx', await workbookWith('上場'));
-    expect(plain.rows[0]?.red).toBeUndefined();
+    expect(table.rows[0]).toEqual({
+      row: 2,
+      values: { 会社名: '株式会社A', 企業ランク: '上系AGC', 電話番号: '06-6000-0000' },
+    });
+  });
+});
+
+describe('joinAddress (Sano 11/6: 住所はつなげて1つの項目に)', () => {
+  it('joins the parts with a space', () => {
+    expect(joinAddress(['東京都港区六本木6-10-1', '六本木ヒルズ森タワー', undefined])).toBe(
+      '東京都港区六本木6-10-1 六本木ヒルズ森タワー',
+    );
+  });
+
+  it('continues without a space when a part was cut in the middle of the number', () => {
+    expect(joinAddress(['兵庫県神戸市長田区東尻池町1-1-', '13サンスノービル2F201'])).toBe(
+      '兵庫県神戸市長田区東尻池町1-1-13サンスノービル2F201',
+    );
+  });
+
+  it('is empty when there is no address', () => {
+    expect(joinAddress([undefined, undefined])).toBe('');
   });
 });
