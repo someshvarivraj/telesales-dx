@@ -43,18 +43,29 @@ function auditShape(row: {
 
 /**
  * The detailed result must sit under the chosen grade; 「C架電回避目安」 only applies to
- * grade C, and sets the day the company comes back on the call list.
+ * grade C. The date comes from the chosen period, or is typed freely (answer 11/10 No.14);
+ * either way the company does not come back to auto allocation by itself.
  */
 function resultFields(input: CreateCallRecordRequest, calledAt: Date) {
   const resultCode = input.resultCode || null;
   if (resultCode && gradeOfResult(resultCode) !== input.grade) {
     throw new ValidationError({ resultCode: ['not_under_grade'] });
   }
-  const avoidMonths = input.grade === 'C' ? (input.avoidMonths ?? null) : null;
+  if (input.grade !== 'C') {
+    return { resultCode, avoidMonths: null, avoidUntil: null };
+  }
+  const calledOn = jstDate(calledAt);
+  const avoidMonths = input.avoidMonths ?? null;
+  const until = input.avoidUntil ?? (avoidMonths ? addMonthsToDate(calledOn, avoidMonths) : null);
+  if (until && until <= calledOn) {
+    throw new ValidationError({ avoidUntil: ['must_be_after_call'] });
+  }
   return {
     resultCode,
-    avoidMonths,
-    avoidUntil: avoidMonths ? toDbDate(addMonthsToDate(jstDate(calledAt), avoidMonths)) : null,
+    // A typed date that differs from the period is a free date: no period is kept.
+    avoidMonths:
+      until && avoidMonths && addMonthsToDate(calledOn, avoidMonths) === until ? avoidMonths : null,
+    avoidUntil: until ? toDbDate(until) : null,
   };
 }
 

@@ -1,4 +1,5 @@
 import {
+  addDays,
   addMonthsToDate,
   AVOID_MONTH_CHOICES,
   type CallRecordDto,
@@ -31,6 +32,7 @@ const empty: CreateCallRecordRequest = {
   interestLevel: '',
   nextCallDate: null,
   avoidMonths: null,
+  avoidUntil: null,
   notes: '',
 };
 
@@ -83,6 +85,7 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
           resultCode: values.resultCode || null,
           nextCallDate: values.nextCallDate || null,
           avoidMonths: values.grade === 'C' ? (values.avoidMonths ?? null) : null,
+          avoidUntil: values.grade === 'C' ? values.avoidUntil || null : null,
         },
       },
       {
@@ -170,29 +173,53 @@ export function CallRecordForm({ companyId, editing, onSaved, onCancel }: CallRe
           <FormField
             label="C架電回避目安"
             hint={
-              values.avoidMonths
-                ? `${formatDateKanji(addMonthsToDate(avoidFrom, values.avoidMonths))}までは架電回避（期間が過ぎても自動割り振りには戻りません）`
-                : undefined
+              values.avoidUntil
+                ? `${formatDateKanji(values.avoidUntil)}までは架電回避（期間が過ぎても自動割り振りには戻りません）`
+                : '期間を選ぶと日付が入ります。日付を直接入れることもできます。'
             }
           >
             {(c) => (
-              <Select
-                {...c}
-                value={values.avoidMonths ? String(values.avoidMonths) : ''}
-                placeholder="―"
-                options={AVOID_MONTH_CHOICES.map((choice) => ({
-                  value: String(choice.months),
-                  label: choice.label,
-                }))}
-                onChange={(e) =>
-                  set(
-                    'avoidMonths',
-                    e.target.value
+              <div className="flex flex-col gap-2">
+                <Select
+                  {...c}
+                  value={values.avoidMonths ? String(values.avoidMonths) : ''}
+                  placeholder="―"
+                  options={AVOID_MONTH_CHOICES.map((choice) => ({
+                    value: String(choice.months),
+                    label: choice.label,
+                  }))}
+                  onChange={(e) => {
+                    const months = e.target.value
                       ? (Number(e.target.value) as CreateCallRecordRequest['avoidMonths'])
-                      : null,
-                  )
-                }
-              />
+                      : null;
+                    setValues((v) => ({
+                      ...v,
+                      avoidMonths: months,
+                      avoidUntil: months ? addMonthsToDate(avoidFrom, months) : null,
+                    }));
+                  }}
+                />
+                <DatePicker
+                  aria-label="架電回避の日付"
+                  value={values.avoidUntil ?? ''}
+                  min={addDays(avoidFrom, 1)}
+                  clearable
+                  onChange={(e) => {
+                    const until = e.target.value || null;
+                    setValues((v) => ({
+                      ...v,
+                      avoidUntil: until,
+                      // A date that no longer matches the period is a free date.
+                      avoidMonths:
+                        until &&
+                        v.avoidMonths &&
+                        addMonthsToDate(avoidFrom, v.avoidMonths) === until
+                          ? v.avoidMonths
+                          : null,
+                    }));
+                  }}
+                />
+              </div>
             )}
           </FormField>
         ) : (

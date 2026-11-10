@@ -571,6 +571,11 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  '期間を選ぶと日付が入ります。日付を直接入れることもできます。':
+    'Choosing a period fills in the date. You can also enter a date directly.',
+  'リスト取り込みと同じ一覧から選びます。ないときは「その他」。':
+    'Pick from the same list as the list import. If it is not there, choose その他.',
+  架電回避の日付: 'Avoid calling until',
   サーバーにつながりません: 'Cannot reach the server',
   'メンテナンス中かもしれません。つながると自動で元の画面に戻ります。入力中の内容はそのままです。':
     'It may be under maintenance. This goes away by itself when the server is back. What you are typing is kept.',

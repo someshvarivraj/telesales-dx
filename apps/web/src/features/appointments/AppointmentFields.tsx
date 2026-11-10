@@ -1,5 +1,6 @@
 import {
   type AppointmentDetail,
+  INDUSTRIES,
   MeetingFormat,
   ONLINE_TOOLS,
   OptionCategory,
@@ -164,14 +165,39 @@ export function CompanyFields({
     <div className="grid gap-4 sm:grid-cols-2">
       {COMPANY_FIELDS.map((field) => (
         <div key={field.key} className={field.wide ? 'sm:col-span-2' : undefined}>
-          <FormField label={field.label} required={field.required}>
-            {(c) => (
-              <TextInput
-                {...c}
-                value={values[field.key]}
-                onChange={(e) => onChange({ ...values, [field.key]: e.target.value })}
-              />
-            )}
+          <FormField
+            label={field.label}
+            required={field.required}
+            hint={
+              field.key === 'industry'
+                ? 'リスト取り込みと同じ一覧から選びます。ないときは「その他」。'
+                : undefined
+            }
+          >
+            {(c) =>
+              field.key === 'industry' ? (
+                // The same fixed list as the list import (answer 11/10 No.5).
+                <Select
+                  {...c}
+                  value={values.industry}
+                  placeholder="―"
+                  options={[
+                    // A value read from the file that is not on the list stays visible.
+                    ...(values.industry && !INDUSTRIES.includes(values.industry)
+                      ? [{ value: values.industry, label: values.industry }]
+                      : []),
+                    ...INDUSTRIES.map((value) => ({ value, label: value })),
+                  ]}
+                  onChange={(e) => onChange({ ...values, industry: e.target.value })}
+                />
+              ) : (
+                <TextInput
+                  {...c}
+                  value={values[field.key]}
+                  onChange={(e) => onChange({ ...values, [field.key]: e.target.value })}
+                />
+              )
+            }
           </FormField>
         </div>
       ))}

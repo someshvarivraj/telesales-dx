@@ -288,6 +288,8 @@ export const createCallRecordRequestSchema = z.object({
   avoidMonths: z
     .union([z.literal(3), z.literal(6), z.literal(12), z.literal(18), z.literal(24)])
     .nullish(),
+  /** 架電回避 until this day: filled in from avoidMonths, or typed freely (answer 11/10 No.14). */
+  avoidUntil: dateString.nullish(),
   notes: optionalText(4000),
 });
 export type CreateCallRecordRequest = z.infer<typeof createCallRecordRequestSchema>;
