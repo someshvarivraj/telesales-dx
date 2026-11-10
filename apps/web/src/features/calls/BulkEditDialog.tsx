@@ -21,24 +21,39 @@ import { useDraft } from '@/lib/drafts';
 import { formatDateTime } from '@/lib/format';
 import { useBulkEdit, useBulkEdits, useRestoreBulkEdit } from './api';
 
-const FIELDS: { field: BulkEditField; label: string; hint?: string }[] = [
-  { field: 'name', label: '会社名', hint: '前の名前は旧社名として残ります' },
+/**
+ * The ones edited most often come first (answer 11/10 No.13: search items 3・5・10・12・13・14・16 on
+ * the PDF — 業種, 企業ランク, 会社名, 郵便番号, エリア, 最寄駅, 備考).
+ */
+const FIELDS: { field: BulkEditField; label: string; hint?: string; often?: true }[] = [
+  { field: 'industry', label: '業種', often: true },
+  { field: 'companyRank', label: '企業ランク', often: true },
+  { field: 'name', label: '会社名', hint: '前の名前は旧社名として残ります', often: true },
+  { field: 'postalCode', label: '郵便番号', often: true },
+  {
+    field: 'address',
+    label: '住所',
+    hint: '都道府県・市区町村は住所から読み直します',
+    often: true,
+  },
+  { field: 'prefecture', label: '都道府県', often: true },
+  { field: 'city', label: '市区町村', often: true },
+  { field: 'nearestStation', label: '最寄駅', often: true },
+  {
+    field: 'telemaMemo',
+    label: '備考（テレマメモ）',
+    hint: '今のメモはこの内容に置き換わります',
+    often: true,
+  },
   { field: 'office', label: '事業所' },
   { field: 'department', label: '部署' },
   { field: 'phone', label: '電話番号' },
   { field: 'url', label: 'URL' },
   { field: 'sourceUrl', label: '掲載元のURL' },
-  { field: 'postalCode', label: '郵便番号' },
-  { field: 'address', label: '住所', hint: '都道府県・市区町村は住所から読み直します' },
-  { field: 'prefecture', label: '都道府県' },
-  { field: 'city', label: '市区町村' },
-  { field: 'nearestStation', label: '最寄駅' },
   { field: 'walkMinutes', label: '徒歩（分）' },
   { field: 'capital', label: '資本金', hint: '「5000万」「1億2000万」でも入力できます' },
-  { field: 'industry', label: '業種' },
   { field: 'customerType', label: '取引区分' },
   { field: 'clientNo', label: 'クライアントNo' },
-  { field: 'companyRank', label: '企業ランク' },
   { field: 'parentName', label: '親会社名' },
 ];
 
@@ -185,36 +200,44 @@ export function BulkEditDialog({
             {`同じ電話番号が${companyIds.length}社に入ります。重複の確認にも影響します。よければそのまま進めてください。`}
           </Alert>
         )}
-        <ul className="divide-y divide-line border border-line">
-          {FIELDS.map(({ field, label, hint }) => {
-            const on = ticked.includes(field);
-            const shown =
-              field === 'capital' && capital !== null ? `＝ ${formatCapital(capital)}` : hint;
-            return (
-              <li
-                key={field}
-                className={cn(
-                  'grid grid-cols-[minmax(0,1fr)] items-center gap-x-3 gap-y-1 px-3 py-2 sm:grid-cols-[10rem_minmax(0,1fr)]',
-                  on && 'bg-main-soft/50',
-                )}
-              >
-                <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm">
-                  <input
-                    type="checkbox"
-                    className="check-input"
-                    checked={on}
-                    onChange={(event) => tick(field, event.target.checked)}
-                  />
-                  <span className={cn(on && 'font-bold')}>{label}</span>
-                </label>
-                <div className="min-w-0">
-                  {input(field, label)}
-                  {on && shown && <p className="mt-1 text-xs text-ink-sub">{shown}</p>}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        {[
+          { title: 'よく直す項目', fields: FIELDS.filter((f) => f.often) },
+          { title: 'そのほかの項目', fields: FIELDS.filter((f) => !f.often) },
+        ].map((group) => (
+          <section key={group.title} className="flex flex-col gap-1.5">
+            <h3 className="text-xs font-bold text-ink-sub">{group.title}</h3>
+            <ul className="divide-y divide-line border border-line">
+              {group.fields.map(({ field, label, hint }) => {
+                const on = ticked.includes(field);
+                const shown =
+                  field === 'capital' && capital !== null ? `＝ ${formatCapital(capital)}` : hint;
+                return (
+                  <li
+                    key={field}
+                    className={cn(
+                      'grid grid-cols-[minmax(0,1fr)] items-center gap-x-3 gap-y-1 px-3 py-2 sm:grid-cols-[10rem_minmax(0,1fr)]',
+                      on && 'bg-main-soft/50',
+                    )}
+                  >
+                    <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm">
+                      <input
+                        type="checkbox"
+                        className="check-input"
+                        checked={on}
+                        onChange={(event) => tick(field, event.target.checked)}
+                      />
+                      <span className={cn(on && 'font-bold')}>{label}</span>
+                    </label>
+                    <div className="min-w-0">
+                      {input(field, label)}
+                      {on && shown && <p className="mt-1 text-xs text-ink-sub">{shown}</p>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
       </div>
     </Dialog>
   );

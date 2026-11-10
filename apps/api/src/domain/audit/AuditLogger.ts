@@ -44,6 +44,7 @@ export const AuditAction = {
   ShiftsFilled: 'shift.filled',
   AllocationCalculated: 'allocation.calculated',
   AllocationMoved: 'allocation.moved',
+  AllocationAssigned: 'allocation.assigned',
   AllocationConfirmed: 'allocation.confirmed',
   NextActionUpdated: 'appointment.next_action.updated',
   AppCreated: 'app.created',

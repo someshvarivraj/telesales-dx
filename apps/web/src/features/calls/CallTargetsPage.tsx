@@ -3,6 +3,7 @@ import {
   type BulkEditDto,
   type CompanyListItem,
   formatCapital,
+  MAX_PICKED_COMPANIES,
   gradeOfResult,
   INDUSTRIES,
   OptionCategory,
@@ -20,8 +21,16 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { cn } from '@/components/ui/cn';
+import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatDateKanji, formatDateTime, todayJst } from '@/lib/format';
-import { useCityNames, useCompanySearch, useRestoreBulkEdit, useSetCallTargets } from './api';
+import {
+  useCityNames,
+  useCompanySearch,
+  useRestoreBulkEdit,
+  useSearchIds,
+  useSetCallTargets,
+} from './api';
+import { AssignDialog } from './AssignDialog';
 import { BulkEditDialog, BulkEditHistoryDialog } from './BulkEditDialog';
 import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import {
@@ -53,6 +62,10 @@ export function CallTargetsPage() {
   const canMove = canImport || isAdmin;
   // Leaders and admins, as with moving companies: it changes many at once, phone numbers too.
   const canBulkEdit = canMove;
+  // 検索結果をテレマに割り振る (answer 11/10 No.5 ②): whoever confirms the allocation.
+  const canAssign = usePermission(Permission.ConfirmAllocation) || isAdmin;
+  const [assignOpen, setAssignOpen] = useState(false);
+  const pickAll = useSearchIds();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lastBulk, setLastBulk] = useState<BulkEditDto | null>(null);
@@ -94,16 +107,15 @@ export function CallTargetsPage() {
     value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
     values: chip.values,
   }));
-  const query = useCompanySearch({
+  const search = {
     keyword,
     conditions,
     match,
     callTargetsOnly: list === 'TARGETS',
     nonTargetsOnly: list === 'NON_TARGETS',
     assignedToMe: onlyMine,
-    page,
-    pageSize: 50,
-  });
+  };
+  const query = useCompanySearch({ ...search, page, pageSize: 50 });
 
   const choicesOf = (field: FilterField): Choice[] => {
     // Each grade with its detailed results under it (request 11/2 ②).
@@ -132,7 +144,8 @@ export function CallTargetsPage() {
   };
 
   const canMoveHere = canMove && list !== 'ALL';
-  const selectable = canMoveHere || canBulkEdit;
+  const canAssignHere = canAssign && list !== 'NON_TARGETS';
+  const selectable = canMoveHere || canBulkEdit || canAssignHere;
 
   return (
     <div className="flex flex-col gap-4">
@@ -170,11 +183,35 @@ export function CallTargetsPage() {
                       {picked.size > 0
                         ? `${picked.size}件を選んでいます`
                         : !canMoveHere
-                          ? '企業を選ぶと、まとめて修正できます。'
+                          ? '企業を選ぶと、まとめて修正・割り振りができます。'
                           : list === 'NON_TARGETS'
                             ? '架電を始める企業を選んで「架電対象にする」を押してください。'
-                            : '今は架電しない企業を選ぶか、まとめて修正する企業を選んでください。'}
+                            : '企業を選ぶと、まとめて修正・割り振り・架電対象外にできます。'}
                     </span>
+                    {picked.size < data.total && (
+                      <Button
+                        size="sm"
+                        variant="text"
+                        loading={pickAll.isPending}
+                        onClick={() =>
+                          pickAll.mutate(search, {
+                            onSuccess: (found) => setPicked(new Set(found.ids)),
+                          })
+                        }
+                      >
+                        {data.total > MAX_PICKED_COMPANIES
+                          ? `検索結果の最初の${MAX_PICKED_COMPANIES.toLocaleString()}件を選ぶ`
+                          : `検索結果の${data.total.toLocaleString()}件をすべて選ぶ`}
+                      </Button>
+                    )}
+                    {picked.size > 0 && (
+                      <Button size="sm" variant="text" onClick={() => setPicked(new Set())}>
+                        選ぶのをやめる
+                      </Button>
+                    )}
+                    {pickAll.isError && (
+                      <span className="text-sm text-danger">{errorMessageOf(pickAll.error)}</span>
+                    )}
                     {lastBulk && (
                       <span className="flex flex-wrap items-center gap-2 text-sm text-success">
                         {`${lastBulk.companyCount}社を修正しました`}
@@ -220,6 +257,16 @@ export function CallTargetsPage() {
                             一括修正
                           </Button>
                         </>
+                      )}
+                      {canAssignHere && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={picked.size === 0}
+                          onClick={() => setAssignOpen(true)}
+                        >
+                          テレマに割り振る
+                        </Button>
                       )}
                       {canMoveHere && (
                         <Button
@@ -325,6 +372,7 @@ export function CallTargetsPage() {
         />
       )}
       {historyOpen && <BulkEditHistoryDialog open onClose={() => setHistoryOpen(false)} />}
+      {assignOpen && <AssignDialog companyIds={[...picked]} onClose={() => setAssignOpen(false)} />}
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import type {
+  AllocationAssignRequest,
+  AllocationAssignResult,
   AllocationDayResponse,
   CallResultsResponse,
   FillShiftsRequest,
@@ -116,6 +118,14 @@ export const useCalculateAllocation = () =>
 export const useMoveAllocation = () =>
   useTelemaMutation((request: { date: string; ids: string[]; assigneeId: string }) =>
     apiClient.post<undefined>('/telema/allocations/move', request),
+  );
+
+/** 検索結果をテレマに割り振る (answer 11/10 No.5 ②). */
+export const useAssignAllocation = () =>
+  useTelemaMutation(
+    (request: AllocationAssignRequest) =>
+      apiClient.post<AllocationAssignResult>('/telema/allocations/assign', request),
+    [['companies']],
   );
 
 export const useConfirmAllocation = () =>

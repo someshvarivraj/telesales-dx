@@ -71,6 +71,14 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       ),
     );
   });
+  router.post('/companies/search/ids', view, async (req, res) => {
+    res.json(
+      await deps.companies.searchIds(
+        parseWith(companySearchRequestSchema, req.body),
+        currentUserOf(req).id,
+      ),
+    );
+  });
   router.get('/companies/city-names', view, async (_req, res) => {
     res.json(await deps.companies.cityNames());
   });

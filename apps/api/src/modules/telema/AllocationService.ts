@@ -1,5 +1,6 @@
 import {
   addDays,
+  type AllocationAssignResult,
   type AllocationDayResponse,
   type AllocationItemDto,
   AllocationKind,
@@ -15,6 +16,7 @@ import {
 } from '@telesales/shared';
 import type { AccessPolicy, Actor } from '../../domain/access/AccessPolicy.js';
 import { Allocator } from '../../domain/allocation/Allocator.js';
+import { countByKind, dealByOffice } from '../../domain/allocation/dealByOffice.js';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { CalendarRepository } from '../../domain/calendar/CalendarRepository.js';
 import type { Clock } from '../../domain/Clock.js';
@@ -224,6 +226,90 @@ export class AllocationService {
       targetId: date,
       after: { assigneeId, count: moved.count },
     });
+  }
+
+  /**
+   * 検索結果をテレマに割り振る (answer 11/10 No.5 ②): companies found by a search go to the
+   * chosen people, 本社・支社・工場・その他 spread evenly. They join the day's draft (taking over any
+   * automatic share of the same companies), so the lead confirms the day as usual.
+   */
+  async assign(
+    actor: Actor,
+    date: string,
+    companyIds: string[],
+    assigneeIds: string[],
+  ): Promise<AllocationAssignResult> {
+    if (!this.policy.managesTelema(actor)) {
+      throw new ForbiddenError();
+    }
+    if (date < this.today()) {
+      throw new ValidationError({ date: ['past'] });
+    }
+    const people = [...new Set(assigneeIds)];
+    const participants = await this.participants(date);
+    if (people.some((id) => !participants.working.has(id))) {
+      throw new ValidationError({ assigneeIds: ['not_working'] });
+    }
+    // The morning run skips a day that already has an allocation: make the automatic part
+    // first so a search allocated early does not take its place.
+    if (!(await this.hasAllocation(date))) {
+      const calendar = await this.calendar.load(date, addDays(date, 14));
+      if (calendar.isBusinessDay(date) && participants.targets.length > 0) {
+        await this.calculate(actor, date);
+      }
+    }
+    const wanted = new Set(companyIds);
+    const companies = await this.prisma.company.findMany({
+      where: { id: { in: [...wanted] }, isCallTarget: true, flag: { not: 'DUPLICATE' } },
+      select: { id: true, office: true },
+    });
+    // Keep the order of the search.
+    const order = new Map(companyIds.map((id, index) => [id, index]));
+    companies.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    const assignment = dealByOffice(companies, people);
+
+    const day = toDbDate(date);
+    await this.prisma.$transaction([
+      this.prisma.allocation.deleteMany({
+        where: { date: day, kind: AllocationKind.Call, companyId: { in: [...assignment.keys()] } },
+      }),
+      this.prisma.allocation.createMany({
+        data: [...assignment].map(([companyId, assigneeId]) => ({
+          date: day,
+          kind: AllocationKind.Call,
+          companyId,
+          assigneeId,
+        })),
+      }),
+      // Any change re-opens the day so the lead confirms the final version.
+      this.prisma.allocation.updateMany({
+        where: { date: day },
+        data: { status: AllocationStatus.Draft, confirmedAt: null, confirmedById: null },
+      }),
+    ]);
+    const names = new Map(
+      (await this.team.telemarketers()).map((person) => [person.user.id, person.user]),
+    );
+    const result: AllocationAssignResult = {
+      assigned: assignment.size,
+      skipped: wanted.size - companies.length,
+      people: people.map((id) => {
+        const byKind = countByKind(companies, assignment, id);
+        return {
+          user: names.get(id) ?? { id, name: '' },
+          total: byKind.HEAD + byKind.BRANCH + byKind.FACTORY + byKind.OTHER,
+          byKind,
+        };
+      }),
+    };
+    await this.audit.record({
+      action: AuditAction.AllocationAssigned,
+      actorUserId: actor.id,
+      targetType: 'allocation',
+      targetId: date,
+      after: { assigned: result.assigned, skipped: result.skipped, assigneeIds: people },
+    });
+    return result;
   }
 
   /** Confirms the day and tells each person what they have (N11). */

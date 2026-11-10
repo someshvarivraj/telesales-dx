@@ -571,6 +571,34 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  '企業を選ぶと、まとめて修正・割り振りができます。':
+    'Select companies to bulk edit or allocate them.',
+  '企業を選ぶと、まとめて修正・割り振り・架電対象外にできます。':
+    'Select companies to bulk edit, allocate, or remove them from the call list.',
+  選ぶのをやめる: 'Clear selection',
+  テレマに割り振る: 'Allocate to telemarketers',
+  割り振りました: 'Allocated',
+  割り振りを確認して確定する: 'Review and confirm the allocation',
+  'まだ下書きです。割り振り画面で確定すると、各テレマに表示されます。':
+    'This is still a draft. Once confirmed on the Allocation screen, each telemarketer sees it.',
+  '本社・支社・工場・その他の事業所が、それぞれ偏らないように分けます。その日の割り振り（下書き）に入るので、割り振り画面で確定してください。':
+    "Head offices, branches, factories and other offices are each spread evenly. They join that day's draft allocation; confirm it on the Allocation screen.",
+  架電する日: 'Call date',
+  割り振るテレマ: 'Telemarketers to allocate to',
+  'この日に出勤するテレマがいません。先にシフトを入れてください。':
+    'No telemarketer is working that day. Enter shifts first.',
+  '割り振り画面で「計算し直す」を押すと、この割り振りは消えて自動の割り振りだけになります。':
+    'Pressing “Recalculate” on the Allocation screen removes this allocation and keeps only the automatic one.',
+  割り振る: 'Allocate',
+  よく直す項目: 'Often edited',
+  そのほかの項目: 'Other fields',
+  '備考（テレマメモ）': 'Remarks (telemarketing memo)',
+  今のメモはこの内容に置き換わります: 'The current memo is replaced with this',
+  '支社・支店': 'Branch',
+  工場: 'Factory',
+  検索結果の割り振り: 'Allocation from search',
+  '今のシフトと架電対象で作り直します。手で動かした分・検索結果から割り振った分':
+    'Rebuilds from the current shifts and call targets. Manual moves and allocations from search',
   別の事業所・支店を登録: 'Register another office or branch',
   '例：大阪支店、本社、第二工場': 'e.g. Osaka branch, head office, second plant',
   '例：06-1234-5678': 'e.g. 06-1234-5678',
@@ -1857,6 +1885,17 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['{0}社を{1}人に割り振りました。', 'Allocated {0} companies to {1} people.'],
+  [
+    '（架電対象外・重複の{0}社は割り振っていません）',
+    '({0} not on the call list or duplicates were not allocated)',
+  ],
+  ['{0}社をテレマに割り振る', 'Allocate {0} companies to telemarketers'],
+  ['{0}人に割り振る', 'Allocate to {0} people'],
+  ['検索結果の{0}件をすべて選ぶ', 'Select all {0} search results'],
+  ['検索結果の最初の{0}件を選ぶ', 'Select the first {0} search results'],
+  ['出勤 {0}時間{1}分・今の割り振り {2}件', 'Working {0} h {1} min · allocated now {2}'],
+  ['出勤 {0}時間・今の割り振り {1}件', 'Working {0} h · allocated now {1}'],
   ['A {0}／架電 {1}', 'A {0} / calls {1}'],
   ['{0}月{1}日〜{2}月{3}日', '{0}/{1} – {2}/{3}'],
   [

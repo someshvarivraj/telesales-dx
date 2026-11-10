@@ -8,7 +8,9 @@ import {
   type BulkEditRequest,
   type CompanyFilterCondition,
   type CompanyListItem,
+  type CompanySearchIdsResponse,
   type CompanySearchRequest,
+  MAX_PICKED_COMPANIES,
   jstDate,
   ListImportRowStatus,
   type Page,
@@ -189,6 +191,11 @@ function restoreData(before: Record<string, unknown>): Prisma.CompanyUpdateInput
 }
 
 /** The company register (企業台帳) and the call-target list of ①. */
+const SEARCH_ORDER: Prisma.CompanyOrderByWithRelationInput[] = [
+  { updatedAt: 'desc' },
+  { id: 'asc' },
+];
+
 export class CompanyService {
   constructor(
     private readonly prisma: PrismaClient,
@@ -198,6 +205,47 @@ export class CompanyService {
 
   /** `viewerId` is needed for "assigned to me today" (confirmed allocation). */
   async search(request: CompanySearchRequest, viewerId?: string): Promise<Page<CompanyListItem>> {
+    const where = await this.searchWhere(request, viewerId);
+    const [total, rows] = await Promise.all([
+      this.prisma.company.count({ where }),
+      this.prisma.company.findMany({
+        where,
+        include: listInclude,
+        orderBy: SEARCH_ORDER,
+        skip: (request.page - 1) * request.pageSize,
+        take: request.pageSize,
+      }),
+    ]);
+    return {
+      items: rows.map((row) => this.toListItem(row)),
+      total,
+      page: request.page,
+      pageSize: request.pageSize,
+    };
+  }
+
+  /** Every company the search finds, in the list's order (一括修正, 割り振り). */
+  async searchIds(
+    request: CompanySearchRequest,
+    viewerId?: string,
+  ): Promise<CompanySearchIdsResponse> {
+    const where = await this.searchWhere(request, viewerId);
+    const [total, rows] = await Promise.all([
+      this.prisma.company.count({ where }),
+      this.prisma.company.findMany({
+        where,
+        select: { id: true },
+        orderBy: SEARCH_ORDER,
+        take: MAX_PICKED_COMPANIES,
+      }),
+    ]);
+    return { ids: rows.map((row) => row.id), total, capped: total > MAX_PICKED_COMPANIES };
+  }
+
+  private async searchWhere(
+    request: CompanySearchRequest,
+    viewerId?: string,
+  ): Promise<Prisma.CompanyWhereInput> {
     const conditions = await Promise.all(request.conditions.map((c) => this.conditionToWhere(c)));
     const filters = conditions.filter((where): where is Prisma.CompanyWhereInput => where !== null);
     const where: Prisma.CompanyWhereInput = {
@@ -223,22 +271,7 @@ export class CompanyService {
         keywordWhere(request.keyword) ?? {},
       ],
     };
-    const [total, rows] = await Promise.all([
-      this.prisma.company.count({ where }),
-      this.prisma.company.findMany({
-        where,
-        include: listInclude,
-        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-        skip: (request.page - 1) * request.pageSize,
-        take: request.pageSize,
-      }),
-    ]);
-    return {
-      items: rows.map((row) => this.toListItem(row)),
-      total,
-      page: request.page,
-      pageSize: request.pageSize,
-    };
+    return where;
   }
 
   async get(id: string): Promise<CompanyDetail> {
