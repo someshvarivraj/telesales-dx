@@ -64,6 +64,42 @@ describe('架電結果 (request 10/29)', () => {
     expect(saved[0]).toMatchObject({ avoidMonths: null, avoidUntil: null });
   });
 
+  it('takes a freely typed 架電回避 date and keeps no period for it (answer 11/10 No.14)', async () => {
+    const { service } = setup();
+    const dto = await service.create(actor, COMPANY, {
+      ...blank,
+      grade: 'C',
+      resultCode: 'C-01',
+      avoidMonths: 6,
+      avoidUntil: '2027-02-15',
+    });
+    expect(dto).toMatchObject({ avoidMonths: null, avoidUntil: '2027-02-15' });
+  });
+
+  it('keeps the period when the date is the one the period gives', async () => {
+    const { service } = setup();
+    const dto = await service.create(actor, COMPANY, {
+      ...blank,
+      grade: 'C',
+      resultCode: null,
+      avoidMonths: 3,
+      avoidUntil: '2027-01-30',
+    });
+    expect(dto).toMatchObject({ avoidMonths: 3, avoidUntil: '2027-01-30' });
+  });
+
+  it('refuses a 架電回避 date on or before the call', async () => {
+    const { service } = setup();
+    await expect(
+      service.create(actor, COMPANY, {
+        ...blank,
+        grade: 'C',
+        resultCode: null,
+        avoidUntil: '2026-10-30',
+      }),
+    ).rejects.toThrow();
+  });
+
   it('refuses a result that is not under the chosen grade', async () => {
     const { service } = setup();
     await expect(
