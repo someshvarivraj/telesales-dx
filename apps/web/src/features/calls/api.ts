@@ -11,6 +11,7 @@ import type {
   CompanySearchRequest,
   CreateCallRecordRequest,
   CreateCommentRequest,
+  CreateOfficeRequest,
   FindRepRequest,
   ListImportDto,
   ListImportPreview,
@@ -335,6 +336,16 @@ export function useCompanyGroup(companyId: string) {
       onSuccess,
     }),
   };
+}
+
+/** 別の事業所・支店を新規登録 (answer 11/10 No.10). */
+export function useCreateOffice(companyId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreateOfficeRequest) =>
+      apiClient.post<CompanyDetail>(`/companies/${companyId}/offices`, request),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['companies'] }),
+  });
 }
 
 /** 取り込みを取り消す (request 11/2). */

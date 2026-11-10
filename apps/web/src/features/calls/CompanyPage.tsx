@@ -9,7 +9,7 @@ import {
   stationLabel,
   Permission,
 } from '@telesales/shared';
-import { Building2, CalendarPlus, MessageSquare, Pencil } from 'lucide-react';
+import { Building2, CalendarPlus, MessageSquare, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
@@ -38,6 +38,7 @@ import { CallRecordForm } from './CallRecordForm';
 import { CompanyEditDialog } from './CompanyEditDialog';
 import { CompanyGroupCard } from './CompanyGroup';
 import { FindRepDialog } from './FindRepDialog';
+import { OfficeCreatedNotice, OfficeDialog } from './OfficeDialog';
 import { BackBar, BackLink } from '@/components/ui/BackLink';
 
 function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyId: string }) {
@@ -125,6 +126,12 @@ export function CompanyPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [repOpen, setRepOpen] = useState(false);
   const [justSavedA, setJustSavedA] = useState<CallRecordDto | null>(null);
+  const [officeOpen, setOfficeOpen] = useState(false);
+  // Kept with the company it was registered from, so it does not follow to the new one.
+  const [createdOffice, setCreatedOffice] = useState<{
+    fromId: string;
+    created: CompanyDetail;
+  } | null>(null);
 
   const companyAppointments = appointments.data?.items ?? [];
 
@@ -202,6 +209,9 @@ export function CompanyPage() {
                   : '会社名が同じ企業があります。'}
                 <CompanyButtons companies={data.flagMatches} />
               </Alert>
+            )}
+            {createdOffice?.fromId === id && (
+              <OfficeCreatedNotice created={createdOffice.created} />
             )}
             {justSavedA && canBook && (
               <Alert
@@ -345,7 +355,19 @@ export function CompanyPage() {
             </div>
             <div className="flex flex-col gap-5 lg:col-span-2">
               {canCall && (
-                <Card title="架電結果を入力">
+                <Card
+                  title="架電結果を入力"
+                  actions={
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={<Plus className="size-4" aria-hidden="true" />}
+                      onClick={() => setOfficeOpen(true)}
+                    >
+                      別の事業所・支店を登録
+                    </Button>
+                  }
+                >
                   <CallRecordForm
                     companyId={id}
                     onSaved={(record) => setJustSavedA(record.grade === 'A' ? record : null)}
@@ -372,6 +394,17 @@ export function CompanyPage() {
 
           {editOpen && (
             <CompanyEditDialog company={data} open={editOpen} onClose={() => setEditOpen(false)} />
+          )}
+          {officeOpen && (
+            <OfficeDialog
+              company={data}
+              open={officeOpen}
+              onClose={() => setOfficeOpen(false)}
+              onCreated={(created) => {
+                setOfficeOpen(false);
+                setCreatedOffice({ fromId: id, created });
+              }}
+            />
           )}
           <FindRepDialog
             open={repOpen}

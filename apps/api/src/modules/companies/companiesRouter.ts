@@ -14,6 +14,7 @@ import {
   setCallTargetRequestSchema,
   telemaMemoRequestSchema,
   updateCompanyRequestSchema,
+  createOfficeRequestSchema,
 } from '@telesales/shared';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -126,6 +127,22 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
           parseWith(updateCompanyRequestSchema, req.body),
         ),
       );
+    },
+  );
+  // 別の事業所・支店 found during a call, registered as a new company (answer 11/10 No.10).
+  router.post(
+    '/companies/:id/offices',
+    auth.requireAnyPermission(Permission.WriteCallRecords, Permission.EditCompanies),
+    async (req, res) => {
+      res
+        .status(201)
+        .json(
+          await deps.companies.createOffice(
+            currentUserOf(req),
+            idParam(req),
+            parseWith(createOfficeRequestSchema, req.body),
+          ),
+        );
     },
   );
   // Same name, another department / office: grouped under one company (request 11/2).
