@@ -571,6 +571,20 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  別の事業所・支店を登録: 'Register another office or branch',
+  '例：大阪支店、本社、第二工場': 'e.g. Osaka branch, head office, second plant',
+  '例：06-1234-5678': 'e.g. 06-1234-5678',
+  新しい企業として登録: 'Register as a new company',
+  '電話で教えてもらった、同じ会社の別の事業所・支店を新しい企業として登録します。架電対象に入り、この企業と同じ会社として並びます。業種・企業ランク・資本金などは、この企業と同じ内容で登録します。':
+    'Registers another office or branch of the same company, learned about on the phone, as a new company. It goes on the call list and is shown with this company. Industry, company rank, capital and the like are copied from this company.',
+  登録済みの企業を開く: 'Open the registered company',
+  'この電話番号は登録済みのため、新しく作れません（':
+    'This phone number is already registered, so a new company cannot be created (',
+  'この電話番号は回避企業のため、登録できません':
+    'This phone number belongs to an avoided company and cannot be registered',
+  '10〜11桁の電話番号を入れてください': 'Enter a phone number of 10–11 digits',
+  登録した企業を開く: 'Open the new company',
+  'を新しい企業として登録しました。': ' has been registered as a new company.',
   架電実績: 'Call results',
   全体: 'All',
   '架電数（A〜D）': 'Calls (A–D)',

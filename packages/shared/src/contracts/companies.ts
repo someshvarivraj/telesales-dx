@@ -44,6 +44,25 @@ export const companyFieldsSchema = z.object({
   companyGroupId: z.uuid().nullish(),
 });
 
+/**
+ * 別の事業所・支店を新規登録 (answer 11/10 No.10, No.11): during a call, another office of the
+ * same company is registered as a new company. A phone number that is already registered
+ * (or on the 回避 list) is refused; the phone number alone decides.
+ */
+export const createOfficeRequestSchema = companyFieldsSchema.extend({
+  phone: requiredText(32).refine((phone) => PHONE_DIGITS_PATTERN.test(phoneDigitsOf(phone) ?? ''), {
+    message: 'phone_digits',
+  }),
+});
+/** What the screen sends (blank fields may be left out). */
+export type CreateOfficeRequest = z.input<typeof createOfficeRequestSchema>;
+export type CreateOfficeFields = z.infer<typeof createOfficeRequestSchema>;
+
+/** Why a new office was refused (409 CONFLICT details). */
+export type CreateOfficeConflict =
+  | { reason: 'phone_registered'; companyId: string; companyName: string; office: string | null }
+  | { reason: 'phone_avoided'; companyName: string | null };
+
 /** テレマメモ: kept apart from the company fields so telemarketing can write it. */
 export const telemaMemoRequestSchema = z.object({ telemaMemo: optionalText(4000) });
 export type CompanyFields = z.infer<typeof companyFieldsSchema>;

@@ -1,6 +1,8 @@
 import {
   type CompanyDetail,
   type CompanyFields,
+  type CreateOfficeConflict,
+  type CreateOfficeFields,
   CompanyFlag,
   type BulkEditDto,
   type BulkEditRequest,
@@ -27,6 +29,7 @@ import { isSimilarNumber, normalizeCompanyName } from '../../domain/companies/du
 import { keywordWhere } from '../../domain/companies/keywordSearch.js';
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import {
+  ConflictError,
   InvalidStateError,
   ValidationError,
   NotFoundError,
@@ -343,6 +346,73 @@ export class CompanyService {
         })),
       updatedAt: iso(company.updatedAt),
     };
+  }
+
+  /**
+   * 別の事業所・支店 (answer 11/10 No.10, No.11): a new company learned about during a call
+   * on another one. Refused when the phone number is registered already or on the 回避 list;
+   * with the same name it joins the company's group, and it is on the call list straight away.
+   */
+  async createOffice(
+    actor: Actor,
+    fromId: string,
+    input: CreateOfficeFields,
+  ): Promise<CompanyDetail> {
+    const from = await this.prisma.company.findUnique({
+      where: { id: fromId },
+      select: { id: true, nameKey: true, parentId: true, listName: true, autoAllocate: true },
+    });
+    if (!from) {
+      throw new NotFoundError();
+    }
+    const data = companyWriteData(input);
+    const digits = data.phoneDigits;
+    if (!digits) {
+      throw new ValidationError({ phone: ['required'] });
+    }
+    const registered = await this.prisma.company.findFirst({
+      where: { phoneDigits: digits },
+      select: { id: true, name: true, office: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (registered) {
+      throw new ConflictError({
+        reason: 'phone_registered',
+        companyId: registered.id,
+        companyName: registered.name,
+        office: registered.office,
+      } satisfies CreateOfficeConflict);
+    }
+    const avoided = await this.prisma.avoidPhone.findUnique({
+      where: { phoneDigits: digits },
+      select: { companyName: true },
+    });
+    if (avoided) {
+      throw new ConflictError({
+        reason: 'phone_avoided',
+        companyName: avoided.companyName,
+      } satisfies CreateOfficeConflict);
+    }
+    const created = await this.prisma.company.create({
+      data: {
+        ...data,
+        listName: from.listName,
+        isCallTarget: true,
+        autoAllocate: from.autoAllocate,
+        // Same company name: shown together with the company it was found on.
+        parentId: data.nameKey === from.nameKey ? (from.parentId ?? from.id) : null,
+        createdById: actor.id,
+      },
+      select: { id: true, parentId: true },
+    });
+    await this.audit.record({
+      action: AuditAction.CompanyCreated,
+      actorUserId: actor.id,
+      targetType: 'company',
+      targetId: created.id,
+      after: { ...auditShape({ ...data, listName: from.listName }), foundOn: from.id },
+    });
+    return this.get(created.id);
   }
 
   async update(actor: Actor, id: string, input: UpdateCompanyRequest): Promise<CompanyDetail> {
