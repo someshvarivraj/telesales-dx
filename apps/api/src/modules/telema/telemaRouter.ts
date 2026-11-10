@@ -1,6 +1,7 @@
 import {
   allocationDateQuerySchema,
   allocationMoveRequestSchema,
+  callResultsQuerySchema,
   dateString,
   fillShiftsRequestSchema,
   Permission,
@@ -71,6 +72,11 @@ export function createTelemaRouter(deps: TelemaDeps): Router {
   router.get('/telema/staff', view, async (req, res) => {
     const { date } = parseQuery(optionalDateQuery, req);
     res.json(await deps.team.staffOn(date));
+  });
+
+  router.get('/telema/call-results', view, async (req, res) => {
+    const query = parseQuery(callResultsQuerySchema, req);
+    res.json(await deps.team.callResults(currentUserOf(req), query));
   });
 
   router.get('/telema/allocations', view, async (req, res) => {

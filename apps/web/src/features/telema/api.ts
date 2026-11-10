@@ -1,5 +1,6 @@
 import type {
   AllocationDayResponse,
+  CallResultsResponse,
   FillShiftsRequest,
   FillShiftsResponse,
   MyAssignmentsResponse,
@@ -21,7 +22,16 @@ export const telemaKeys = {
   staff: (date: string) => ['telema', 'staff', date] as const,
   allocation: (date: string) => ['telema', 'allocation', date] as const,
   mine: ['telema', 'allocation', 'mine'] as const,
+  callResults: (from: string, to: string) => ['telema', 'call-results', from, to] as const,
 };
+
+/** 架電実績: calls A–D, appointments A and the rate per telemarketer per day. */
+export const useCallResults = (from: string, to: string) =>
+  useQuery({
+    queryKey: telemaKeys.callResults(from, to),
+    queryFn: ({ signal }) =>
+      apiClient.get<CallResultsResponse>(`/telema/call-results${toQuery({ from, to })}`, signal),
+  });
 
 /** Shifts, staff and allocation all depend on each other: refresh the whole section. */
 function useTelemaMutation<TVariables, TResult>(
