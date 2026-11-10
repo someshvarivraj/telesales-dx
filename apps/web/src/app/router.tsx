@@ -39,6 +39,7 @@ import { SchedulePage } from '@/features/schedule/SchedulePage';
 import { SchedulePrintPage } from '@/features/schedule/SchedulePrintPage';
 import { NotFoundPage } from '@/features/system/NotFoundPage';
 import { AllocationPage } from '@/features/telema/AllocationPage';
+import { CallResultsPage } from '@/features/telema/CallResultsPage';
 import { PeoplePage } from '@/features/telema/PeoplePage';
 import { ShiftsPage } from '@/features/telema/ShiftsPage';
 import { TelemaLayout } from '@/features/telema/TelemaLayout';
@@ -139,6 +140,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <TodayPage /> },
           { path: 'shifts', element: <ShiftsPage /> },
           { path: 'allocation', element: <AllocationPage /> },
+          { path: 'results', element: <CallResultsPage /> },
           { path: 'people', element: <PeoplePage /> },
         ],
       },

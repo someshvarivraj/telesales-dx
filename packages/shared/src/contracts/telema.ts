@@ -201,3 +201,49 @@ export interface MyAssignmentsResponse {
 
 export const ALLOCATION_KINDS = [AllocationKind.Call, AllocationKind.DayBefore] as const;
 export const ALLOCATION_STATUSES = [AllocationStatus.Draft, AllocationStatus.Confirmed] as const;
+
+/**
+ * 架電実績 (answer 11/10 No.3): per telemarketer per day, the calls that count (A–D; E is
+ * left out), the appointments (A) and the appointment rate A ÷ (A+B+C+D). Every call
+ * counts, also a second call to the same company on the same day.
+ */
+export const CALL_RESULT_GRADES_COUNTED: readonly string[] = ['A', 'B', 'C', 'D'];
+export const CALL_RESULTS_MAX_DAYS = 62;
+
+export const callResultsQuerySchema = z
+  .object({ from: dateString, to: dateString })
+  .refine((query) => query.from <= query.to, { message: 'from_after_to' });
+export type CallResultsQuery = z.infer<typeof callResultsQuerySchema>;
+
+export interface CallResultsCell {
+  date: string;
+  /** Calls graded A–D. */
+  calls: number;
+  /** Calls graded A. */
+  appointments: number;
+}
+
+export interface CallResultsRow {
+  telemarketer: UserRef;
+  days: CallResultsCell[];
+  calls: number;
+  appointments: number;
+}
+
+export interface CallResultsResponse {
+  from: string;
+  to: string;
+  dates: string[];
+  rows: CallResultsRow[];
+  /** All telemarketers together, per day. */
+  totals: CallResultsCell[];
+  calls: number;
+  appointments: number;
+  /** Telemarketers see only their own row; leads and admins see everyone. */
+  ownOnly: boolean;
+}
+
+/** A ÷ (A+B+C+D), or null when nothing was called. */
+export function appointmentRate(appointments: number, calls: number): number | null {
+  return calls > 0 ? appointments / calls : null;
+}

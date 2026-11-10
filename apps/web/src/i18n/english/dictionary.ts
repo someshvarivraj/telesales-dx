@@ -571,6 +571,12 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  架電実績: 'Call results',
+  全体: 'All',
+  '架電数（A〜D）': 'Calls (A–D)',
+  'アポ（A）': 'Appointments (A)',
+  'アポ率 ＝ A の数 ÷（A＋B＋C＋D の数）。E は数えません。同じ会社に1日に2回かけたときは2件です。':
+    'Appointment rate = A ÷ (A+B+C+D). E is not counted. Two calls to the same company in one day count as 2.',
   '期間を選ぶと日付が入ります。日付を直接入れることもできます。':
     'Choosing a period fills in the date. You can also enter a date directly.',
   'リスト取り込みと同じ一覧から選びます。ないときは「その他」。':
@@ -1837,6 +1843,8 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['A {0}／架電 {1}', 'A {0} / calls {1}'],
+  ['{0}月{1}日〜{2}月{3}日', '{0}/{1} – {2}/{3}'],
   [
     'メンテナンスの時間です（{0}）。途中で使えなくなります。',
     'Maintenance is under way ({0}). The system will stop working during this time.',

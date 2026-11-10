@@ -24,6 +24,7 @@ export const paths = {
   telemaShifts: '/telema/shifts',
   telemaAllocation: '/telema/allocation',
   telemaPeople: '/telema/people',
+  telemaResults: '/telema/results',
   admin: {
     root: '/admin',
     users: '/admin/users',

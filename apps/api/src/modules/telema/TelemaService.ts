@@ -1,6 +1,11 @@
 import {
   addDays,
   APP_KEY,
+  CALL_RESULTS_MAX_DAYS,
+  type CallResultsQuery,
+  type CallResultsResponse,
+  fromJst,
+  Permission,
   dayOfWeek,
   type FillShiftsResponse,
   isRole,
@@ -23,7 +28,11 @@ import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js
 import type { CalendarRepository } from '../../domain/calendar/CalendarRepository.js';
 import type { Clock } from '../../domain/Clock.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
-import { ForbiddenError, NotFoundError } from '../../http/errors/AppError.js';
+import {
+  datesBetween,
+  summarizeCallResults,
+} from '../../domain/callResults/summarizeCallResults.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../http/errors/AppError.js';
 import { dateOnly, iso, toDbDate, userRef, userRefSelect } from '../../http/mappers.js';
 import type { NotificationService } from '../notifications/NotificationService.js';
 
@@ -102,6 +111,52 @@ export class TelemaService {
     private readonly audit: AuditLogger,
     private readonly clock: Clock,
   ) {}
+
+  /**
+   * 架電実績 (answer 11/10 No.3): calls A–D, appointments A and the rate, per telemarketer
+   * per day. Telemarketers see their own row; leads and admins see everyone.
+   */
+  async callResults(actor: Actor, query: CallResultsQuery): Promise<CallResultsResponse> {
+    const dates = datesBetween(query.from, query.to);
+    if (dates.length > CALL_RESULTS_MAX_DAYS) {
+      throw new ValidationError({ to: ['range_too_long'] });
+    }
+    const ownOnly = !(actor.can(Permission.ConfirmAllocation) || actor.can(Permission.Administer));
+    const calls = await this.prisma.callRecord.findMany({
+      where: {
+        calledAt: { gte: fromJst(query.from), lt: fromJst(addDays(query.to, 1)) },
+        ...(ownOnly ? { telemarketerId: actor.id } : {}),
+      },
+      select: { telemarketerId: true, calledAt: true, grade: true },
+    });
+    const people = ownOnly ? [] : (await this.telemarketers()).map((person) => person.user);
+    const listed = new Set(people.map((person) => person.id));
+    const missing = [...new Set(calls.map((call) => call.telemarketerId))].filter(
+      (id) => !listed.has(id),
+    );
+    if (ownOnly && !missing.includes(actor.id)) missing.push(actor.id);
+    const others = missing.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: missing } },
+          select: userRefSelect.select,
+        })
+      : [];
+    const summary = summarizeCallResults(
+      calls,
+      dates,
+      people,
+      new Map(others.map((user) => [user.id, { id: user.id, name: user.name }])),
+    );
+    return {
+      from: query.from,
+      to: query.to,
+      dates,
+      ...summary,
+      calls: summary.rows.reduce((sum, row) => sum + row.calls, 0),
+      appointments: summary.rows.reduce((sum, row) => sum + row.appointments, 0),
+      ownOnly,
+    };
+  }
 
   /** Active telemarketers and leads, with their profile (defaults until one is saved). */
   async telemarketers(): Promise<TelemarketerDto[]> {
