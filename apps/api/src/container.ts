@@ -121,7 +121,13 @@ export class Container {
     const mailer = createMailer(config.mail, config.fileStorageDir, this.logger);
     const emails = new EmailService(prisma, mailer, files, this.audit, this.logger);
     const recipients = new RecipientResolver(prisma);
-    const notifications = new NotificationService(prisma, recipients, emails, this.logger);
+    const notifications = new NotificationService(
+      prisma,
+      recipients,
+      emails,
+      this.logger,
+      config.appBaseUrl,
+    );
     const options = new OptionService(prisma, this.audit);
     const settings = new SettingsService(prisma, this.audit);
     const calendar = new CalendarService(prisma, this.audit, async () => {
