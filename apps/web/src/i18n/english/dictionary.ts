@@ -571,6 +571,8 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  'ドラッグして動かせます（ダブルクリックで中央に戻る）':
+    'Drag to move (double-click to centre it again)',
   '企業を選ぶと、まとめて修正・割り振りができます。':
     'Select companies to bulk edit or allocate them.',
   '企業を選ぶと、まとめて修正・割り振り・架電対象外にできます。':

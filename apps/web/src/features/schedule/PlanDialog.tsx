@@ -130,6 +130,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       onClose={onClose}
       title={plan ? '予定の変更' : '予定を追加'}
       size="lg"
+      movable
       footer={
         <>
           <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
