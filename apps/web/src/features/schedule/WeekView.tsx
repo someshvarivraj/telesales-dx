@@ -8,7 +8,7 @@ import { Avatar } from './calendar/Avatar';
 import type { PeekBinder } from './calendar/EventPeek';
 import { busyRanges, freeMinutes, hoursLabel, WORK_END, WORK_START } from './calendar/layout';
 import { personColor } from './calendar/people';
-import { type CalendarEvent, EVENT_STYLE, eventsOn, minutesWithin } from './events';
+import { type CalendarEvent, EVENT_STYLE, eventsOn, isDayOff, minutesWithin } from './events';
 
 interface WeekViewProps {
   start: string;
@@ -147,7 +147,7 @@ export function WeekView({
                 </th>
                 {days.map((date) => {
                   const dayEvents = eventsOn(events, date, person.id);
-                  const off = isWeekend(date) || Boolean(holidayName(date));
+                  const off = isWeekend(date) || Boolean(holidayName(date)) || isDayOff(dayEvents);
                   const free = off ? 0 : freeMinutes(dayEvents, date);
                   const span = WORK_END - WORK_START;
                   return (

@@ -3,7 +3,7 @@ import { SLOT_MINUTES } from '@telesales/shared';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import { formatTime } from '@/lib/format';
-import { type CalendarEvent, EVENT_STYLE, eventsOn } from '../events';
+import { type CalendarEvent, EVENT_STYLE, eventsOn, isDayOff } from '../events';
 import { Avatar } from './Avatar';
 import type { PeekBinder } from './EventPeek';
 import {
@@ -123,7 +123,8 @@ export function DayTimeline({
             const allDay = personEvents.filter((event) => event.allDay);
             const lanes = Math.max(1, ...timed.map((item) => item.lanes));
             const rowH = Math.max(44, lanes * 22 + 8);
-            const free = off ? 0 : freeMinutes(personEvents, date);
+            const closed = off || isDayOff(personEvents);
+            const free = closed ? 0 : freeMinutes(personEvents, date);
             const ghost =
               drag?.id === person.id
                 ? {
@@ -143,30 +144,32 @@ export function DayTimeline({
                     <p className="truncate text-[10px] leading-4 text-ink-sub">
                       {allDay.length > 0
                         ? allDay.map((event) => event.title).join('・')
-                        : off
+                        : closed
                           ? '休日'
                           : `空き ${hoursLabel(free)}`}
                     </p>
                   </div>
                 </div>
                 <div
-                  role={onRange ? 'button' : undefined}
-                  aria-label={onRange ? `${person.name}の空き時間を選ぶ` : undefined}
-                  tabIndex={onRange ? 0 : undefined}
+                  role={onRange && !closed ? 'button' : undefined}
+                  aria-label={onRange && !closed ? `${person.name}の空き時間を選ぶ` : undefined}
+                  tabIndex={onRange && !closed ? 0 : undefined}
                   className={cn(
                     'relative select-none',
-                    off ? 'bg-off' : '',
-                    onRange && 'cursor-cell',
+                    closed ? 'bg-off' : '',
+                    onRange && (closed ? 'cursor-not-allowed' : 'cursor-cell'),
                   )}
                   style={{
                     width,
                     height: `max(${rowH}px, calc((100dvh - 22rem) / ${people.length}))`,
                   }}
                   onKeyDown={(event) => {
-                    if (onRange && event.key === 'Enter') onRange(person.id, '10:00', '11:00');
+                    if (onRange && !closed && event.key === 'Enter')
+                      onRange(person.id, '10:00', '11:00');
                   }}
                   onPointerDown={(event) => {
-                    if (!onRange || event.button !== 0 || event.pointerType === 'touch') return;
+                    if (!onRange || closed || event.button !== 0 || event.pointerType === 'touch')
+                      return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
                     const at = Math.floor(minutesAt(event) / SLOT_MINUTES) * SLOT_MINUTES;
@@ -204,7 +207,7 @@ export function DayTimeline({
                     />
                   ))}
                   {showFree &&
-                    !off &&
+                    !closed &&
                     freeRanges(personEvents, date).map(([start, end]) => (
                       <div
                         key={start}

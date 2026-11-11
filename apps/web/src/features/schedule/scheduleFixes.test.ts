@@ -1,7 +1,7 @@
 import type { PlanDto, ScheduleResponse } from '@telesales/shared';
 import { describe, expect, it } from 'vitest';
 import { freeMinutes } from './calendar/layout';
-import { buildEvents, type CalendarEvent } from './events';
+import { buildEvents, type CalendarEvent, isDayOff } from './events';
 
 const owner = { id: 'rep1', name: '営業 一' };
 const other = { id: 'rep2', name: '営業 二' };
@@ -65,5 +65,28 @@ describe('plans with another company (feedback 11/2)', () => {
     expect(onlyCompany?.title).toBe('A社');
     const [internal] = events(plan({ title: '社内会議' }));
     expect(internal?.title).toBe('社内会議');
+  });
+});
+
+describe('a whole day of 休み (feedback 11/11)', () => {
+  const timeOff = (kind: string, allDay: boolean): CalendarEvent => ({
+    key: kind,
+    kind: 'timeoff',
+    personId: 'rep1',
+    startsAt: '2026-11-11T00:00:00+09:00',
+    endsAt: '2026-11-12T00:00:00+09:00',
+    allDay,
+    title: '休み',
+    timeOff: { kind } as CalendarEvent['timeOff'],
+  });
+
+  it('closes the day like a holiday', () => {
+    expect(isDayOff([timeOff('DAY_OFF', true)])).toBe(true);
+  });
+
+  it('keeps part-day 休み and テレマアポ停止 open', () => {
+    expect(isDayOff([timeOff('PARTIAL', false)])).toBe(false);
+    expect(isDayOff([timeOff('TELEMA_STOP', true)])).toBe(false);
+    expect(isDayOff([])).toBe(false);
   });
 });

@@ -81,6 +81,7 @@ export function TimeOffDialog({
       open={open}
       onClose={onClose}
       title="休み・遅刻・早退・テレマアポ停止を入力"
+      movable
       footer={
         <>
           <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />

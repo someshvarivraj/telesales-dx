@@ -161,6 +161,17 @@ export function eventsOn(
   });
 }
 
+/**
+ * A whole day of 休み (not テレマアポ停止, which is the rep's own work): the person's day is
+ * treated like a holiday, tinted and closed to new plans (request 11/11).
+ */
+export function isDayOff(personEvents: CalendarEvent[]): boolean {
+  return personEvents.some(
+    (event) =>
+      event.kind === 'timeoff' && event.allDay && event.timeOff?.kind !== TimeOffKind.TelemaStop,
+  );
+}
+
 /** Minutes from the start of the day grid, clamped to the day. */
 export function minutesWithin(iso: string, date: string, edge: 'start' | 'end'): number {
   const instant = new Date(iso);

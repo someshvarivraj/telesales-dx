@@ -130,6 +130,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       onClose={onClose}
       title={plan ? '予定の変更' : '予定を追加'}
       size="lg"
+      movable
       footer={
         <>
           <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
@@ -181,27 +182,39 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
 
         <Row icon={<Tag className="size-4" />} label="種別">
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="種別">
-            {types.selectOptions.map((option) => {
-              const on = values.type === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => set('type', option.value)}
-                  className={cn(
-                    'h-8 cursor-pointer border px-3 text-sm transition-colors',
-                    on
-                      ? 'border-schedule bg-schedule-soft font-bold text-schedule'
-                      : 'border-line text-ink-sub hover:border-line-strong hover:text-ink',
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+            {types.selectOptions
+              // Customer meetings are booked with 「自分で取ったアポを登録」; 予定 are the rep's own
+              // tasks (feedback 11/11). An older visit keeps its type when it is edited.
+              .filter(
+                (option) =>
+                  !PLAN_TYPES_WITH_COMPANY.includes(option.value) || plan?.type === option.value,
+              )
+              .map((option) => {
+                const on = values.type === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => set('type', option.value)}
+                    className={cn(
+                      'h-8 cursor-pointer border px-3 text-sm transition-colors',
+                      on
+                        ? 'border-schedule bg-schedule-soft font-bold text-schedule'
+                        : 'border-line text-ink-sub hover:border-line-strong hover:text-ink',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
           </div>
+          {!withCompany && (
+            <p className="mt-1.5 text-xs text-ink-sub">
+              お客様とのアポ（訪問・オンライン）は「自分で取ったアポを登録」から入れてください。
+            </p>
+          )}
         </Row>
 
         {withCompany && (

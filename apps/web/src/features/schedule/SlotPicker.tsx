@@ -44,22 +44,8 @@ interface SlotPickerProps {
   salesBooked?: boolean;
 }
 
-/**
- * Check free/busy and hold a slot (spec §6): the rep's day, a 15-minute start, the
- * availability check, then the lock that keeps others out while the form is filled in.
- */
-export function SlotPicker({
-  slot,
-  onChange,
-  lock,
-  onLock,
-  onUnlock,
-  appointmentId,
-  repLocked = false,
-  salesBooked = false,
-}: SlotPickerProps) {
-  const reps = usePeople(Role.Sales);
-  const held = lock.status === 'held';
+/** The rep's day and the availability check for a slot (shared by the picker's parts). */
+export function useSlotData(slot: Slot, appointmentId?: string, salesBooked = false) {
   const schedule = useSchedule(slot.date, slot.date, slot.repId ? [slot.repId] : []);
   const events = useMemo(() => (schedule.data ? buildEvents(schedule.data) : []), [schedule.data]);
   const people = (schedule.data?.people ?? []).filter((person) => person.id === slot.repId);
@@ -75,24 +61,51 @@ export function SlotPicker({
         }
       : null,
   );
-  const result = check.data;
-  const set = (patch: Partial<Slot>) => onChange({ ...slot, ...patch });
+  return { schedule: schedule.data, events, people, result: check.data };
+}
+export type SlotData = ReturnType<typeof useSlotData>;
 
+/** 担当営業・日付・開始・終了. `compact`: two columns, for a narrow form beside the day. */
+export function SlotInputs({
+  slot,
+  onChange,
+  held,
+  repLocked = false,
+  compact = false,
+}: {
+  slot: Slot;
+  onChange: (slot: Slot) => void;
+  held: boolean;
+  repLocked?: boolean;
+  compact?: boolean;
+}) {
+  const reps = usePeople(Role.Sales);
+  const set = (patch: Partial<Slot>) => onChange({ ...slot, ...patch });
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_8rem_10rem]">
-        <FormField label="担当営業" required>
-          {(c) => (
-            <Select
-              {...c}
-              value={slot.repId}
-              disabled={held || repLocked}
-              placeholder="選択してください"
-              options={(reps.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
-              onChange={(e) => set({ repId: e.target.value })}
-            />
-          )}
-        </FormField>
+    <div
+      className={
+        compact
+          ? 'grid grid-cols-2 gap-x-3 gap-y-4'
+          : 'grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_8rem_10rem]'
+      }
+    >
+      {!(compact && repLocked) && (
+        <div className={compact ? 'col-span-2' : undefined}>
+          <FormField label="担当営業" required>
+            {(c) => (
+              <Select
+                {...c}
+                value={slot.repId}
+                disabled={held || repLocked}
+                placeholder="選択してください"
+                options={(reps.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                onChange={(e) => set({ repId: e.target.value })}
+              />
+            )}
+          </FormField>
+        </div>
+      )}
+      <div className={compact ? 'col-span-2' : undefined}>
         <FormField label="日付" required>
           {(c) => (
             <div className="flex gap-1">
@@ -105,6 +118,7 @@ export function SlotPicker({
               />
               <DatePicker
                 {...c}
+                className={compact ? 'min-w-0 flex-1' : undefined}
                 value={slot.date}
                 disabled={held}
                 isDisabled={isWeekend}
@@ -120,57 +134,84 @@ export function SlotPicker({
             </div>
           )}
         </FormField>
-        <FormField label="開始" required>
-          {(c) => (
-            <TimePicker
-              {...c}
-              value={slot.start}
-              disabled={held}
-              fromHour={7}
-              toHour={21}
-              onChange={(e) => set({ start: e.target.value, end: defaultEndTime(e.target.value) })}
-            />
-          )}
-        </FormField>
-        <FormField label="終了" required>
-          {(c) => (
-            <TimePicker
-              {...c}
-              value={slot.end}
-              disabled={held}
-              fromHour={7}
-              toHour={21}
-              after={slot.start}
-              durationFrom={slot.start}
-              onChange={(e) => set({ end: e.target.value })}
-            />
-          )}
-        </FormField>
       </div>
-
-      {slot.repId && (
-        <>
-          <ScheduleLegend />
-          <DayView
-            date={slot.date}
-            people={people}
-            events={events}
-            holidays={schedule.data?.holidays ?? []}
-            onEvent={() => undefined}
-            onSlot={
-              held ? undefined : (_person, time) => set({ start: time, end: defaultEndTime(time) })
-            }
-            selection={{ personId: slot.repId, start: slot.start, end: slot.end }}
-            maxHeight="26rem"
-            bufferMinutes={schedule.data?.travelBufferMinutes}
+      <FormField label="開始" required>
+        {(c) => (
+          <TimePicker
+            {...c}
+            value={slot.start}
+            disabled={held}
+            fromHour={7}
+            toHour={21}
+            onChange={(e) => set({ start: e.target.value, end: defaultEndTime(e.target.value) })}
           />
-          <p className="text-xs text-ink-sub">
-            空いている時間をクリックすると開始時刻が入ります（15分刻み・初期値は60分）。
-          </p>
-        </>
-      )}
+        )}
+      </FormField>
+      <FormField label="終了" required>
+        {(c) => (
+          <TimePicker
+            {...c}
+            value={slot.end}
+            disabled={held}
+            fromHour={7}
+            toHour={21}
+            after={slot.start}
+            durationFrom={slot.start}
+            onChange={(e) => set({ end: e.target.value })}
+          />
+        )}
+      </FormField>
+    </div>
+  );
+}
 
-      {result && !result.ok && !held && (
+/** The rep's day with the chosen slot; clicking free time sets the start. */
+export function SlotDay({
+  slot,
+  onChange,
+  held,
+  data,
+  maxHeight = '26rem',
+}: {
+  slot: Slot;
+  onChange: (slot: Slot) => void;
+  held: boolean;
+  data: SlotData;
+  maxHeight?: string;
+}) {
+  if (!slot.repId) return null;
+  return (
+    <>
+      <ScheduleLegend />
+      <DayView
+        date={slot.date}
+        people={data.people}
+        events={data.events}
+        holidays={data.schedule?.holidays ?? []}
+        onEvent={() => undefined}
+        onSlot={
+          held
+            ? undefined
+            : (_person, time) => onChange({ ...slot, start: time, end: defaultEndTime(time) })
+        }
+        selection={{ personId: slot.repId, start: slot.start, end: slot.end }}
+        maxHeight={maxHeight}
+        bufferMinutes={data.schedule?.travelBufferMinutes}
+      />
+      <p className="text-xs text-ink-sub">
+        空いている時間をクリックすると開始時刻が入ります（15分刻み・初期値は60分）。
+      </p>
+    </>
+  );
+}
+
+/** Why the slot cannot be booked, and warnings. */
+export function SlotProblems({ data, held }: { data: SlotData; held: boolean }) {
+  const { result } = data;
+  if (!result) return null;
+  return (
+    <>
+      {!result.ok && !held && (
         <Alert tone="error">
           <p className="font-bold">この時間帯には入れられません。</p>
           <ul className="list-inside list-disc">
@@ -180,13 +221,49 @@ export function SlotPicker({
           </ul>
         </Alert>
       )}
-      {result && result.warnings.length > 0 && (
+      {result.warnings.length > 0 && (
         <Alert tone="warning">
           {result.warnings.map((warning) => (
             <p key={warning}>{warning}</p>
           ))}
         </Alert>
       )}
+    </>
+  );
+}
+
+/** Someone else holds the slot, or the hold failed or ran out. */
+export function lockProblemText(lock: LockState): string | null {
+  if (lock.status === 'blocked')
+    return `${lock.by}さんがこの時間帯を編集中です。別の時間を選んでください。`;
+  if (lock.status === 'lost') return '押さえが切れました。もう一度押さえてください。';
+  if (lock.status === 'error') return '押さえられませんでした。もう一度お試しください。';
+  return null;
+}
+
+/**
+ * Check free/busy and hold a slot (spec §6): the rep's day, a 15-minute start, the
+ * availability check, then the lock that keeps others out while the form is filled in.
+ */
+export function SlotPicker({
+  slot,
+  onChange,
+  lock,
+  onLock,
+  onUnlock,
+  appointmentId,
+  repLocked = false,
+  salesBooked = false,
+}: SlotPickerProps) {
+  const held = lock.status === 'held';
+  const data = useSlotData(slot, appointmentId, salesBooked);
+  const problem = lockProblemText(lock);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <SlotInputs slot={slot} onChange={onChange} held={held} repLocked={repLocked} />
+      <SlotDay slot={slot} onChange={onChange} held={held} data={data} />
+      <SlotProblems data={data} held={held} />
 
       <div className="flex flex-wrap items-center gap-3 rounded-(--radius-control) border border-line bg-canvas px-4 py-3">
         {held ? (
@@ -212,22 +289,9 @@ export function SlotPicker({
         ) : (
           <>
             <div className="text-sm">
-              {lock.status === 'blocked' && (
-                <p className="font-bold text-danger">
-                  {lock.by}さんがこの時間帯を編集中です。別の時間を選んでください。
-                </p>
-              )}
-              {lock.status === 'lost' && (
-                <p className="font-bold text-danger">
-                  押さえが切れました。もう一度押さえてください。
-                </p>
-              )}
-              {lock.status === 'error' && (
-                <p className="font-bold text-danger">
-                  押さえられませんでした。もう一度お試しください。
-                </p>
-              )}
-              {(lock.status === 'idle' || lock.status === 'acquiring') && (
+              {problem ? (
+                <p className="font-bold text-danger">{problem}</p>
+              ) : (
                 <p className="text-ink-sub">
                   時間が決まったら枠を押さえてください。押さえている間、ほかの人は同じ枠に入れられません。
                 </p>
@@ -237,7 +301,7 @@ export function SlotPicker({
               className="ml-auto"
               icon={<Lock className="size-4" aria-hidden="true" />}
               loading={lock.status === 'acquiring'}
-              disabled={!slot.repId || !result?.ok}
+              disabled={!slot.repId || !data.result?.ok}
               onClick={onLock}
             >
               この枠を押さえる
