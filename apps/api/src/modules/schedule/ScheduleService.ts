@@ -110,9 +110,18 @@ export class ScheduleService {
     const rangeStart = fromJst(from);
     const rangeEnd = fromJst(addDays(to, 1));
 
+    const day = toDbDate(from);
     const salesUsers = await this.prisma.user.findMany({
       where: { status: 'ACTIVE', roles: { some: { appKey: APP_KEY, role: Role.Sales } } },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        // The rep's area in the 営業担当表, so the print can pick reps by region (11/11).
+        areaRulesAsRep: {
+          where: { validFrom: { lte: day }, OR: [{ validTo: null }, { validTo: { gte: day } }] },
+          select: { prefecture: true },
+        },
+      },
       orderBy: [{ employeeNo: 'asc' }, { name: 'asc' }],
     });
     const salesIds = new Set(salesUsers.map((user) => user.id));
@@ -124,8 +133,12 @@ export class ScheduleService {
         })
       : [];
     const people = [
-      ...salesUsers.map((user) => ({ ...user, isSales: true })),
-      ...extraUsers.map((user) => ({ ...user, isSales: false })),
+      ...salesUsers.map(({ areaRulesAsRep, ...user }) => ({
+        ...user,
+        isSales: true,
+        prefectures: [...new Set(areaRulesAsRep.map((rule) => rule.prefecture))],
+      })),
+      ...extraUsers.map((user) => ({ ...user, isSales: false, prefectures: [] })),
     ];
     const targetIds = userIds.length > 0 ? userIds : salesUsers.map((user) => user.id);
 

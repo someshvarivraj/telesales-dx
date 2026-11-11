@@ -1,6 +1,6 @@
-import { addDays, TimeOffKind } from '@telesales/shared';
-import { ArrowLeft, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
-import { useMemo } from 'react';
+import { addDays, PREFECTURE_NAMES, TimeOffKind } from '@telesales/shared';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, MapPin, Printer, Users } from 'lucide-react';
+import { type ReactNode, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Button } from '@/components/ui/Button';
@@ -118,7 +118,33 @@ export function SchedulePrintPage() {
   const schedule = useSchedule(monday, addDays(monday, 6), []);
   const events = useMemo(() => (schedule.data ? buildEvents(schedule.data) : []), [schedule.data]);
   const days = Array.from({ length: WEEKDAYS }, (_, index) => addDays(monday, index));
-  const people = (schedule.data?.people ?? []).filter((person) => person.isSales);
+  const sales = (schedule.data?.people ?? []).filter((person) => person.isSales);
+  // Who is printed (request 11/11): everyone, the people picked, or the reps of some areas.
+  const who = (params.get('who') as Who | null) ?? 'all';
+  const ids = splitParam(params.get('ids'));
+  const prefs = splitParam(params.get('pref'));
+  const people =
+    who === 'people'
+      ? sales.filter((person) => ids.includes(person.id))
+      : who === 'area'
+        ? sales.filter((person) => person.prefectures.some((pref) => prefs.includes(pref)))
+        : sales;
+  const target =
+    who === 'people'
+      ? `選んだ営業`
+      : who === 'area'
+        ? prefs.length > 0
+          ? prefs.join('・')
+          : 'エリア未選択'
+        : '営業全員';
+  const setFilter = (patch: Record<string, string | null>) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
+    setParams(next, { replace: true });
+  };
   const holiday = (date: string) => schedule.data?.holidays.find((day) => day.date === date)?.name;
   const dayEvents = (personId: string, date: string) =>
     eventsOn(events, date, personId).filter((event) => event.kind !== 'lock');
@@ -166,24 +192,35 @@ export function SchedulePrintPage() {
           onClick={() => move(1)}
         />
         <p className="text-sm text-ink-sub">
-          営業全員の1週間を横向きA4で印刷します。色付きで印刷するには、印刷画面の「背景のグラフィック」をオンにしてください。
+          1週間を横向きA4で印刷します。色付きで印刷するには、印刷画面の「背景のグラフィック」をオンにしてください。
         </p>
         <Button
           className="ml-auto"
           icon={<Printer className="size-4" aria-hidden="true" />}
-          disabled={!schedule.data}
+          disabled={!schedule.data || people.length === 0}
           onClick={() => window.print()}
         >
-          印刷する
+          {people.length > 0 ? `${people.length}人分を印刷する` : '印刷する'}
         </Button>
       </div>
+
+      {schedule.data && (
+        <PrintFilter
+          sales={sales}
+          who={who}
+          ids={ids}
+          prefs={prefs}
+          printed={people.length}
+          onChange={setFilter}
+        />
+      )}
 
       <header className="mb-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
         <h1 className="text-lg font-bold">
           {`営業スケジュール　${formatShortDate(monday)}〜${formatShortDate(friday)}`}
         </h1>
         <p className="text-[10px] text-ink-sub">
-          {`印刷日 ${formatShortDate(todayJst())}・営業 ${people.length}人・時間帯 9:00–18:00`}
+          {`印刷日 ${formatShortDate(todayJst())}・対象 ${target}・営業 ${people.length}人・時間帯 9:00–18:00`}
         </p>
       </header>
 
@@ -213,6 +250,10 @@ export function SchedulePrintPage() {
         <div className="flex justify-center py-16 text-ink-sub">
           <Spinner className="size-6" label={ja.common.loading} />
         </div>
+      ) : people.length === 0 ? (
+        <p className="border border-dashed border-line-strong py-12 text-center text-sm text-ink-sub">
+          印刷する営業を選んでください。
+        </p>
       ) : (
         <table className="w-full table-fixed border-collapse text-[10px] leading-snug">
           <thead>
@@ -348,5 +389,164 @@ export function SchedulePrintPage() {
         </table>
       )}
     </div>
+  );
+}
+
+type Who = 'all' | 'people' | 'area';
+interface SalesPerson {
+  id: string;
+  name: string;
+  prefectures: string[];
+}
+
+const splitParam = (value: string | null) => (value ?? '').split(',').filter(Boolean);
+
+function toggle(list: string[], value: string): string {
+  return (list.includes(value) ? list.filter((item) => item !== value) : [...list, value]).join(
+    ',',
+  );
+}
+
+/** On screen only: choose whose week is printed — everyone, some people, or by area (11/11). */
+function PrintFilter({
+  sales,
+  who,
+  ids,
+  prefs,
+  printed,
+  onChange,
+}: {
+  sales: SalesPerson[];
+  who: Who;
+  ids: string[];
+  prefs: string[];
+  printed: number;
+  onChange: (patch: Record<string, string | null>) => void;
+}) {
+  const areas = PREFECTURE_NAMES.map((pref) => ({
+    pref,
+    reps: sales.filter((person) => person.prefectures.includes(pref)),
+  })).filter((area) => area.reps.length > 0);
+  const modes: { value: Who; label: string; icon?: ReactNode }[] = [
+    { value: 'all', label: `営業全員（${sales.length}人）` },
+    { value: 'people', label: '人を選ぶ', icon: <Users className="size-4" aria-hidden="true" /> },
+    {
+      value: 'area',
+      label: 'エリアで選ぶ',
+      icon: <MapPin className="size-4" aria-hidden="true" />,
+    },
+  ];
+  const chip = (on: boolean) =>
+    cn(
+      'inline-flex h-9 cursor-pointer items-center gap-1.5 border px-3 text-sm transition-colors',
+      on
+        ? 'border-main bg-main-soft font-bold text-main'
+        : 'border-line-strong bg-surface text-ink hover:border-main-line',
+    );
+
+  return (
+    <section aria-label="印刷する営業" className="mb-5 border border-line bg-canvas print:hidden">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
+        <h2 className="text-sm font-bold">印刷する営業</h2>
+        <div role="radiogroup" aria-label="印刷する営業" className="flex flex-wrap">
+          {modes.map((mode) => (
+            <button
+              key={mode.value}
+              type="button"
+              role="radio"
+              aria-checked={who === mode.value}
+              onClick={() => onChange({ who: mode.value === 'all' ? null : mode.value })}
+              className={cn(
+                '-ml-px inline-flex h-9 cursor-pointer items-center gap-1.5 border px-3.5 text-sm first:ml-0',
+                who === mode.value
+                  ? 'z-10 border-main bg-main text-white'
+                  : 'border-line-strong bg-surface text-ink hover:bg-hover',
+              )}
+            >
+              {mode.icon}
+              {mode.label}
+            </button>
+          ))}
+        </div>
+        <p className="ml-auto text-sm">
+          <span className="font-bold tabular-nums">{printed}</span>
+          <span className="text-ink-sub">人を印刷</span>
+        </p>
+      </div>
+
+      {who === 'people' && (
+        <div className="flex flex-col gap-2 px-4 py-3">
+          <div className="flex flex-wrap gap-2">
+            {sales.map((person) => {
+              const on = ids.includes(person.id);
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onChange({ ids: toggle(ids, person.id) || null })}
+                  className={chip(on)}
+                >
+                  {on && <Check className="size-3.5" aria-hidden="true" />}
+                  <span data-no-translate>{person.name}</span>
+                  {person.prefectures.length > 0 && (
+                    <span className="text-xs font-normal text-ink-sub">
+                      {person.prefectures.slice(0, 2).join('・')}
+                      {person.prefectures.length > 2 ? '…' : ''}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-3 text-sm">
+            <button
+              type="button"
+              className="cursor-pointer text-link hover:underline"
+              onClick={() => onChange({ ids: sales.map((person) => person.id).join(',') })}
+            >
+              全員を選ぶ
+            </button>
+            <button
+              type="button"
+              className="cursor-pointer text-link hover:underline"
+              onClick={() => onChange({ ids: null })}
+            >
+              選ぶのをやめる
+            </button>
+          </div>
+        </div>
+      )}
+
+      {who === 'area' && (
+        <div className="flex flex-col gap-2 px-4 py-3">
+          {areas.length === 0 ? (
+            <p className="text-sm text-ink-sub">
+              営業担当表にエリアが登録されていません。管理 → 営業担当表で登録できます。
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {areas.map(({ pref, reps }) => {
+                const on = prefs.includes(pref);
+                return (
+                  <button
+                    key={pref}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => onChange({ pref: toggle(prefs, pref) || null })}
+                    className={chip(on)}
+                  >
+                    {on && <Check className="size-3.5" aria-hidden="true" />}
+                    {pref}
+                    <span className="text-xs font-normal text-ink-sub">{reps.length}人</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-xs text-ink-sub">営業担当表（エリア）の担当営業を印刷します。</p>
+        </div>
+      )}
+    </section>
   );
 }

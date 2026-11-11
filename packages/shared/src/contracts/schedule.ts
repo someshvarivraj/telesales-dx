@@ -118,7 +118,8 @@ export interface SlotLockDto {
 }
 
 export interface ScheduleResponse {
-  people: (UserRef & { isSales: boolean })[];
+  /** `prefectures`: where a sales rep is the 担当 in the area table on `from` (print filter, 11/11). */
+  people: (UserRef & { isSales: boolean; prefectures: string[] })[];
   plans: PlanDto[];
   timeOff: TimeOffDto[];
   holidays: CalendarDayDto[];

@@ -571,6 +571,20 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  印刷する営業: 'Reps to print',
+  人を選ぶ: 'Pick people',
+  エリアで選ぶ: 'Pick by area',
+  人を印刷: ' to print',
+  全員を選ぶ: 'Select everyone',
+  '印刷する営業を選んでください。': 'Choose the reps to print.',
+  '営業担当表（エリア）の担当営業を印刷します。':
+    'Prints the reps assigned to these areas in the sales area table.',
+  '営業担当表にエリアが登録されていません。管理 → 営業担当表で登録できます。':
+    'No areas in the sales area table yet. Add them in Admin → Sales area table.',
+  '1週間を横向きA4で印刷します。色付きで印刷するには、印刷画面の「背景のグラフィック」をオンにしてください。':
+    'Prints one week on landscape A4. To print in colour, turn on “Background graphics” in the print dialog.',
+  選んだ営業: 'Chosen reps',
+  エリア未選択: 'No area chosen',
   'さんの予定・': "'s schedule · ",
   'お客様とのアポ（訪問・オンライン）は「自分で取ったアポを登録」から入れてください。':
     'Book customer meetings (visit or online) with “Register your own appointment”.',
@@ -1898,6 +1912,8 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['{0}人分を印刷する', 'Print {0} reps'],
+  ['営業全員（{0}人）', 'All reps ({0})'],
   ['{0}を入れてください。', 'Please enter: {0}.'],
   ['{0}社を{1}人に割り振りました。', 'Allocated {0} companies to {1} people.'],
   [
