@@ -87,14 +87,20 @@ export const BULK_EDIT_FIELDS = [
   'clientNo',
   'companyRank',
   'parentName',
+  /** 備考 (answer 11/10 No.13, search item 16): the テレマメモ. */
+  'telemaMemo',
 ] as const;
 export type BulkEditField = (typeof BULK_EDIT_FIELDS)[number];
 
+/** The most companies one search can pick at once (一括修正, 割り振り). */
+export const MAX_PICKED_COMPANIES = 2000;
+
 export const bulkEditRequestSchema = z.object({
-  companyIds: z.array(z.uuid()).min(1).max(200),
+  companyIds: z.array(z.uuid()).min(1).max(MAX_PICKED_COMPANIES),
   /** Only the fields present are written; null empties a field (not 会社名). */
   changes: companyFieldsSchema
     .omit({ companyGroupId: true, listingStatus: true })
+    .extend({ telemaMemo: optionalText(4000) })
     .partial()
     .refine((changes) => Object.keys(changes).length > 0)
     .refine((changes) => !('name' in changes) || !!changes.name),
@@ -201,6 +207,14 @@ export const companySearchRequestSchema = z.object({
   pageSize: z.number().int().min(1).max(200).default(50),
 });
 export type CompanySearchRequest = z.infer<typeof companySearchRequestSchema>;
+
+/** Every company the search finds, not just one page (answers 11/10 No.5 ②, No.12). */
+export interface CompanySearchIdsResponse {
+  ids: string[];
+  total: number;
+  /** More were found than MAX_PICKED_COMPANIES; only the first ones are in `ids`. */
+  capped: boolean;
+}
 
 export interface CompanyListItem {
   id: string;

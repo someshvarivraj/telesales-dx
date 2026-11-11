@@ -8,6 +8,7 @@ import type {
   CommitListImportRequest,
   CompanyDetail,
   CompanyListItem,
+  CompanySearchIdsResponse,
   CompanySearchRequest,
   CreateCallRecordRequest,
   CreateCommentRequest,
@@ -50,6 +51,14 @@ export function useCompanySearch(
     queryFn: () => apiClient.post<Page<CompanyListItem>>('/companies/search', request),
     placeholderData: (previous) => previous,
     enabled,
+  });
+}
+
+/** Every company the search finds, fetched when someone picks them all. */
+export function useSearchIds() {
+  return useMutation({
+    mutationFn: (request: Partial<CompanySearchRequest>) =>
+      apiClient.post<CompanySearchIdsResponse>('/companies/search/ids', request),
   });
 }
 

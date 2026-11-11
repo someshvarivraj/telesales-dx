@@ -191,6 +191,40 @@ export const allocationMoveRequestSchema = z.object({
 });
 export type AllocationMoveRequest = z.input<typeof allocationMoveRequestSchema>;
 
+/** 本社・支社・工場・その他 (answer 11/10 No.5 ②): what kind of office a company is. */
+export const OFFICE_KINDS = ['HEAD', 'BRANCH', 'FACTORY', 'OTHER'] as const;
+export type OfficeKind = (typeof OFFICE_KINDS)[number];
+export const OFFICE_KIND_LABELS: Record<OfficeKind, string> = {
+  HEAD: '本社',
+  BRANCH: '支社・支店',
+  FACTORY: '工場',
+  OTHER: 'その他',
+};
+
+/** Read from 事業所名; an empty one is その他. */
+export function officeKindOf(office: string | null | undefined): OfficeKind {
+  const text = (office ?? '').normalize('NFKC');
+  if (/本社|本店/.test(text)) return 'HEAD';
+  if (/工場|製作所|製造所/.test(text)) return 'FACTORY';
+  if (/支社|支店|営業所|出張所|事業所|オフィス/.test(text)) return 'BRANCH';
+  return 'OTHER';
+}
+
+/** 検索結果をテレマに割り振る: the companies found go to the chosen people, evenly. */
+export const allocationAssignRequestSchema = z.object({
+  date: dateString,
+  companyIds: z.array(z.uuid()).min(1).max(2000),
+  assigneeIds: z.array(z.uuid()).min(1).max(50),
+});
+export type AllocationAssignRequest = z.input<typeof allocationAssignRequestSchema>;
+
+export interface AllocationAssignResult {
+  assigned: number;
+  /** 架電対象外 or 重複: not allocated. */
+  skipped: number;
+  people: { user: UserRef; total: number; byKind: Record<OfficeKind, number> }[];
+}
+
 export interface MyAssignmentsResponse {
   date: string;
   /** Assignments are shown only after the lead has confirmed them. */

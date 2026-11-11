@@ -6,7 +6,7 @@ import {
 } from '@telesales/shared';
 import { CheckCheck, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
@@ -56,7 +56,12 @@ function calculateError(error: unknown): string {
  * items between people if needed and confirms. Everyone sees their part after that.
  */
 export function AllocationPage() {
-  const [date, setDate] = useState(todayJst());
+  const [params] = useSearchParams();
+  // 検索結果をテレマに割り振る opens the day it filled.
+  const [date, setDate] = useState(() => {
+    const asked = params.get('date');
+    return asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : todayJst();
+  });
   const query = useAllocation(date);
   const { manages } = useTelemaAccess();
   const calculate = useCalculateAllocation();
@@ -130,7 +135,7 @@ export function AllocationPage() {
         }
       >
         <p>
-          今のシフトと架電対象で作り直します。手で動かした分
+          今のシフトと架電対象で作り直します。手で動かした分・検索結果から割り振った分
           {query.data?.state === 'CONFIRMED' && 'と確定'}
           は消え、もう一度確定が必要になります。
         </p>

@@ -101,6 +101,7 @@ const ACTIONS: Record<string, string> = {
   'shift.filled': 'シフトの一括入力',
   'allocation.calculated': '割り振りの計算',
   'allocation.moved': '割り振りの手直し',
+  'allocation.assigned': '検索結果の割り振り',
   'allocation.confirmed': '割り振りの確定',
   'app.created': 'アプリの追加',
   'app.updated': 'アプリの変更',

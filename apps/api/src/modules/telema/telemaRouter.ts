@@ -1,4 +1,5 @@
 import {
+  allocationAssignRequestSchema,
   allocationDateQuerySchema,
   allocationMoveRequestSchema,
   callResultsQuerySchema,
@@ -94,6 +95,17 @@ export function createTelemaRouter(deps: TelemaDeps): Router {
     const input = parseWith(moveBody, req.body);
     await deps.allocations.move(currentUserOf(req), input.date, input.ids, input.assigneeId);
     res.status(204).end();
+  });
+  router.post('/telema/allocations/assign', manage, async (req, res) => {
+    const input = parseWith(allocationAssignRequestSchema, req.body);
+    res.json(
+      await deps.allocations.assign(
+        currentUserOf(req),
+        input.date,
+        input.companyIds,
+        input.assigneeIds,
+      ),
+    );
   });
   router.post('/telema/allocations/confirm', manage, async (req, res) => {
     const { date } = parseWith(dateBody, req.body);
