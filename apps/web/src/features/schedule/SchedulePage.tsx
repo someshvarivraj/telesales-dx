@@ -1,4 +1,11 @@
-import { addDays, isWeekend, jstMinutesOfDay, Permission, weekdayJa } from '@telesales/shared';
+import {
+  addDays,
+  isWeekend,
+  jstMinutesOfDay,
+  Permission,
+  Role,
+  weekdayJa,
+} from '@telesales/shared';
 import {
   CalendarOff,
   ChevronLeft,
@@ -121,6 +128,9 @@ const SHORTCUTS: [string, string][] = [
   ['?', 'このショートカット一覧'],
 ];
 
+/** `?people=all`: everyone, for those who otherwise open on their own schedule. */
+const ALL_PEOPLE = 'all';
+
 /** ② The single sales schedule: day / week / month / list, other reps too (spec §6). */
 export function SchedulePage() {
   const user = useCurrentUser();
@@ -131,10 +141,20 @@ export function SchedulePage() {
   const view =
     (params.get('view') as View | null) ??
     (window.matchMedia?.('(max-width: 640px)').matches ? 'list' : 'week');
-  // ?person= (one) is still read so old links keep working.
-  const chosen = (params.get('people') ?? params.get('person') ?? '').split(',').filter(Boolean);
   const canPlans = usePermission(Permission.WriteSalesPlans);
   const isAdmin = usePermission(Permission.Administer);
+  // A sales rep opens on their own schedule (request 11/11); 全員 is kept as ?people=all.
+  const ownByDefault = user.roles.includes(Role.Sales) && !isAdmin;
+  // ?person= (one) is still read so old links keep working.
+  const peopleParam = params.get('people') ?? params.get('person') ?? '';
+  const chosen =
+    peopleParam === ALL_PEOPLE
+      ? []
+      : peopleParam
+        ? peopleParam.split(',').filter(Boolean)
+        : ownByDefault
+          ? [user.id]
+          : [];
   const canShifts = usePermission(Permission.WriteShifts);
   const canWritePlans = canPlans || isAdmin;
   const canTimeOff = canWritePlans || canShifts;
@@ -246,8 +266,19 @@ export function SchedulePage() {
       paging={paging}
     />
   );
-  const setChosen = (ids: string[]) =>
-    update({ people: ids.length === 0 || ids.length === allPeople.length ? '' : ids.join(',') });
+  const setChosen = (ids: string[]) => {
+    const everyone = ids.length === 0 || ids.length === allPeople.length;
+    const own = ids.length === 1 && ids[0] === user.id;
+    update({
+      people: everyone
+        ? ownByDefault
+          ? ALL_PEOPLE
+          : ''
+        : own && ownByDefault
+          ? ''
+          : ids.join(','),
+    });
+  };
   const holidays = schedule.data?.holidays ?? [];
 
   // Keyboard shortcuts, as in Google Calendar (not while typing or with a dialog open).
@@ -702,6 +733,8 @@ export function SchedulePage() {
                     showFree={showFree}
                     bufferMinutes={data.travelBufferMinutes}
                     pxPerMin={zoom}
+                    // 5:00–24:00 scrolls inside the view instead of making the page very tall.
+                    maxHeight="calc(100dvh - 15rem)"
                     colorOrder={order}
                     onRange={
                       canWritePlans

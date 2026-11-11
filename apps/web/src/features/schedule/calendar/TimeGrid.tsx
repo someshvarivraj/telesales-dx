@@ -88,7 +88,7 @@ export function TimeGrid({
 }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const now = useNow();
-  // 9:00–18:00 unless something on screen is earlier or later (request 10/29).
+  // 5:00–24:00 (request 11/11), opened scrolled to the morning.
   const span = visibleSpan(columns.flatMap((column) => column.events));
   const dayStart = fixedStart ?? span.start;
   const dayEnd = fixedEnd ?? span.end;
@@ -186,12 +186,30 @@ export function TimeGrid({
                 {hours.slice(1, -1).map((hour) => (
                   <span
                     key={hour}
-                    className="absolute right-2 -translate-y-1/2 text-[11px] text-ink-sub tabular-nums"
+                    className="absolute right-2 -translate-y-1/2 text-[11px] font-medium text-ink-sub tabular-nums"
                     style={{ top: (hour * 60 - dayStart) * pxPerMin }}
                   >
                     {hour}:00
                   </span>
                 ))}
+                {/* Every 30 minutes (request 11/11), lighter than the hours. */}
+                {pxPerMin >= 0.6 &&
+                  hours
+                    .slice(0, -1)
+                    // The red now-label takes the place of a :30 it would cover.
+                    .filter(
+                      (hour) =>
+                        !(showsToday && Math.abs(now.minutes - (hour * 60 + 30)) < 14 / pxPerMin),
+                    )
+                    .map((hour) => (
+                      <span
+                        key={`h${hour}`}
+                        className="absolute right-2 -translate-y-1/2 text-[10px] text-ink-disabled tabular-nums"
+                        style={{ top: (hour * 60 + 30 - dayStart) * pxPerMin }}
+                      >
+                        {hour}:30
+                      </span>
+                    ))}
                 {showsToday && now.minutes > dayStart && now.minutes < dayEnd && (
                   <span
                     className="absolute right-1 z-10 -translate-y-1/2 bg-now px-1 text-[10px] leading-4 font-bold text-white tabular-nums"
@@ -312,7 +330,7 @@ export function TimeGrid({
                   {hours.slice(0, -1).map((hour) => (
                     <div
                       key={`h${hour}`}
-                      className="pointer-events-none absolute inset-x-0 border-t border-dotted border-line/70"
+                      className="pointer-events-none absolute inset-x-0 border-t border-dashed border-line"
                       style={{ top: (hour * 60 + 30 - dayStart) * pxPerMin }}
                     />
                   ))}

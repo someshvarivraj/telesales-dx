@@ -55,7 +55,7 @@ export function DayTimeline({
   colorOrder,
   corner,
 }: DayTimelineProps) {
-  // 9:00–18:00 unless someone's day starts earlier or ends later (request 10/29).
+  // 5:00–24:00 (request 11/11), opened scrolled to the morning.
   const { start: START, end: END } = visibleSpan(
     people.flatMap((person) => eventsOn(events, date, person.id)),
   );
@@ -98,12 +98,24 @@ export function DayTimeline({
               {hours.slice(0, -1).map((hour) => (
                 <span
                   key={hour}
-                  className="absolute bottom-1.5 pl-1.5 text-[11px] text-ink-sub tabular-nums"
+                  className="absolute bottom-1.5 pl-1.5 text-[11px] font-medium text-ink-sub tabular-nums"
                   style={{ left: x(hour * 60) }}
                 >
                   {hour}:00
                 </span>
               ))}
+              {/* Every 30 minutes (request 11/11): the lines always, the labels once zoomed in
+                  far enough that they do not crowd the hours. */}
+              {scale >= 1.8 &&
+                hours.slice(0, -1).map((hour) => (
+                  <span
+                    key={`h${hour}`}
+                    className="absolute bottom-1.5 pl-1 text-[10px] text-ink-disabled tabular-nums"
+                    style={{ left: x(hour * 60 + 30) }}
+                  >
+                    {hour}:30
+                  </span>
+                ))}
               {now.date === date && now.minutes > START && now.minutes < END && (
                 <span
                   className="absolute bottom-0 -translate-x-1/2 bg-now px-1 text-[10px] leading-4 font-bold text-white tabular-nums"
@@ -204,6 +216,13 @@ export function DayTimeline({
                       key={hour}
                       className="pointer-events-none absolute inset-y-0 border-l border-line/80"
                       style={{ left: x(hour * 60) }}
+                    />
+                  ))}
+                  {hours.slice(0, -1).map((hour) => (
+                    <div
+                      key={`h${hour}`}
+                      className="pointer-events-none absolute inset-y-0 border-l border-dashed border-line/70"
+                      style={{ left: x(hour * 60 + 30) }}
                     />
                   ))}
                   {showFree &&
