@@ -121,14 +121,14 @@ export function hoursLabel(minutes: number): string {
   return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}時間`;
 }
 
-/** The hours a calendar shows (request 10/29: 9:00–18:00, the office hours). */
-export const VIEW_START = WORK_START;
-export const VIEW_END = WORK_END;
-
 /**
- * 9:00–18:00, widened to whole hours when something on screen starts earlier or ends later,
- * so an early visit or a late meeting is never cut off.
+ * The hours a calendar shows (request 11/11: 5:00–24:00 on every schedule). Office hours stay
+ * 9:00–18:00 (white, free time); the views open scrolled to the morning.
  */
+export const VIEW_START = 5 * 60;
+export const VIEW_END = 24 * 60;
+
+/** 5:00–24:00, widened to whole hours when something starts before 5:00. */
 export function visibleSpan(events: readonly CalendarEvent[]): { start: number; end: number } {
   let start = VIEW_START;
   let end = VIEW_END;

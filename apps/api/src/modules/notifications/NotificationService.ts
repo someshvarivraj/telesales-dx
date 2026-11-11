@@ -1,8 +1,9 @@
-import type {
+import { randomUUID } from 'node:crypto';
+import {
   NoticeCode,
-  NotificationDto,
-  NotificationListResponse,
-  NotificationQuery,
+  type NotificationDto,
+  type NotificationListResponse,
+  type NotificationQuery,
 } from '@telesales/shared';
 import type { Logger } from 'pino';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
@@ -31,8 +32,27 @@ export interface NoticeEvent {
 }
 
 /**
+ * Notices that write their own e-mail elsewhere (preview-then-send, or the scheduled job):
+ * the bell notice for them must not send a second, plain e-mail.
+ */
+const OWN_MAIL: ReadonlySet<NoticeCode> = new Set([
+  NoticeCode.Booking,
+  NoticeCode.TomorrowAppointments,
+  NoticeCode.Cancelled,
+  NoticeCode.DayBeforeResult,
+  NoticeCode.DailyAppointmentList,
+  NoticeCode.Feedback,
+]);
+
+type MailEvent = Pick<NoticeEvent, 'code' | 'title' | 'body' | 'linkPath' | 'dedupeKey'>;
+
+/**
  * On-screen notices (the bell) plus optional e-mail, with recipients taken from the
  * admin settings. A failure to notify never breaks the user's action.
+ *
+ * Every notice can also go out by e-mail (request 11/11, Sano-san: mail in every feature):
+ * when 「メールも送る」 is on and the event has no e-mail of its own, the notice itself is
+ * mailed — its title, text and a link to the screen.
  */
 export class NotificationService {
   constructor(
@@ -40,7 +60,36 @@ export class NotificationService {
     private readonly recipients: RecipientResolver,
     private readonly emails: EmailService,
     private readonly logger: Logger,
+    private readonly appBaseUrl = '',
   ) {}
+
+  /** The plain e-mail for a notice that has none of its own. */
+  private noticeMail(event: MailEvent) {
+    const link = event.linkPath ? `${this.appBaseUrl.replace(/\/$/, '')}${event.linkPath}` : null;
+    return {
+      subject: `架電システム：${event.title}`,
+      text: [
+        event.title,
+        ...(event.body ? ['', event.body] : []),
+        ...(link ? ['', `画面で確認する: ${link}`] : []),
+        '',
+        '――――――――――',
+        'このメールは架電システム（テレマ・営業DX）から自動で送っています。',
+        '通知の種類ごとのメールは、管理 → 通知の宛先 で止められます。',
+      ].join('\n'),
+      dedupeKey: `notice:${event.code}:${event.dedupeKey ?? randomUUID()}`,
+    };
+  }
+
+  /** People's addresses, leaving out whoever caused the event. */
+  private async addressesOf(userIds: readonly string[]): Promise<string[]> {
+    if (userIds.length === 0) return [];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: [...userIds] }, status: 'ACTIVE' },
+      select: { email: true },
+    });
+    return users.map((user) => user.email.trim().toLowerCase());
+  }
 
   async notify(event: NoticeEvent): Promise<void> {
     try {
@@ -67,6 +116,19 @@ export class NotificationService {
           attachments: event.email.attachments,
           createdById: event.actorId ?? null,
         });
+      } else if (resolved.sendsEmail && !OWN_MAIL.has(event.code)) {
+        // The person who caused it is not mailed about it, as on screen.
+        const [self] = event.actorId ? await this.addressesOf([event.actorId]) : [];
+        const mail = this.noticeMail(event);
+        await this.emails.sendDirect({
+          noticeCode: event.code,
+          dedupeKey: mail.dedupeKey,
+          to: resolved.to.filter((address) => address !== self),
+          cc: resolved.cc.filter((address) => address !== self),
+          subject: mail.subject,
+          body: mail.text,
+          createdById: event.actorId ?? null,
+        });
       }
     } catch (error) {
       this.logger.error({ err: error, code: event.code }, 'failed to deliver notice');
@@ -91,6 +153,18 @@ export class NotificationService {
         data: targets.map((userId) => this.row(userId, event)),
         skipDuplicates: true,
       });
+      if (setting?.sendsEmail && !OWN_MAIL.has(event.code)) {
+        const mail = this.noticeMail(event);
+        await this.emails.sendDirect({
+          noticeCode: event.code,
+          dedupeKey: mail.dedupeKey,
+          to: await this.addressesOf(targets),
+          cc: [],
+          subject: mail.subject,
+          body: mail.text,
+          createdById: event.actorId ?? null,
+        });
+      }
     } catch (error) {
       this.logger.error({ err: error, code: event.code }, 'failed to deliver notice');
     }
