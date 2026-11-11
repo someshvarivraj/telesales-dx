@@ -10,7 +10,7 @@ import {
   Permission,
 } from '@telesales/shared';
 import { Building2, CalendarPlus, MessageSquare, Pencil, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -91,23 +91,40 @@ function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyI
         </div>
       </div>
       {record.resultDetail && <p className="text-sm whitespace-pre-wrap">{record.resultDetail}</p>}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-sub">
-        {record.contactName && <span>先方：{record.contactName}</span>}
-        {record.interestLevel && <span>乗り気度：{interest.labelOf(record.interestLevel)}</span>}
-        {record.nextCallDate && <span>B次回架電日：{formatDate(record.nextCallDate)}</span>}
-        {record.avoidUntil && (
-          <span>
-            {`C架電回避目安：${AVOID_MONTH_CHOICES.find((c) => c.months === record.avoidMonths)?.label}（${formatDateKanji(record.avoidUntil)}までは架電回避）`}
-          </span>
+      <dl className="flex flex-wrap gap-1.5">
+        {record.contactName && <Meta label="先方">{record.contactName}</Meta>}
+        {record.interestLevel && (
+          <Meta label="乗り気度">{interest.labelOf(record.interestLevel)}</Meta>
         )}
-      </div>
-      {record.notes && <p className="text-xs whitespace-pre-wrap text-ink-sub">{record.notes}</p>}
+        {record.nextCallDate && <Meta label="B次回架電日">{formatDate(record.nextCallDate)}</Meta>}
+        {record.avoidUntil && (
+          <Meta label="C架電回避目安">
+            {`${AVOID_MONTH_CHOICES.find((c) => c.months === record.avoidMonths)?.label ?? ''}（${formatDateKanji(record.avoidUntil)}までは架電回避）`}
+          </Meta>
+        )}
+      </dl>
+      {record.notes && (
+        <p className="border-l-2 border-line-strong pl-2.5 text-xs whitespace-pre-wrap text-ink-sub">
+          <span className="mr-1.5 font-bold">メモ</span>
+          {record.notes}
+        </p>
+      )}
       {showComments && (
         <div className="mt-1 rounded-(--radius-control) border border-line p-3">
           <CommentThread callRecordId={record.id} showEmpty={false} />
         </div>
       )}
     </li>
+  );
+}
+
+/** One fact about a call: a light label and the value in bold, so they read apart (11/11). */
+function Meta({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="inline-flex items-baseline gap-1.5 border border-line bg-canvas px-2 py-0.5 text-xs">
+      <dt className="text-ink-sub">{label}</dt>
+      <dd className="font-bold text-ink">{children}</dd>
+    </div>
   );
 }
 

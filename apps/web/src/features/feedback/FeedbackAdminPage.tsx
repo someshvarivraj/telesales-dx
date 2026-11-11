@@ -1,3 +1,4 @@
+import { DescriptionList } from '@/components/ui/DescriptionList';
 import {
   FEEDBACK_STATUS_LABEL,
   FEEDBACK_STATUSES,
@@ -155,30 +156,32 @@ function FeedbackDetail({ item, onClose }: { item: FeedbackDto; onClose: () => v
     >
       <div className="flex flex-col gap-4">
         {update.isError && <Alert tone="error">{errorMessageOf(update.error)}</Alert>}
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-          <dt className="text-ink-sub">送った人</dt>
-          <dd>{item.reporter.name}</dd>
-          <dt className="text-ink-sub">日時</dt>
-          <dd>{formatDateTime(item.createdAt)}</dd>
-          <dt className="text-ink-sub">画面</dt>
-          <dd>
-            <Link
-              to={item.screenPath}
-              className="inline-flex items-center gap-1 text-main underline-offset-2 hover:underline"
-            >
-              {item.screenName}
-              <ExternalLink aria-hidden="true" className="size-3.5" />
-            </Link>
-          </dd>
-          {item.handledBy && (
-            <>
-              <dt className="text-ink-sub">最後に対応した人</dt>
-              <dd>
-                {item.handledBy.name}（{formatDateTime(item.updatedAt)}）
-              </dd>
-            </>
-          )}
-        </dl>
+        <DescriptionList
+          items={[
+            { label: '送った人', value: item.reporter.name },
+            { label: '日時', value: formatDateTime(item.createdAt) },
+            {
+              label: '画面',
+              value: (
+                <Link
+                  to={item.screenPath}
+                  className="inline-flex items-center gap-1 text-main underline-offset-2 hover:underline"
+                >
+                  {item.screenName}
+                  <ExternalLink aria-hidden="true" className="size-3.5" />
+                </Link>
+              ),
+            },
+            ...(item.handledBy
+              ? [
+                  {
+                    label: '最後に対応した人',
+                    value: `${item.handledBy.name}（${formatDateTime(item.updatedAt)}）`,
+                  },
+                ]
+              : []),
+          ]}
+        />
         <p className="border-l-4 border-main-line bg-column px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap">
           {item.body}
         </p>
