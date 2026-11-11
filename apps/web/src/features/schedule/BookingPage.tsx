@@ -12,7 +12,15 @@ import {
   OptionCategory,
   Permission,
 } from '@telesales/shared';
-import { Check, FileSpreadsheet, FileText, PencilLine } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  FileSpreadsheet,
+  FileText,
+  Lock,
+  LockOpen,
+  PencilLine,
+} from 'lucide-react';
 import type { ReactNode, SetStateAction } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -28,6 +36,8 @@ import { FileDrop } from '@/components/ui/FileDrop';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Spinner } from '@/components/ui/Spinner';
 import { Select } from '@/components/ui/Select';
+import { FormField } from '@/components/ui/FormField';
+import { TextInput } from '@/components/ui/TextInput';
 import { useAppointment, useCreateAppointment, usePrefill } from '@/features/appointments/api';
 import {
   AppointmentFields,
@@ -50,7 +60,15 @@ import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useDraft } from '@/lib/drafts';
 import { defaultEndTime, formatDate, todayJst, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
-import { type Slot, SlotPicker } from './SlotPicker';
+import {
+  lockProblemText,
+  type Slot,
+  SlotDay,
+  SlotInputs,
+  SlotPicker,
+  SlotProblems,
+  useSlotData,
+} from './SlotPicker';
 import { slotProblemText } from './slotProblems';
 import { useSlotLock } from './useSlotLock';
 
@@ -298,6 +316,242 @@ function BookingForm(props: BookingFormProps) {
       : undefined;
   const rep = people.data?.find((person) => person.id === slot.repId);
 
+  // A rep's own appointment (feedback 11/11): only what is needed, beside their day, no scrolling.
+  const quick = salesBooked && !rebookOf;
+  const slotData = useSlotData(slot, undefined, salesBooked);
+  const companyName = company?.name ?? companyValues.name;
+  const quickReady =
+    Boolean(slot.repId) &&
+    missing.length === 0 &&
+    (!needsCompany || companyValues.name.trim() !== '') &&
+    (held || slotData.result?.ok === true);
+  const toConfirm = async () => {
+    if (!held) {
+      const ok = await lock.acquire(
+        slot.repId,
+        toInstant(slot.date, slot.start),
+        toInstant(slot.date, slot.end),
+      );
+      if (!ok) return;
+    }
+    setConfirming(true);
+  };
+
+  const errorAlert = createError && (
+    <Alert
+      tone="error"
+      action={
+        duplicateOf && (
+          <LinkButton size="sm" to={paths.appointment(duplicateOf)}>
+            登録済みのアポを開く
+          </LinkButton>
+        )
+      }
+    >
+      {errorMessageOf(createError)}
+      {ApiError.isApiError(createError) && Array.isArray(createError.details) && (
+        <ul className="mt-1 list-inside list-disc">
+          {createError.details.map((problem, index) => (
+            <li key={index}>{slotProblemText(problem)}</li>
+          ))}
+        </ul>
+      )}
+    </Alert>
+  );
+
+  const confirmDialog = (
+    <Dialog
+      open={confirming}
+      onClose={() => setConfirming(false)}
+      title="この内容で登録しますか？"
+      size="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => setConfirming(false)}>
+            戻って直す
+          </Button>
+          <Button loading={create.isPending} onClick={submit}>
+            登録する
+          </Button>
+        </>
+      }
+    >
+      <DescriptionList
+        items={[
+          {
+            label: '会社名',
+            value: company?.name ?? original?.company.name ?? companyValues.name,
+            wide: true,
+          },
+          { label: '訪問日時', value: `${formatDate(slot.date)} ${slot.start}〜${slot.end}` },
+          { label: '担当営業', value: rep?.name },
+          {
+            label: '訪問形態',
+            value: values.format ? meetingFormatLabel({ ...values, format: values.format }) : '',
+          },
+          { label: '取引区分', value: customerTypes.labelOf(values.customerType) },
+          { label: '先方担当者', value: values.contactName },
+          ...(values.meetingPersonName
+            ? [{ label: '面談される方', value: values.meetingPersonName }]
+            : []),
+          { label: '先方TEL', value: values.contactPhone },
+          { label: quick ? '備考・メモ' : '伝達事項', value: values.handoverNotes, wide: true },
+          { label: 'テレマリスト名', value: values.listName },
+          { label: '登録元', value: ja.source[source] },
+        ]}
+      />
+      <p className="mt-4 text-sm text-ink-sub">
+        登録すると担当営業に画面でお知らせし、続けて営業さんへのメール（N1）の確認画面を開きます。
+      </p>
+    </Dialog>
+  );
+
+  if (quick) {
+    const lockProblem = lockProblemText(lock.state);
+    return (
+      <>
+        <PageHeader
+          eyebrow={ja.module.schedule}
+          back={<BackLink onClick={() => navigate(-1)}>{ja.common.back}</BackLink>}
+          title="自分で取ったアポの登録"
+        />
+        <div className="flex flex-col gap-5">
+          <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
+          <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(21rem,26rem)_minmax(0,1fr)]">
+            <section
+              aria-label="アポの内容"
+              className="flex min-w-0 flex-col border border-line bg-surface shadow-(--shadow-card)"
+            >
+              <header className="flex items-baseline gap-3 border-b border-line px-5 py-3.5">
+                <h2 className="shrink-0 text-base font-bold">アポの内容</h2>
+                {isAdmin ? null : (
+                  <p className="ml-auto min-w-0 truncate text-xs text-ink-sub">
+                    担当営業：<span className="font-bold text-ink">{rep?.name ?? user.name}</span>
+                  </p>
+                )}
+              </header>
+              <div className="flex flex-col gap-4 px-5 py-4">
+                {needsCompany ? (
+                  <FormField label="会社名" required>
+                    {(c) => (
+                      <TextInput
+                        {...c}
+                        value={companyValues.name}
+                        onChange={(e) =>
+                          setCompanyValues((current) => ({ ...current, name: e.target.value }))
+                        }
+                      />
+                    )}
+                  </FormField>
+                ) : (
+                  <div>
+                    <p className="mb-1.5 text-[13px] font-bold">会社名</p>
+                    <p className="text-sm">{companyName}</p>
+                  </div>
+                )}
+                <SlotInputs
+                  slot={slot}
+                  onChange={setSlot}
+                  held={held}
+                  repLocked={!isAdmin}
+                  compact
+                />
+                <AppointmentFields values={values} onChange={setValues} part="essential" />
+                <SlotProblems data={slotData} held={held} />
+                {lockProblem && <Alert tone="error">{lockProblem}</Alert>}
+                {errorAlert}
+              </div>
+              <footer className="flex flex-col gap-3 border-t border-line px-5 py-3.5">
+                {held && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Lock className="size-4 shrink-0 text-success" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      {slot.start}〜{slot.end} を押さえています
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="text"
+                      icon={<LockOpen className="size-4" aria-hidden="true" />}
+                      onClick={() => void lock.release()}
+                    >
+                      時間を変える
+                    </Button>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <ResetButton
+                    dirty={draft.dirty}
+                    onReset={draft.reset}
+                    className="mr-auto max-sm:basis-full"
+                  />
+                  <Button variant="secondary" onClick={() => navigate(-1)}>
+                    キャンセル
+                  </Button>
+                  <Button
+                    disabled={!quickReady}
+                    loading={lock.state.status === 'acquiring'}
+                    onClick={() => void toConfirm()}
+                  >
+                    確認画面へ
+                  </Button>
+                </div>
+                {!quickReady && (
+                  <p className="text-right text-xs text-ink-sub">
+                    {needsCompany && !companyValues.name.trim()
+                      ? '会社名と訪問形態を入れてください。'
+                      : missing.length > 0
+                        ? `${missing.join('・')}を入れてください。`
+                        : ''}
+                  </p>
+                )}
+              </footer>
+            </section>
+
+            <section
+              aria-label="担当営業の予定"
+              className="flex min-w-0 flex-col gap-3 border border-line bg-surface p-4 shadow-(--shadow-card) lg:sticky lg:top-4"
+            >
+              <h2 className="text-sm font-bold">
+                {rep?.name ?? ''}さんの予定・{formatDate(slot.date)}
+              </h2>
+              <SlotDay
+                slot={slot}
+                onChange={setSlot}
+                held={held}
+                data={slotData}
+                maxHeight="calc(100dvh - 20rem)"
+              />
+            </section>
+          </div>
+
+          <details className="group border border-line bg-surface shadow-(--shadow-card)">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-bold select-none hover:bg-canvas">
+              <ChevronRight
+                className="size-4 text-ink-sub transition-transform group-open:rotate-90"
+                aria-hidden="true"
+              />
+              そのほかの項目（任意）
+              <span className="truncate text-xs font-normal text-ink-sub">
+                会社の住所・電話、面談される方、先方の部署・TEL・Mail、取引区分 など
+              </span>
+            </summary>
+            <div className="flex flex-col gap-5 border-t border-line px-5 py-4">
+              {needsCompany && (
+                <CompanyFields
+                  values={companyValues}
+                  onChange={setCompanyValues}
+                  exclude={['name']}
+                />
+              )}
+              <AppointmentFields values={values} onChange={setValues} part="rest" />
+            </div>
+          </details>
+        </div>
+        {confirmDialog}
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -495,27 +749,7 @@ function BookingForm(props: BookingFormProps) {
             />
           </StepCard>
 
-          {createError && (
-            <Alert
-              tone="error"
-              action={
-                duplicateOf && (
-                  <LinkButton size="sm" to={paths.appointment(duplicateOf)}>
-                    登録済みのアポを開く
-                  </LinkButton>
-                )
-              }
-            >
-              {errorMessageOf(createError)}
-              {ApiError.isApiError(createError) && Array.isArray(createError.details) && (
-                <ul className="mt-1 list-inside list-disc">
-                  {createError.details.map((problem, index) => (
-                    <li key={index}>{slotProblemText(problem)}</li>
-                  ))}
-                </ul>
-              )}
-            </Alert>
-          )}
+          {errorAlert}
 
           <div className="flex flex-wrap items-center justify-end gap-3 lg:hidden">
             <ResetButton dirty={draft.dirty} onReset={draft.reset} className="mr-auto" />
@@ -585,50 +819,7 @@ function BookingForm(props: BookingFormProps) {
         </aside>
       </div>
 
-      <Dialog
-        open={confirming}
-        onClose={() => setConfirming(false)}
-        title="この内容で登録しますか？"
-        size="lg"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setConfirming(false)}>
-              戻って直す
-            </Button>
-            <Button loading={create.isPending} onClick={submit}>
-              登録する
-            </Button>
-          </>
-        }
-      >
-        <DescriptionList
-          items={[
-            {
-              label: '会社名',
-              value: company?.name ?? original?.company.name ?? companyValues.name,
-              wide: true,
-            },
-            { label: '訪問日時', value: `${formatDate(slot.date)} ${slot.start}〜${slot.end}` },
-            { label: '担当営業', value: rep?.name },
-            {
-              label: '訪問形態',
-              value: values.format ? meetingFormatLabel({ ...values, format: values.format }) : '',
-            },
-            { label: '取引区分', value: customerTypes.labelOf(values.customerType) },
-            { label: '先方担当者', value: values.contactName },
-            ...(values.meetingPersonName
-              ? [{ label: '面談される方', value: values.meetingPersonName }]
-              : []),
-            { label: '先方TEL', value: values.contactPhone },
-            { label: '伝達事項', value: values.handoverNotes, wide: true },
-            { label: 'テレマリスト名', value: values.listName },
-            { label: '登録元', value: ja.source[source] },
-          ]}
-        />
-        <p className="mt-4 text-sm text-ink-sub">
-          登録すると担当営業に画面でお知らせし、続けて営業さんへのメール（N1）の確認画面を開きます。
-        </p>
-      </Dialog>
+      {confirmDialog}
 
       <FindRepDialog
         open={findRep}

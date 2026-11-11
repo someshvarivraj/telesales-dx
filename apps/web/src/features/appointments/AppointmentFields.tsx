@@ -157,13 +157,16 @@ const COMPANY_FIELDS: {
 export function CompanyFields({
   values,
   onChange,
+  exclude = [],
 }: {
   values: CompanyValues;
   onChange: (values: CompanyValues) => void;
+  /** Fields shown elsewhere on the page. */
+  exclude?: (keyof CompanyValues)[];
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {COMPANY_FIELDS.map((field) => (
+      {COMPANY_FIELDS.filter((field) => !exclude.includes(field.key)).map((field) => (
         <div key={field.key} className={field.wide ? 'sm:col-span-2' : undefined}>
           <FormField
             label={field.label}
@@ -212,6 +215,11 @@ interface AppointmentFieldsProps {
   telema?: boolean;
   /** Show the booking date too (new bookings; it is fixed once registered). */
   showBookedOn?: boolean;
+  /**
+   * Quick booking by a rep (feedback 11/11): `essential` is 訪問形態, 先方担当者名 and
+   * 備考・メモ, always in view; `rest` is everything else, folded away below.
+   */
+  part?: 'all' | 'essential' | 'rest';
 }
 
 const FORMAT_CHOICES: { format: MeetingFormat; icon: ReactNode; hint: string }[] = [
@@ -308,55 +316,97 @@ export function AppointmentFields({
   onChange,
   telema = false,
   showBookedOn = false,
+  part = 'all',
 }: AppointmentFieldsProps) {
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const telemas = usePeople(Role.Telema);
   const set = <K extends keyof AppointmentValues>(key: K, value: AppointmentValues[K]) =>
     onChange({ ...values, [key]: value });
+  const essential = part !== 'rest';
+  const rest = part !== 'essential';
+  const quick = part === 'essential';
+
+  const contactName = (
+    <FormField label={quick ? '先方担当者名' : '先方担当者（電話で話した方）'} required={telema}>
+      {(c) => (
+        <TextInput
+          {...c}
+          value={values.contactName}
+          onChange={(e) => set('contactName', e.target.value)}
+        />
+      )}
+    </FormField>
+  );
+  const notes = (
+    <FormField
+      label={quick ? '備考・メモ' : '伝達事項'}
+      required={telema}
+      hint={quick ? undefined : 'アポが取れたときの状況。営業さんへのメールにそのまま入ります。'}
+    >
+      {(c) => (
+        <Textarea
+          {...c}
+          rows={quick ? 3 : 6}
+          value={values.handoverNotes}
+          onChange={(e) => set('handoverNotes', e.target.value)}
+        />
+      )}
+    </FormField>
+  );
 
   return (
-    <div className="flex flex-col gap-5">
-      <p className="text-xs text-ink-sub">
-        <span className="text-danger">*</span> は必ず入力してください。
-      </p>
-      <fieldset>
-        <legend className="mb-2 flex items-baseline gap-1.5 text-[13px] font-bold">
-          訪問形態
-          <span aria-hidden="true" className="text-danger">
-            *
-          </span>
-          <span className="sr-only">{ja.common.required}</span>
-        </legend>
-        <div role="radiogroup" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {FORMAT_CHOICES.map(({ format, icon, hint }) => {
-            const on = values.format === format;
-            return (
-              <button
-                key={format}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => set('format', format)}
-                className={cn(
-                  'flex items-center gap-2.5 border px-3 py-2.5 text-left transition-[border-color,box-shadow,background-color]',
-                  on
-                    ? 'border-main bg-main-soft shadow-[0_0_0_1px_var(--color-main)]'
-                    : 'border-line-strong bg-surface hover:border-main-line',
-                )}
-              >
-                <span aria-hidden="true" className={on ? 'text-main' : 'text-ink-sub'}>
-                  {icon}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold">{ja.format[format]}</span>
-                  <span className="block truncate text-xs text-ink-sub">{hint}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-      {values.format === MeetingFormat.Visit && (
+    <div className={cn('flex flex-col', quick ? 'gap-4' : 'gap-5')}>
+      {essential && !quick && (
+        <p className="text-xs text-ink-sub">
+          <span className="text-danger">*</span> は必ず入力してください。
+        </p>
+      )}
+      {essential && (
+        <fieldset>
+          <legend className="mb-2 flex items-baseline gap-1.5 text-[13px] font-bold">
+            訪問形態
+            <span aria-hidden="true" className="text-danger">
+              *
+            </span>
+            <span className="sr-only">{ja.common.required}</span>
+          </legend>
+          <div role="radiogroup" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {FORMAT_CHOICES.map(({ format, icon, hint }) => {
+              const on = values.format === format;
+              return (
+                <button
+                  key={format}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => set('format', format)}
+                  className={cn(
+                    'flex border transition-[border-color,box-shadow,background-color]',
+                    quick
+                      ? 'flex-col items-center justify-center gap-1 px-1 py-2 text-center'
+                      : 'items-center gap-2.5 px-3 py-2.5 text-left',
+                    on
+                      ? 'border-main bg-main-soft shadow-[0_0_0_1px_var(--color-main)]'
+                      : 'border-line-strong bg-surface hover:border-main-line',
+                  )}
+                >
+                  <span aria-hidden="true" className={on ? 'text-main' : 'text-ink-sub'}>
+                    {icon}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold whitespace-nowrap">
+                      {ja.format[format]}
+                    </span>
+                    {!quick && <span className="block truncate text-xs text-ink-sub">{hint}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+      {/* Quick booking: 訪問先住所 and the tool are optional, folded away with the rest. */}
+      {part !== 'essential' && values.format === MeetingFormat.Visit && (
         <FormField label="訪問先住所" hint="空のときは企業の住所を使います。">
           {(c) => (
             <TextInput
@@ -367,7 +417,7 @@ export function AppointmentFields({
           )}
         </FormField>
       )}
-      {values.format === MeetingFormat.Online && (
+      {part !== 'essential' && values.format === MeetingFormat.Online && (
         <ChoiceChips
           label="使うツール"
           choices={ONLINE_TOOLS}
@@ -376,7 +426,7 @@ export function AppointmentFields({
           placeholder="例：Webex、先方の会議システム"
         />
       )}
-      {values.format === MeetingFormat.Other && (
+      {part !== 'rest' && values.format === MeetingFormat.Other && (
         <ChoiceChips
           label="その他の内容"
           choices={OTHER_FORMAT_EXAMPLES}
@@ -386,97 +436,84 @@ export function AppointmentFields({
           placeholder="例：先方が当社へ来社"
         />
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="先方担当者（電話で話した方）" required={telema}>
-          {(c) => (
-            <TextInput
-              {...c}
-              value={values.contactName}
-              onChange={(e) => set('contactName', e.target.value)}
-            />
-          )}
-        </FormField>
-        <FormField label="面談される方" hint="電話で話した方と違うときだけ入力します。">
-          {(c) => (
-            <TextInput
-              {...c}
-              value={values.meetingPersonName}
-              onChange={(e) => set('meetingPersonName', e.target.value)}
-            />
-          )}
-        </FormField>
-        <FormField label="先方の部署">
-          {(c) => (
-            <TextInput
-              {...c}
-              value={values.contactDepartment}
-              onChange={(e) => set('contactDepartment', e.target.value)}
-            />
-          )}
-        </FormField>
-        <FormField label="先方TEL" required={telema}>
-          {(c) => (
-            <TextInput
-              {...c}
-              type="tel"
-              value={values.contactPhone}
-              onChange={(e) => set('contactPhone', e.target.value)}
-            />
-          )}
-        </FormField>
-        <FormField label="先方Mail">
-          {(c) => (
-            <TextInput
-              {...c}
-              type="email"
-              value={values.contactEmail}
-              onChange={(e) => set('contactEmail', e.target.value)}
-            />
-          )}
-        </FormField>
-      </div>
-      <FormField
-        label="伝達事項"
-        required={telema}
-        hint="アポが取れたときの状況。営業さんへのメールにそのまま入ります。"
-      >
-        {(c) => (
-          <Textarea
-            {...c}
-            rows={6}
-            value={values.handoverNotes}
-            onChange={(e) => set('handoverNotes', e.target.value)}
-          />
-        )}
-      </FormField>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="取引区分">
-          {(c) => (
-            <Select
-              {...c}
-              value={values.customerType}
-              placeholder="―"
-              options={customerTypes.selectOptions}
-              onChange={(e) => set('customerType', e.target.value)}
-            />
-          )}
-        </FormField>
-        <FormField label="テレマリスト名">
-          {(c) => (
-            <TextInput
-              {...c}
-              value={values.listName}
-              onChange={(e) => set('listName', e.target.value)}
-            />
-          )}
-        </FormField>
-      </div>
-      <Checkbox
-        label="新規アポ（報告用Excelの ● ）"
-        checked={values.isNewAppointment}
-        onChange={(e) => set('isNewAppointment', e.target.checked)}
-      />
-      {telema && (
+      {quick && contactName}
+      {quick && notes}
+      {rest && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {!quick && part === 'all' && contactName}
+          <FormField label="面談される方" hint="電話で話した方と違うときだけ入力します。">
+            {(c) => (
+              <TextInput
+                {...c}
+                value={values.meetingPersonName}
+                onChange={(e) => set('meetingPersonName', e.target.value)}
+              />
+            )}
+          </FormField>
+          <FormField label="先方の部署">
+            {(c) => (
+              <TextInput
+                {...c}
+                value={values.contactDepartment}
+                onChange={(e) => set('contactDepartment', e.target.value)}
+              />
+            )}
+          </FormField>
+          <FormField label="先方TEL" required={telema}>
+            {(c) => (
+              <TextInput
+                {...c}
+                type="tel"
+                value={values.contactPhone}
+                onChange={(e) => set('contactPhone', e.target.value)}
+              />
+            )}
+          </FormField>
+          <FormField label="先方Mail">
+            {(c) => (
+              <TextInput
+                {...c}
+                type="email"
+                value={values.contactEmail}
+                onChange={(e) => set('contactEmail', e.target.value)}
+              />
+            )}
+          </FormField>
+        </div>
+      )}
+      {part === 'all' && notes}
+      {rest && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="取引区分">
+            {(c) => (
+              <Select
+                {...c}
+                value={values.customerType}
+                placeholder="―"
+                options={customerTypes.selectOptions}
+                onChange={(e) => set('customerType', e.target.value)}
+              />
+            )}
+          </FormField>
+          <FormField label="テレマリスト名">
+            {(c) => (
+              <TextInput
+                {...c}
+                value={values.listName}
+                onChange={(e) => set('listName', e.target.value)}
+              />
+            )}
+          </FormField>
+        </div>
+      )}
+      {rest && (
+        <Checkbox
+          label="新規アポ（報告用Excelの ● ）"
+          checked={values.isNewAppointment}
+          onChange={(e) => set('isNewAppointment', e.target.checked)}
+        />
+      )}
+      {rest && telema && (
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             label="アポ取得者"
