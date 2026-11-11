@@ -6,7 +6,7 @@ import type { PeekBinder } from './calendar/EventPeek';
 import { freeMinutes, hoursLabel } from './calendar/layout';
 import { personColor } from './calendar/people';
 import { TimeGrid } from './calendar/TimeGrid';
-import { type CalendarEvent, eventsOn } from './events';
+import { type CalendarEvent, eventsOn, isDayOff } from './events';
 
 interface DayViewProps {
   date: string;
@@ -80,12 +80,14 @@ export function DayView({
           const appointments = personEvents.filter(
             (event) => event.kind === 'appointment' || event.kind === 'salesAppointment',
           ).length;
-          const free = off ? 0 : freeMinutes(personEvents, date);
+          const dayOff = isDayOff(personEvents);
+          const closed = off || dayOff;
+          const free = closed ? 0 : freeMinutes(personEvents, date);
           return {
             key: person.id,
             date,
             personId: person.id,
-            off,
+            off: closed,
             events: personEvents,
             header: (
               <div className="flex items-center gap-2">
@@ -94,8 +96,9 @@ export function DayView({
                   <p className="truncate text-sm leading-5 font-bold">{person.name}</p>
                   <p className="truncate text-[11px] leading-4 text-ink-sub">
                     {appointments > 0 && <span>アポ {appointments}件</span>}
-                    {appointments > 0 && !off && <span> · </span>}
-                    {!off && (
+                    {appointments > 0 && !closed && <span> · </span>}
+                    {dayOff && !off && <span>休み（終日）</span>}
+                    {!closed && (
                       <span className={cn(free >= 60 ? 'text-free-ink' : 'text-ink-sub')}>
                         空き {hoursLabel(free)}
                       </span>
