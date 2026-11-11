@@ -417,10 +417,12 @@ function BookingForm(props: BookingFormProps) {
         />
         <div className="flex flex-col gap-5">
           <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
-          <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(21rem,26rem)_minmax(0,1fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(21rem,26rem)]">
             <section
               aria-label="アポの内容"
-              className="flex min-w-0 flex-col border border-line bg-surface shadow-(--shadow-card)"
+              // The rep's day on the left, the form on the right (feedback 11/11); on a phone
+              // the form comes first.
+              className="flex min-w-0 flex-col border border-line bg-surface shadow-(--shadow-card) lg:col-start-2 lg:row-start-1"
             >
               <header className="flex items-baseline gap-3 border-b border-line px-5 py-3.5">
                 <h2 className="shrink-0 text-base font-bold">アポの内容</h2>
@@ -509,7 +511,7 @@ function BookingForm(props: BookingFormProps) {
 
             <section
               aria-label="担当営業の予定"
-              className="flex min-w-0 flex-col gap-3 border border-line bg-surface p-4 shadow-(--shadow-card) lg:sticky lg:top-4"
+              className="flex min-w-0 flex-col gap-3 border border-line bg-surface p-4 shadow-(--shadow-card) lg:sticky lg:top-4 lg:col-start-1 lg:row-start-1"
             >
               <h2 className="text-sm font-bold">
                 {rep?.name ?? ''}さんの予定・{formatDate(slot.date)}
