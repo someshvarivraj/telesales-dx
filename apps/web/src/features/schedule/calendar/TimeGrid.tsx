@@ -50,10 +50,14 @@ interface TimeGridProps {
   minColumnWidth?: number;
   /** Label for the empty-time area of one column (screen readers). */
   columnLabel?: (column: GridColumn) => string;
+  /** Minutes a click or drag snaps to (15; booking uses 30). */
+  step?: number;
+  /** Length of the range a single click makes (an hour; booking uses 30 minutes). */
+  clickMinutes?: number;
 }
 
-function snap(minutes: number): number {
-  return Math.round(minutes / SLOT_MINUTES) * SLOT_MINUTES;
+function snap(minutes: number, step: number): number {
+  return Math.round(minutes / step) * step;
 }
 
 /** Re-renders every minute so the now-line moves. */
@@ -85,6 +89,8 @@ export function TimeGrid({
   maxHeight = 'calc(100dvh - 15rem)',
   minColumnWidth = 176,
   columnLabel,
+  step = SLOT_MINUTES,
+  clickMinutes = 60,
 }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const now = useNow();
@@ -115,7 +121,7 @@ export function TimeGrid({
 
   const finish = (column: GridColumn, start: number, end: number) => {
     const from = Math.max(dayStart, Math.min(start, end));
-    const to = Math.min(dayEnd, Math.max(start, end, from + SLOT_MINUTES));
+    const to = Math.min(dayEnd, Math.max(start, end, from + step));
     onRange?.(column, hhmm(from), hhmm(to));
   };
 
@@ -233,7 +239,7 @@ export function TimeGrid({
                       end: Math.max(
                         drag.anchor,
                         drag.current,
-                        Math.min(drag.anchor, drag.current) + SLOT_MINUTES,
+                        Math.min(drag.anchor, drag.current) + step,
                       ),
                     }
                   : null;
@@ -255,7 +261,7 @@ export function TimeGrid({
                     if (column.off) return;
                     if (onRange && (event.key === 'Enter' || event.key === ' ')) {
                       event.preventDefault();
-                      finish(column, WORK_START + 60, WORK_START + 120);
+                      finish(column, WORK_START + 60, WORK_START + 60 + clickMinutes);
                     }
                   }}
                   onPointerDown={(event) => {
@@ -268,16 +274,16 @@ export function TimeGrid({
                       return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
-                    const at = Math.floor(minutesAt(event) / SLOT_MINUTES) * SLOT_MINUTES;
+                    const at = Math.floor(minutesAt(event) / step) * step;
                     dragMoved.current = false;
-                    setDrag({ key: column.key, anchor: at, current: at + SLOT_MINUTES * 4 });
+                    setDrag({ key: column.key, anchor: at, current: at + clickMinutes });
                   }}
                   onPointerMove={(event) => {
                     if (!drag || drag.key !== column.key) return;
-                    const at = snap(minutesAt(event));
-                    if (Math.abs(at - drag.anchor) >= SLOT_MINUTES) dragMoved.current = true;
+                    const at = snap(minutesAt(event), step);
+                    if (Math.abs(at - drag.anchor) >= step) dragMoved.current = true;
                     if (dragMoved.current) {
-                      setDrag({ ...drag, current: at === drag.anchor ? at + SLOT_MINUTES : at });
+                      setDrag({ ...drag, current: at === drag.anchor ? at + step : at });
                     }
                   }}
                   onPointerUp={() => {
@@ -287,16 +293,14 @@ export function TimeGrid({
                   }}
                   onPointerCancel={() => setDrag(null)}
                   onClick={(event) => {
-                    // Touch: a tap makes a one-hour range (dragging would fight scrolling).
+                    // Touch: a tap makes a range of clickMinutes (dragging would fight scrolling).
                     const native = event.nativeEvent as globalThis.PointerEvent;
                     if (!onRange || column.off || native.pointerType !== 'touch') return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     const rect = event.currentTarget.getBoundingClientRect();
                     const at =
-                      Math.floor(
-                        (dayStart + (event.clientY - rect.top) / pxPerMin) / SLOT_MINUTES,
-                      ) * SLOT_MINUTES;
-                    finish(column, at, at + 60);
+                      Math.floor((dayStart + (event.clientY - rect.top) / pxPerMin) / step) * step;
+                    finish(column, at, at + clickMinutes);
                   }}
                 >
                   {/* Outside office hours */}

@@ -946,8 +946,8 @@ export const EXACT: Readonly<Record<string, string>> = {
   'さんがこの時間帯を編集中です。別の時間を選んでください。':
     ' is editing this slot. Please choose another time.',
   '先に「この枠を押さえる」を押してください。': 'Press "Hold this slot" first.',
-  '空いている時間をクリックすると開始時刻が入ります（15分刻み・初期値は60分）。':
-    'Click a free time to set the start (15-minute steps, 60 minutes by default).',
+  '空いている時間をクリックすると、その時刻から30分の枠が入ります（30分刻み）。':
+    'Click a free time to set a 30-minute slot from there (30-minute steps).',
   '開始と終了の時刻を確認してください（15分刻み・終了は開始より後）。':
     'Check the start and end (15-minute steps, end after start).',
   ほかの予定と重なっています: 'Overlaps another plan',

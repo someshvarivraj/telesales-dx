@@ -1,4 +1,10 @@
-import { addDays, isWeekend, Role } from '@telesales/shared';
+import {
+  addDays,
+  BOOKING_STEP_MINUTES,
+  DEFAULT_APPOINTMENT_MINUTES,
+  isWeekend,
+  Role,
+} from '@telesales/shared';
 import { ChevronLeft, ChevronRight, Lock, LockOpen } from 'lucide-react';
 import { useMemo } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -196,10 +202,12 @@ export function SlotDay({
         }
         selection={{ personId: slot.repId, start: slot.start, end: slot.end }}
         maxHeight={maxHeight}
+        step={BOOKING_STEP_MINUTES}
+        clickMinutes={DEFAULT_APPOINTMENT_MINUTES}
         bufferMinutes={data.schedule?.travelBufferMinutes}
       />
       <p className="text-xs text-ink-sub">
-        空いている時間をクリックすると開始時刻が入ります（15分刻み・初期値は60分）。
+        空いている時間をクリックすると、その時刻から30分の枠が入ります（30分刻み）。
       </p>
     </>
   );

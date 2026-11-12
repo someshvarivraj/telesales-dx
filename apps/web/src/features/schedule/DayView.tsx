@@ -26,6 +26,9 @@ interface DayViewProps {
   pxPerMin?: number;
   colorOrder?: string[];
   maxHeight?: string;
+  /** Click/drag step and the length one click makes (booking: 30 and 30). */
+  step?: number;
+  clickMinutes?: number;
 }
 
 /** One day, one column per person: who is free when, side by side (spec §6). */
@@ -44,6 +47,8 @@ export function DayView({
   pxPerMin = 1,
   colorOrder,
   maxHeight,
+  step,
+  clickMinutes,
 }: DayViewProps) {
   const holiday = holidays.find((day) => day.date === date);
   const off = isWeekend(date) || Boolean(holiday);
@@ -59,6 +64,8 @@ export function DayView({
       <TimeGrid
         pxPerMin={pxPerMin}
         maxHeight={maxHeight}
+        step={step}
+        clickMinutes={clickMinutes}
         // 全員 is shown as columns too (11/12): narrower columns so a page of people fits.
         minColumnWidth={people.length > 5 ? 136 : undefined}
         onEvent={onEvent}
