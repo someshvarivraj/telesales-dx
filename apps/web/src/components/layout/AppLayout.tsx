@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
-import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
@@ -16,6 +15,7 @@ import { ja } from '@/i18n/ja';
 import { AppHeader } from './AppHeader';
 import { AppSidebar } from './AppSidebar';
 import { MobileNav } from './MobileNav';
+import { isWidePage } from './navItems';
 
 /** Left menu on tablets and wider; top bar + bottom tab bar on phones. */
 export function AppLayout() {
@@ -23,8 +23,8 @@ export function AppLayout() {
   const status = useSystemStatus();
   const admin = permissions.includes(Permission.Administer);
   const maintenance = status.data?.maintenance === true;
-  // The schedule uses the full width of the screen (request 10/29).
-  const wide = useLocation().pathname.startsWith(paths.schedule);
+  // The schedule (request 10/29) and 架電状況 (request 11/12) use the full width of the screen.
+  const wide = isWidePage(useLocation().pathname);
   return (
     <ThemeProvider userId={id} roles={roles}>
       <div className="min-h-dvh">
@@ -37,8 +37,8 @@ export function AppLayout() {
               MoraBot launcher in the corner. */}
           <main
             className={cn(
-              'mx-auto w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:px-8 md:pt-7 md:pb-28',
-              !wide && 'max-w-7xl',
+              'mx-auto w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:pt-7 md:pb-28',
+              wide ? 'md:px-5' : 'max-w-7xl md:px-8',
             )}
           >
             {maintenance && admin && (

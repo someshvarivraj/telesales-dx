@@ -23,7 +23,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={aria['aria-label']}
-      className={cn('inline-flex border border-line bg-column p-0.5', className)}
+      className={cn('inline-flex border border-line-strong bg-head p-0.5', className)}
     >
       {options.map((option) => {
         const on = option.value === value;
@@ -39,8 +39,8 @@ export function Segmented<T extends string>({
               'inline-flex cursor-pointer items-center justify-center gap-1.5 px-3.5 font-bold whitespace-nowrap transition-[background-color,color,box-shadow] duration-150',
               size === 'sm' ? 'h-7 text-xs' : 'h-9 text-sm',
               on
-                ? 'bg-surface text-ink shadow-[0_1px_2px_rgb(30_37_48/0.12),0_0_0_1px_rgb(30_37_48/0.06)]'
-                : 'text-ink-sub hover:text-ink',
+                ? 'bg-main text-white shadow-[0_1px_2px_rgb(30_37_48/0.18)]'
+                : 'text-ink-sub hover:bg-surface hover:text-ink',
             )}
           >
             {option.icon}

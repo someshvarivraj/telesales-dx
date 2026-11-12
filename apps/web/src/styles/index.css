@@ -44,6 +44,10 @@
   --color-hover: #f7f8fa;
   --color-line: #e3e6ea;
   --color-line-strong: #d5dae0;
+  /* Table header rows and the track behind 日・週・月-style choices: one clear step darker
+     than the rows (request 11/12: headers and picked options stood out too little). */
+  --color-head: #dfe4eb;
+  --color-head-line: #c5ccd6;
 
   /* Status — semantic, not decorative. */
   --color-danger: #b42318;
@@ -273,6 +277,8 @@ html[data-theme='eyecare'] {
   --color-hover: #f3eddf;
   --color-line: #e2dacb;
   --color-line-strong: #d3c9b6;
+  --color-head: #e8e0cf;
+  --color-head-line: #d0c5af;
 
   --color-off: #e9e2d3;
   --color-off-line: #cfc5b1;
@@ -301,6 +307,8 @@ html[data-theme='sakura'] {
   --color-canvas: #fdf7fa;
   --color-column: #fffafc;
   --color-hover: #fcf1f6;
+  --color-head: #f7e3ec;
+  --color-head-line: #ecc6d7;
 }
 
 /* ---------------------------------------------------------------------------

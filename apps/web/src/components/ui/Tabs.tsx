@@ -90,7 +90,7 @@ export function Tabs({ items }: { items: readonly TabItem[] }) {
                   'focus-visible:outline-2 focus-visible:-outline-offset-2',
                   'after:absolute after:inset-x-2 after:bottom-0 after:h-[3px]',
                   isActive
-                    ? 'font-bold text-ink after:bg-main'
+                    ? 'bg-main-soft font-bold text-main after:bg-main'
                     : 'font-medium text-ink-sub hover:bg-hover hover:text-ink',
                 )
               }

@@ -32,7 +32,7 @@ export function Th({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement
   return (
     <th
       className={cn(
-        'border-b border-line bg-column px-3 py-2.5 text-left shadow-[inset_0_-1px_0_var(--color-line)] text-xs font-bold whitespace-nowrap text-ink-sub',
+        'border-b border-head-line bg-head px-3 py-2.5 text-left text-xs font-bold whitespace-nowrap text-ink shadow-[inset_0_-1px_0_var(--color-head-line)]',
         className,
       )}
       {...rest}
