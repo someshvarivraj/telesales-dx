@@ -62,6 +62,7 @@ export function LoginPage() {
 
   return (
     <AuthLayout
+      petals
       title={ja.auth.loginTitle}
       footer={ja.auth.forgotPassword}
       mood={login.isError ? 'trouble' : 'default'}

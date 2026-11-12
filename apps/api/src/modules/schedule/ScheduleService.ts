@@ -222,7 +222,12 @@ export class ScheduleService {
     for (const occurrence of occurrences) {
       await this.assertPlanSlot(actor, input, occurrence.startsAt, occurrence.endsAt, null);
     }
-    const seriesId = occurrences.length > 1 ? randomUUID() : null;
+    const seriesId = input.repeat && occurrences.length > 1 ? randomUUID() : null;
+    // Several candidate dates are one group: confirming one of them removes the rest.
+    const sharedGroup =
+      input.status === PlanStatus.Tentative && (input.candidates?.length ?? 0) > 0
+        ? (input.candidateGroupId ?? randomUUID())
+        : null;
     const attendeeIds = [...new Set(input.attendeeIds)].filter((id) => id !== input.ownerId);
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -244,7 +249,7 @@ export class ScheduleService {
               note: input.note ?? null,
               candidateGroupId:
                 input.status === PlanStatus.Tentative
-                  ? (input.candidateGroupId ?? randomUUID())
+                  ? (sharedGroup ?? input.candidateGroupId ?? randomUUID())
                   : null,
               seriesId,
               recurrenceRule: input.repeat ? `WEEKLY;COUNT=${input.repeat.weeklyCount}` : null,
@@ -584,6 +589,15 @@ export class ScheduleService {
   private occurrences(input: PlanCommand): { startsAt: Date; endsAt: Date }[] {
     const startsAt = new Date(input.startsAt);
     const endsAt = new Date(input.endsAt);
+    if (input.status === PlanStatus.Tentative && input.candidates?.length) {
+      return [
+        { startsAt, endsAt },
+        ...input.candidates.map((slot) => ({
+          startsAt: new Date(slot.startsAt),
+          endsAt: new Date(slot.endsAt),
+        })),
+      ];
+    }
     const count = input.repeat?.weeklyCount ?? 1;
     return Array.from({ length: count }, (_, index) => ({
       startsAt: new Date(startsAt.getTime() + index * WEEK_MS),

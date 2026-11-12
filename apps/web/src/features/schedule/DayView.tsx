@@ -59,6 +59,8 @@ export function DayView({
       <TimeGrid
         pxPerMin={pxPerMin}
         maxHeight={maxHeight}
+        // 全員 is shown as columns too (11/12): narrower columns so a page of people fits.
+        minColumnWidth={people.length > 5 ? 136 : undefined}
         onEvent={onEvent}
         peek={peek}
         showFree={showFree}
