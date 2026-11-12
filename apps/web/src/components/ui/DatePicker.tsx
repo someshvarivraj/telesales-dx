@@ -381,7 +381,7 @@ export function DatePicker({
                 onChange?.({ target: { value: '' } });
                 close();
               }}
-              className="ml-auto h-7 cursor-pointer px-2 text-xs text-ink-sub hover:text-danger"
+              className="ml-auto h-7 cursor-pointer border border-line-strong bg-surface px-2.5 text-xs font-bold text-ink-sub hover:border-danger/40 hover:bg-danger-soft hover:text-danger"
             >
               クリア
             </button>

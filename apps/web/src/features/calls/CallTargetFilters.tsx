@@ -696,7 +696,7 @@ function MultiControl({
             <button
               type="button"
               onClick={() => onChange([])}
-              className="cursor-pointer text-xs font-bold text-ink-sub hover:text-ink"
+              className="h-7 cursor-pointer border border-line-strong bg-surface px-2.5 text-xs font-bold text-ink hover:border-main-line hover:bg-main-soft"
             >
               クリア
             </button>

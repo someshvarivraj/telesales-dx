@@ -321,7 +321,7 @@ export function CallTargetsPage() {
                       <Th className={selectable ? undefined : 'pl-4'}>会社名</Th>
                       <Th>エリア</Th>
                       <Th className="max-md:hidden">業種・ランク・資本金</Th>
-                      <Th className="max-lg:hidden">リスト名</Th>
+                      <Th className="max-xl:hidden">リスト名</Th>
                       <Th>最新の架電</Th>
                       <Th className="pr-4">B次回架電日</Th>
                     </tr>
@@ -420,7 +420,7 @@ function CompanyRow({
         <div className="min-w-44">
           <Link
             to={paths.company(company.id)}
-            className="font-bold text-ink hover:text-link hover:underline"
+            className="font-bold text-link underline-offset-2 hover:underline"
           >
             {company.name}
           </Link>
@@ -451,7 +451,7 @@ function CompanyRow({
           </div>
         )}
       </Td>
-      <Td className="max-lg:hidden">
+      <Td className="max-xl:hidden">
         {company.listName && (
           <span
             title={company.listName}
@@ -461,12 +461,13 @@ function CompanyRow({
           </span>
         )}
       </Td>
-      <Td className="whitespace-nowrap">
+      <Td className="min-w-40">
         {company.lastCall ? (
           <div className="flex flex-col gap-0.5">
             <GradeBadge grade={company.lastCall.grade} label={gradeLabel} />
             <span className="text-xs text-ink-sub tabular-nums">
-              {formatDateTime(company.lastCall.calledAt)}・{company.lastCall.telemarketer.name}
+              <span className="whitespace-nowrap">{formatDateTime(company.lastCall.calledAt)}</span>
+              ・{company.lastCall.telemarketer.name}
             </span>
             {company.lastCall.avoidUntil && (
               <span
@@ -492,9 +493,9 @@ function CompanyRow({
       <Td className="pr-4 whitespace-nowrap tabular-nums">
         {company.nextCallDate &&
           (due ? (
-            <span className="font-bold text-warning-ink">
+            <span className="flex flex-col items-start gap-1 font-bold text-warning-ink">
               {formatDate(company.nextCallDate)}
-              <span className="ml-1.5 bg-warning-soft px-1.5 py-0.5 text-[11px]">
+              <span className="bg-warning-soft px-1.5 py-0.5 text-[11px]">
                 {company.nextCallDate === today ? '今日' : '過ぎています'}
               </span>
             </span>

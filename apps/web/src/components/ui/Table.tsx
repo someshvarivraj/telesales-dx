@@ -1,10 +1,19 @@
-import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react';
+import {
+  type ReactNode,
+  type TdHTMLAttributes,
+  type ThHTMLAttributes,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { cn } from './cn';
 
 /**
- * Table that scrolls horizontally inside its container on small screens.
- * `stickyHeader`: from tablets up the table scrolls inside its own area, under a header
- * row that stays put, so the column names are always visible.
+ * Table that scrolls sideways inside its container when it is wider than the screen.
+ * `stickyHeader`: the page itself scrolls (no second scroll area inside it) and the header
+ * row stays at the top of the window, so the column names are always in sight (request
+ * 11/12). That needs the table to fit the width; when it does not (a phone), it falls back
+ * to sideways scrolling with an ordinary header.
  */
 export function Table({
   children,
@@ -15,15 +24,36 @@ export function Table({
   className?: string;
   stickyHeader?: boolean;
 }) {
+  const box = useRef<HTMLDivElement>(null);
+  const table = useRef<HTMLTableElement>(null);
+  const [fits, setFits] = useState(true);
+
+  useLayoutEffect(() => {
+    if (!stickyHeader || !box.current || !table.current) return;
+    const outer = box.current;
+    const inner = table.current;
+    const measure = () => setFits(inner.offsetWidth <= outer.clientWidth + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(outer);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [stickyHeader]);
+
+  const sticky = stickyHeader && fits;
   return (
     <div
+      ref={box}
       className={cn(
-        'overflow-x-auto',
-        stickyHeader &&
-          'scroll-quiet md:max-h-[calc(100dvh-12rem)] md:overflow-y-auto md:[&_th]:sticky md:[&_th]:top-0 md:[&_th]:z-10',
+        sticky
+          ? // Below the phone top bar; at the very top from tablets up.
+            '[&_th]:sticky [&_th]:top-13 [&_th]:z-10 md:[&_th]:top-0'
+          : 'overflow-x-auto',
       )}
     >
-      <table className={cn('w-full border-collapse text-sm', className)}>{children}</table>
+      <table ref={table} className={cn('w-full border-collapse text-sm', className)}>
+        {children}
+      </table>
     </div>
   );
 }
