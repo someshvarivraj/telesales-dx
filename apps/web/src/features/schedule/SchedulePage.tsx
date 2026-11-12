@@ -82,8 +82,12 @@ const KINDS: EventKind[] = [
 
 const ZOOMS = [0.75, 1, 1.4, 1.9];
 const LIST_DAYS = 14;
-/** More people than this and the day is drawn as rows (timeline) instead of columns. */
-const DAY_COLUMNS_MAX = 6;
+/**
+ * More people than this and the day is drawn as rows (timeline) instead of columns. A page
+ * shows at most PAGE_SIZE people, so 全員 is columns too: names on top, time on the left,
+ * as when people are picked (feedback 11/12).
+ */
+const DAY_COLUMNS_MAX = PAGE_SIZE;
 
 function rangeFor(view: View, date: string): { from: string; to: string } {
   if (view === 'day') return { from: date, to: date };

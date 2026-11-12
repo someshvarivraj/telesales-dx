@@ -12,6 +12,8 @@ import {
   hhmm,
   hoursLabel,
   placeEvents,
+  LUNCH_END,
+  LUNCH_START,
   visibleSpan,
   WORK_END,
   WORK_START,
@@ -211,6 +213,13 @@ export function DayTimeline({
                     className="pointer-events-none absolute inset-y-0 right-0 bg-canvas/80"
                     style={{ left: x(WORK_END) }}
                   />
+                  {/* Lunch break in its own grey, as in the column view (feedback 11/12). */}
+                  {!closed && (
+                    <div
+                      className="pointer-events-none absolute inset-y-0 bg-lunch"
+                      style={{ left: x(LUNCH_START), width: x(LUNCH_END) - x(LUNCH_START) }}
+                    />
+                  )}
                   {hours.slice(1, -1).map((hour) => (
                     <div
                       key={hour}

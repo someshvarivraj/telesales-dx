@@ -6,14 +6,33 @@
     <meta name="robots" content="noindex" />
     <title>メンテナンス中 | Telesales DX</title>
     <style>
+      /* Sakura edition (request 11/12): the app's light grid in pink, with petals falling. */
       html,
       body {
         height: 100%;
         margin: 0;
         overflow: hidden;
-        background: #05070d;
-        color: #e8ebf2;
+        background-color: #fdf7f9;
+        background-image:
+          radial-gradient(
+            ellipse at 50% 40%,
+            rgba(255, 255, 255, 0.95),
+            rgba(253, 247, 249, 0) 60%
+          ),
+          linear-gradient(rgba(190, 24, 93, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(190, 24, 93, 0.07) 1px, transparent 1px);
+        background-size:
+          100% 100%,
+          32px 32px,
+          32px 32px;
+        color: #2b1d24;
         font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', Meiryo, sans-serif;
+      }
+      #petals {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
       }
       #bot {
         position: fixed;
@@ -39,33 +58,42 @@
         pointer-events: none;
         /* Stays readable while MoraBot passes behind it. */
         text-shadow:
-          0 0 6px #05070d,
-          0 0 12px #05070d;
+          0 0 6px #fdf7f9,
+          0 0 12px #fdf7f9;
       }
       h1 {
         margin: 0;
         font-size: clamp(20px, 3.4vw, 32px);
         font-weight: 700;
         letter-spacing: 0.04em;
+        color: #2b1d24;
+      }
+      h1::after {
+        content: '';
+        display: block;
+        width: 56px;
+        height: 3px;
+        margin: 12px auto 0;
+        background: #db2777;
       }
       p {
         margin: 10px 0 0;
         max-width: 34em;
         font-size: 14px;
         line-height: 1.7;
-        color: #a6adbd;
+        color: #6b5560;
       }
       #until {
         font-size: 16px;
         font-weight: 700;
-        color: #e8ebf2;
+        color: #be185d;
       }
       #hits {
         position: fixed;
         right: 16px;
         bottom: 12px;
         font-size: 12px;
-        color: #6f7788;
+        color: #9d7d8a;
       }
       #cheer {
         position: fixed;
@@ -74,6 +102,7 @@
         transform: translateX(-50%);
         font-size: 18px;
         font-weight: 700;
+        color: #be185d;
         opacity: 0;
         transition: opacity 0.3s;
       }
@@ -85,8 +114,12 @@
         pointer-events: none;
       }
     </style>
+    <style>
+      {{SAKURA_CSS}}
+    </style>
   </head>
   <body>
+    <div id="petals" aria-hidden="true"></div>
     <div id="bot" aria-hidden="true"><img id="pose" alt="" /></div>
     <main id="note">
       <h1 id="title">ただいまメンテナンス中です</h1>
@@ -99,11 +132,14 @@
     <div id="cheer" role="status"></div>
     <div id="hits"></div>
     <script>
+      /* {{SAKURA_JS}} */
+    </script>
+    <script>
       {{BOUNCE}}
       (function () {
         var POSES = {{POSES}};
         var HAPPY = {{HAPPY}};
-        var COLORS = ['#ff5a5f', '#ffb020', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6'];
+        var COLORS = ['#f472b6', '#ec4899', '#fb7185', '#f9a8d4', '#e879f9', '#fda4af'];
         var SPEED = 170; // px per second
         var CHECK_MS = 20000;
 
@@ -112,6 +148,20 @@
         var cheer = document.getElementById('cheer');
         var hits = document.getElementById('hits');
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!reduced && typeof Sakura === 'function') {
+          // sakura-js (npm, MIT): petals drift down behind MoraBot.
+          new Sakura('#petals', {
+            fallSpeed: 1.6,
+            minSize: 9,
+            maxSize: 15,
+            delay: 280,
+            colors: [
+              { gradientColorStart: 'rgba(255, 183, 197, 0.9)', gradientColorEnd: 'rgba(255, 197, 208, 0.9)', gradientColorDegree: 120 },
+              { gradientColorStart: 'rgba(255, 189, 189)', gradientColorEnd: 'rgba(227, 170, 181)', gradientColorDegree: 120 },
+              { gradientColorStart: 'rgba(212, 152, 163)', gradientColorEnd: 'rgba(242, 185, 196)', gradientColorDegree: 120 },
+            ],
+          });
+        }
 
         var w, h, maxX, maxY;
         function measure() {
@@ -180,8 +230,8 @@
         function hitCorner() {
           corners += 1;
           pose.src = HAPPY;
-          bot.style.filter = 'drop-shadow(0 0 28px #ffe066)';
-          burst(state.x + w / 2, state.y + h / 2, '#ffe066');
+          bot.style.filter = 'drop-shadow(0 0 28px #f472b6)';
+          burst(state.x + w / 2, state.y + h / 2, '#ec4899');
           cheer.textContent = '角に当たりました！ / Corner hit!';
           cheer.style.opacity = 1;
           hits.textContent = '角に当たった回数：' + corners;

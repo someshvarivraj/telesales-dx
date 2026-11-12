@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
 import { MoraBotStory, type StoryStep } from '@/components/brand/MoraBotStory';
+import { SakuraPetals } from '@/components/brand/SakuraPetals';
 import { LastThemeProvider } from '@/components/brand/theme';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -12,6 +13,8 @@ interface AuthLayoutProps {
   footer?: ReactNode;
   /** MoraBot's expression, e.g. `trouble` after a failed login. */
   mood?: MoraBotMood;
+  /** Sakura petals behind the page (request 11/12: the sign-in screen only). */
+  petals?: boolean;
 }
 
 /** The work the app covers, in the spec's order (架電 → アポ → 打ち合わせ・結果). */
@@ -45,14 +48,22 @@ const STEPS: StoryStep[] = [
  * The box is classic: accent bar on top, the brand as its header, the form, and the
  * notes in a grey foot. Phones and tablets show the box alone.
  */
-export function AuthLayout({ title, children, footer, mood = 'default' }: AuthLayoutProps) {
+export function AuthLayout({
+  title,
+  children,
+  footer,
+  mood = 'default',
+  petals = false,
+}: AuthLayoutProps) {
   return (
     <LastThemeProvider>
       <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
         <GridBackdrop />
-        <LanguageSwitch className="absolute top-4 right-4 w-32" />
+        {/* Petals fall over the grid and behind the sign-in box. */}
+        {petals && <SakuraPetals className="z-0" />}
+        <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
 
-        <div className="flex w-full max-w-[960px] items-center justify-center gap-16">
+        <div className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16">
           <section className="max-w-md flex-1 max-lg:hidden">
             <p className="text-2xl leading-snug font-bold text-ink">
               架電からアポ、打ち合わせの結果まで。

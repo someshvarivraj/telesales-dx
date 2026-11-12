@@ -41,6 +41,14 @@ export const planRequestSchema = z.object({
   attendeeIds: z.array(z.uuid()).max(20).default([]),
   /** Tentative candidate dates share a group so one can be confirmed later. */
   candidateGroupId: z.uuid().nullish(),
+  /**
+   * More candidate dates for a new tentative plan (request 11/12): saved together with the
+   * first one as one group; confirming one removes the others.
+   */
+  candidates: z
+    .array(z.object({ startsAt: instantString, endsAt: instantString }))
+    .max(9)
+    .nullish(),
   repeat: repeatSchema.nullish(),
 });
 export type PlanRequest = z.input<typeof planRequestSchema>;

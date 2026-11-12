@@ -571,6 +571,13 @@ export const EXACT: Readonly<Record<string, string>> = {
   条件の値は不要です: 'No value needed',
   条件を削除: 'Remove condition',
   条件を追加: 'Add condition',
+  候補日を追加: 'Add a candidate date',
+  空き時間から選ぶ: 'Pick from free time',
+  '（上の日時）': '(the date above)',
+  過ぎた日: 'Past',
+  '候補は10件までです。': 'Up to 10 candidates.',
+  'クリックすると、その時間から上の日時と同じ長さで候補に入ります（9:00〜18:00の空きだけ表示）。':
+    'Click to add that time as a candidate, as long as the date above (only free time 9:00–18:00 is shown).',
   印刷する営業: 'Reps to print',
   人を選ぶ: 'Pick people',
   エリアで選ぶ: 'Pick by area',
@@ -1912,6 +1919,17 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['候補{0}を外す', 'Remove candidate {0}'],
+  ['候補{0}の終了', 'Candidate {0} end'],
+  ['候補{0}の開始', 'Candidate {0} start'],
+  ['候補{0}の日付', 'Candidate {0} date'],
+  ['{0}〜{1} が空いています', '{0}–{1} is free'],
+  ['{0}〜{1}の空き時間', 'Free time {0}–{1}'],
+  [
+    '候補日（{0}件・1つを確定すると、残りは消えます）',
+    'Candidate dates ({0}; confirming one removes the rest)',
+  ],
+  ['候補{0}件を保存する', 'Save {0} candidates'],
   ['{0}人分を印刷する', 'Print {0} reps'],
   ['営業全員（{0}人）', 'All reps ({0})'],
   ['{0}を入れてください。', 'Please enter: {0}.'],
