@@ -1,7 +1,7 @@
 import { isRole, Role } from '@telesales/shared';
 import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
 import { type Theme, THEMES, useTheme } from '@/components/brand/theme';
 import { cn } from '@/components/ui/cn';
@@ -12,7 +12,7 @@ import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
 import { BrandMark } from './BrandMark';
-import { type NavItem, visibleNav } from './navItems';
+import { isCallsPage, type NavItem, visibleNav } from './navItems';
 
 const STORAGE_KEY = 'telesales.sidebar';
 
@@ -61,22 +61,39 @@ export function AppSidebar() {
   const logout = useLogout();
   const navigate = useNavigate();
   const items = visibleNav(user.permissions);
-  const [folded, setFolded] = useState(readFolded);
+  const [savedFolded, setSavedFolded] = useState(readFolded);
+  // 架電状況 folds the menu by itself so the list gets the room (request 11/12). Opening it
+  // there lasts until you leave; it does not change the choice remembered for other screens.
+  const onCalls = isCallsPage(useLocation().pathname);
+  const [openOnCalls, setOpenOnCalls] = useState(false);
+  const [wasOnCalls, setWasOnCalls] = useState(onCalls);
+  if (wasOnCalls !== onCalls) {
+    setWasOnCalls(onCalls);
+    setOpenOnCalls(false);
+  }
+  const folded = onCalls ? !openOnCalls : savedFolded;
+  const toggle = () => {
+    if (onCalls) setOpenOnCalls((open) => !open);
+    else setSavedFolded((value) => !value);
+  };
   const mainRole = user.roles.find(isRole) ?? Role.Viewer;
 
   useEffect(() => {
     const root = document.documentElement;
     if (folded) root.dataset.sidebar = 'closed';
     else delete root.dataset.sidebar;
-    try {
-      localStorage.setItem(STORAGE_KEY, folded ? 'closed' : 'open');
-    } catch {
-      // Storage can be unavailable (private window); the menu just starts open.
-    }
     return () => {
       delete root.dataset.sidebar;
     };
   }, [folded]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, savedFolded ? 'closed' : 'open');
+    } catch {
+      // Storage can be unavailable (private window); the menu just starts open.
+    }
+  }, [savedFolded]);
 
   const handleLogout = () => {
     logout.mutate(undefined, { onSettled: () => navigate(paths.login, { replace: true }) });
@@ -114,7 +131,7 @@ export function AppSidebar() {
         </Link>
         <button
           type="button"
-          onClick={() => setFolded((value) => !value)}
+          onClick={toggle}
           aria-label={folded ? 'メニューを開く' : 'メニューをたたむ'}
           title={folded ? 'メニューを開く' : 'メニューをたたむ'}
           aria-expanded={!folded}

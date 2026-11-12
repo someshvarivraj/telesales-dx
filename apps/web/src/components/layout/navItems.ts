@@ -81,3 +81,12 @@ export function visibleNav(permissions: readonly Permission[]): NavItem[] {
     item.anyOf.some((permission) => permissions.includes(permission)),
   );
 }
+
+/** Pages that spread across the whole screen; 架電状況 also folds the menu to icons. */
+export function isWidePage(pathname: string): boolean {
+  return pathname.startsWith(paths.schedule) || isCallsPage(pathname);
+}
+
+export function isCallsPage(pathname: string): boolean {
+  return pathname === paths.calls || pathname.startsWith(`${paths.calls}/`);
+}
