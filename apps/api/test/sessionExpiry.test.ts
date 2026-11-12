@@ -9,7 +9,8 @@ import { Authenticator } from '../src/http/middleware/Authenticator.js';
 import { createErrorHandler } from '../src/http/middleware/errorHandler.js';
 import { FixedClock, InMemoryUserRepository, PlainPasswordHasher } from './support/fakes.js';
 
-const WEEK = 7 * 24 * 60 * 60_000;
+/** A month (request 11/12; was a week). */
+const MONTH = 30 * 24 * 60 * 60_000;
 const config = AppConfig.fromEnv({
   NODE_ENV: 'test',
   DATABASE_URL: 'postgresql://unused:unused@localhost:5432/unused',
@@ -45,30 +46,30 @@ async function signedIn() {
   return { agent, clock };
 }
 
-describe('session length and warning (request 11/2)', () => {
-  it('lasts one week by default', () => {
-    expect(config.session.idleTimeoutMs).toBe(WEEK);
-    expect(config.session.absoluteTimeoutMs).toBe(WEEK);
+describe('session length and warning (requests 11/2, 11/12)', () => {
+  it('lasts a month by default', () => {
+    expect(config.session.idleTimeoutMs).toBe(MONTH);
+    expect(config.session.absoluteTimeoutMs).toBe(MONTH);
   });
 
   it('tells the screen when the session ends', async () => {
     const { agent } = await signedIn();
     const res = await agent.get('/me').expect(200);
-    expect(res.headers[SESSION_EXPIRES_HEADER.toLowerCase()]).toBe('2026-11-09T00:00:00.000Z');
+    expect(res.headers[SESSION_EXPIRES_HEADER.toLowerCase()]).toBe('2026-12-02T00:00:00.000Z');
   });
 
-  it('starts the week again when the person carries on', async () => {
+  it('starts the month again when the person carries on', async () => {
     const { agent, clock } = await signedIn();
-    clock.advance(WEEK - 5 * 60_000);
+    clock.advance(MONTH - 5 * 60_000);
     const res = await agent.post('/extend').set(CSRF_HEADER, CSRF_HEADER_VALUE).expect(200);
-    expect(res.body.expiresAt).toBe('2026-11-15T23:55:00.000Z');
+    expect(res.body.expiresAt).toBe('2026-12-31T23:55:00.000Z');
     clock.advance(10 * 60_000);
     await agent.get('/me').expect(200);
   });
 
-  it('signs out after the week without carrying on', async () => {
+  it('signs out after the month without carrying on', async () => {
     const { agent, clock } = await signedIn();
-    clock.advance(WEEK + 60_000);
+    clock.advance(MONTH + 60_000);
     await agent.get('/me').expect(401);
   });
 });
