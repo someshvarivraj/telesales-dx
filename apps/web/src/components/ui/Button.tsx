@@ -21,7 +21,8 @@ const variantClass: Record<Variant, string> = {
   secondary:
     'border border-line-strong bg-surface text-ink hover:border-main-line hover:bg-main-soft hover:text-ink',
   danger: 'border border-danger/40 bg-surface text-danger hover:border-danger hover:bg-danger-soft',
-  text: 'text-ink hover:bg-hover',
+  // A quieter action, still plainly a button (request 11/12: plain text was not seen as clickable).
+  text: 'border border-main-line bg-main-soft text-main hover:border-main hover:bg-main-line/45',
 };
 
 const sizeClass: Record<Size, string> = {
