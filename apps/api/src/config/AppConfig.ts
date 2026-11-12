@@ -12,8 +12,9 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
   // One week (request 11/2): nobody is signed out in the middle of the working week.
-  SESSION_IDLE_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(10_080),
-  SESSION_ABSOLUTE_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(10_080),
+  // Signed in for up to a month, also when the screen is left alone (request 11/12; was 7 days).
+  SESSION_IDLE_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(43_200),
+  SESSION_ABSOLUTE_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(43_200),
   LOGIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),
   LOGIN_LOCK_MINUTES: z.coerce.number().int().positive().default(15),
   TRUST_PROXY: booleanFromString,
