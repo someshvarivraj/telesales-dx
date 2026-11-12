@@ -2,6 +2,7 @@ import {
   addDays,
   dayOfWeek,
   DEFAULT_APPOINTMENT_MINUTES,
+  DEFAULT_PLAN_MINUTES,
   fromJst,
   jstDate,
   jstTime,
@@ -69,8 +70,14 @@ export function addMinutesToTime(time: string, minutes: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+/** End of a new appointment (30 minutes). */
 export function defaultEndTime(start: string): string {
   return addMinutesToTime(start, DEFAULT_APPOINTMENT_MINUTES);
+}
+
+/** End of a new plan other than an appointment (1 hour). */
+export function defaultPlanEndTime(start: string): string {
+  return addMinutesToTime(start, DEFAULT_PLAN_MINUTES);
 }
 
 /** ISO instant from a JST date and time. */

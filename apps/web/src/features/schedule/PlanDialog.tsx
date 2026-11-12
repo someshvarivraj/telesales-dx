@@ -38,7 +38,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import {
-  defaultEndTime,
+  defaultPlanEndTime,
   formatShortDate,
   formatTime,
   startOfWeek,
@@ -84,7 +84,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       end:
         plan && !plan.allDay
           ? formatTime(plan.endsAt)
-          : (defaults?.endTime ?? defaultEndTime(defaults?.time ?? '10:00')),
+          : (defaults?.endTime ?? defaultPlanEndTime(defaults?.time ?? '10:00')),
       allDay: plan?.allDay ?? false,
       status: plan?.status ?? PlanStatus.Fixed,
       holidayWork: plan?.holidayWork ?? false,
@@ -299,7 +299,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
                       setValues((v) => ({
                         ...v,
                         start: e.target.value,
-                        end: defaultEndTime(e.target.value),
+                        end: defaultPlanEndTime(e.target.value),
                       }))
                     }
                   />
