@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MoraBot } from '@/components/brand/MoraBot';
-import { SakuraPetals } from '@/components/brand/SakuraPetals';
+import { FallingLeaves } from '@/components/brand/FallingLeaves';
 import { Button } from '@/components/ui/Button';
 import { ApiError } from '@/lib/api/ApiError';
 import { stepBounce } from '../../../outage/bounce.js';
@@ -9,12 +9,12 @@ import { useSystemStatus } from './useSystemStatus';
 const SPEED = 170;
 const WIDTH = 150;
 const HEIGHT = 170;
-const COLORS = ['#f472b6', '#ec4899', '#fb7185', '#f9a8d4', '#e879f9', '#fda4af'];
-/** Sakura edition (request 11/12): the app's light grid in pink instead of a black screen. */
-const SAKURA_GRID = {
-  backgroundColor: '#fdf7f9',
+const COLORS = ['#f2c14e', '#e8a33d', '#f6d78b', '#d98e2b', '#efb85a', '#f9e3a3'];
+/** Autumn edition (request 11/12): the app's light grid in warm gold instead of a black screen. */
+const GOLD_GRID = {
+  backgroundColor: '#fffaf0',
   backgroundImage:
-    'radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.95), rgba(253,247,249,0) 60%), linear-gradient(rgba(190,24,93,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(190,24,93,0.07) 1px, transparent 1px)',
+    'radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.95), rgba(255,250,240,0) 60%), linear-gradient(rgba(176,125,40,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(176,125,40,0.08) 1px, transparent 1px)',
   backgroundSize: '100% 100%, 32px 32px, 32px 32px',
 };
 
@@ -84,20 +84,20 @@ function Bouncing({ onClose }: { onClose: () => void }) {
   return (
     <div
       role="alert"
-      className="fixed inset-0 z-[100] overflow-hidden text-[#2b1d24]"
-      style={SAKURA_GRID}
+      className="fixed inset-0 z-[100] overflow-hidden text-[#2a2116]"
+      style={GOLD_GRID}
     >
-      <SakuraPetals className="absolute" />
+      <FallingLeaves className="absolute" />
       <div ref={bot} aria-hidden="true" className="absolute top-0 left-0 will-change-transform">
         <MoraBot mood={cornerHit ? 'happy' : 'default'} size={WIDTH} title="" />
       </div>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center">
-        <p className="text-2xl font-bold [text-shadow:0_0_8px_#fdf7f9]">サーバーにつながりません</p>
-        <span aria-hidden="true" className="mt-1 mb-1 block h-[3px] w-14 bg-[#db2777]" />
-        <p className="text-sm text-[#6b5560] [text-shadow:0_0_6px_#fdf7f9]">
+        <p className="text-2xl font-bold [text-shadow:0_0_8px_#fffaf0]">サーバーにつながりません</p>
+        <span aria-hidden="true" className="mt-1 mb-1 block h-[3px] w-14 bg-[#c98a2b]" />
+        <p className="text-sm text-[#6e5e45] [text-shadow:0_0_6px_#fffaf0]">
           メンテナンス中かもしれません。つながると自動で元の画面に戻ります。入力中の内容はそのままです。
         </p>
-        {cornerHit && <p className="text-lg font-bold text-[#be185d]">角に当たりました！</p>}
+        {cornerHit && <p className="text-lg font-bold text-[#a86b14]">角に当たりました！</p>}
         <Button
           variant="secondary"
           size="sm"

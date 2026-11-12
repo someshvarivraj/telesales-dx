@@ -6,32 +6,34 @@
     <meta name="robots" content="noindex" />
     <title>メンテナンス中 | Telesales DX</title>
     <style>
-      /* Sakura edition (request 11/12): the app's light grid in pink, with petals falling. */
+      /* Autumn edition (request 11/12): the app's light grid in warm gold, with maple leaves falling
+         and gathering at the bottom. */
       html,
       body {
         height: 100%;
         margin: 0;
         overflow: hidden;
-        background-color: #fdf7f9;
+        background-color: #fffaf0;
         background-image:
           radial-gradient(
             ellipse at 50% 40%,
             rgba(255, 255, 255, 0.95),
             rgba(253, 247, 249, 0) 60%
           ),
-          linear-gradient(rgba(190, 24, 93, 0.07) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(190, 24, 93, 0.07) 1px, transparent 1px);
+          linear-gradient(rgba(176, 125, 40, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(176, 125, 40, 0.08) 1px, transparent 1px);
         background-size:
           100% 100%,
           32px 32px,
           32px 32px;
-        color: #2b1d24;
+        color: #2a2116;
         font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', Meiryo, sans-serif;
       }
-      #petals {
+      #leaves {
         position: fixed;
         inset: 0;
-        overflow: hidden;
+        width: 100%;
+        height: 100%;
         pointer-events: none;
       }
       #bot {
@@ -58,15 +60,15 @@
         pointer-events: none;
         /* Stays readable while MoraBot passes behind it. */
         text-shadow:
-          0 0 6px #fdf7f9,
-          0 0 12px #fdf7f9;
+          0 0 6px #fffaf0,
+          0 0 12px #fffaf0;
       }
       h1 {
         margin: 0;
         font-size: clamp(20px, 3.4vw, 32px);
         font-weight: 700;
         letter-spacing: 0.04em;
-        color: #2b1d24;
+        color: #2a2116;
       }
       h1::after {
         content: '';
@@ -74,26 +76,26 @@
         width: 56px;
         height: 3px;
         margin: 12px auto 0;
-        background: #db2777;
+        background: #c98a2b;
       }
       p {
         margin: 10px 0 0;
         max-width: 34em;
         font-size: 14px;
         line-height: 1.7;
-        color: #6b5560;
+        color: #6e5e45;
       }
       #until {
         font-size: 16px;
         font-weight: 700;
-        color: #be185d;
+        color: #a86b14;
       }
       #hits {
         position: fixed;
         right: 16px;
         bottom: 12px;
         font-size: 12px;
-        color: #9d7d8a;
+        color: #9c8862;
       }
       #cheer {
         position: fixed;
@@ -102,7 +104,7 @@
         transform: translateX(-50%);
         font-size: 18px;
         font-weight: 700;
-        color: #be185d;
+        color: #a86b14;
         opacity: 0;
         transition: opacity 0.3s;
       }
@@ -114,12 +116,9 @@
         pointer-events: none;
       }
     </style>
-    <style>
-      {{SAKURA_CSS}}
-    </style>
   </head>
   <body>
-    <div id="petals" aria-hidden="true"></div>
+    <canvas id="leaves" aria-hidden="true"></canvas>
     <div id="bot" aria-hidden="true"><img id="pose" alt="" /></div>
     <main id="note">
       <h1 id="title">ただいまメンテナンス中です</h1>
@@ -132,14 +131,14 @@
     <div id="cheer" role="status"></div>
     <div id="hits"></div>
     <script>
-      /* {{SAKURA_JS}} */
+      /* {{LEAVES_JS}} */
     </script>
     <script>
       {{BOUNCE}}
       (function () {
         var POSES = {{POSES}};
         var HAPPY = {{HAPPY}};
-        var COLORS = ['#f472b6', '#ec4899', '#fb7185', '#f9a8d4', '#e879f9', '#fda4af'];
+        var COLORS = ['#f2c14e', '#e8a33d', '#f6d78b', '#d98e2b', '#efb85a', '#f9e3a3'];
         var SPEED = 170; // px per second
         var CHECK_MS = 20000;
 
@@ -148,20 +147,8 @@
         var cheer = document.getElementById('cheer');
         var hits = document.getElementById('hits');
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (!reduced && typeof Sakura === 'function') {
-          // sakura-js (npm, MIT): petals drift down behind MoraBot.
-          new Sakura('#petals', {
-            fallSpeed: 1.6,
-            minSize: 9,
-            maxSize: 15,
-            delay: 280,
-            colors: [
-              { gradientColorStart: 'rgba(255, 183, 197, 0.9)', gradientColorEnd: 'rgba(255, 197, 208, 0.9)', gradientColorDegree: 120 },
-              { gradientColorStart: 'rgba(255, 189, 189)', gradientColorEnd: 'rgba(227, 170, 181)', gradientColorDegree: 120 },
-              { gradientColorStart: 'rgba(212, 152, 163)', gradientColorEnd: 'rgba(242, 185, 196)', gradientColorDegree: 120 },
-            ],
-          });
-        }
+        // Light golden maple leaves drift down and gather at the bottom (outage/leaves.js).
+        startLeaves(document.getElementById('leaves'));
 
         var w, h, maxX, maxY;
         function measure() {
@@ -230,8 +217,8 @@
         function hitCorner() {
           corners += 1;
           pose.src = HAPPY;
-          bot.style.filter = 'drop-shadow(0 0 28px #f472b6)';
-          burst(state.x + w / 2, state.y + h / 2, '#ec4899');
+          bot.style.filter = 'drop-shadow(0 0 28px #f2c14e)';
+          burst(state.x + w / 2, state.y + h / 2, '#e8a33d');
           cheer.textContent = '角に当たりました！ / Corner hit!';
           cheer.style.opacity = 1;
           hits.textContent = '角に当たった回数：' + corners;

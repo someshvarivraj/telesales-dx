@@ -165,9 +165,6 @@ importers:
       react-router:
         specifier: ^7.18.4
         version: 7.18.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      sakura-js:
-        specifier: 1.1.1
-        version: 1.1.1
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -3603,9 +3600,6 @@ packages:
 
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
-
-  sakura-js@1.1.1:
-    resolution: {integrity: sha512-JWTK9RauYrZoDMymmuXRH+fFdqh9uJqZUdy0bUbt001w6N9QO82+gpTGoTtwDn+KROnffQIMTfQOvG8t9GwQDw==}
 
   saxes@5.0.1:
     resolution: {integrity: sha512-5LBh1Tls8c9xgGjw3QrMwETmTMVk0oFgvrFSvWx62llR2hcEInrKNZ2GZCCuuy2lvWrdl5jhbpeqc5hRYKFOcw==}
@@ -7393,8 +7387,6 @@ snapshots:
   safe-stable-stringify@2.5.0: {}
 
   safer-buffer@2.1.2: {}
-
-  sakura-js@1.1.1: {}
 
   saxes@5.0.1:
     dependencies:

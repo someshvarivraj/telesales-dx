@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
 import { MoraBotStory, type StoryStep } from '@/components/brand/MoraBotStory';
-import { SakuraPetals } from '@/components/brand/SakuraPetals';
+import { FallingLeaves } from '@/components/brand/FallingLeaves';
 import { LastThemeProvider } from '@/components/brand/theme';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -13,8 +13,8 @@ interface AuthLayoutProps {
   footer?: ReactNode;
   /** MoraBot's expression, e.g. `trouble` after a failed login. */
   mood?: MoraBotMood;
-  /** Sakura petals behind the page (request 11/12: the sign-in screen only). */
-  petals?: boolean;
+  /** Golden leaves falling behind the page (request 11/12: the sign-in screen only). */
+  leaves?: boolean;
 }
 
 /** The work the app covers, in the spec's order (架電 → アポ → 打ち合わせ・結果). */
@@ -53,14 +53,14 @@ export function AuthLayout({
   children,
   footer,
   mood = 'default',
-  petals = false,
+  leaves = false,
 }: AuthLayoutProps) {
   return (
     <LastThemeProvider>
       <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
         <GridBackdrop />
-        {/* Petals fall over the grid and behind the sign-in box. */}
-        {petals && <SakuraPetals className="z-0" />}
+        {/* Leaves fall over the grid, behind the sign-in box, and gather at the bottom. */}
+        {leaves && <FallingLeaves className="z-0" />}
         <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
 
         <div className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16">

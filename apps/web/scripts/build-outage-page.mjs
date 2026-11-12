@@ -4,12 +4,14 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const web = new URL('../', import.meta.url);
-// Sakura edition (11/12): MoraBot's sakura look.
 const pose = (name) =>
-  `data:image/webp;base64,${readFileSync(new URL(`public/morabot/girl/${name}.webp`, web)).toString('base64')}`;
+  `data:image/webp;base64,${readFileSync(new URL(`public/morabot/${name}.webp`, web)).toString('base64')}`;
 
-// sakura-js (npm, MIT): a plain browser script and its stylesheet, inlined like the art.
-const sakura = (file) => readFileSync(new URL(`node_modules/sakura-js/dist/${file}`, web), 'utf8');
+// The falling leaves (11/12), shared with the app's overlay and sign-in screen.
+const leaves = readFileSync(new URL('outage/leaves.js', web), 'utf8').replace(
+  'export function',
+  'function',
+);
 
 const bounce = readFileSync(new URL('outage/bounce.js', web), 'utf8').replace(
   'export function',
@@ -17,8 +19,7 @@ const bounce = readFileSync(new URL('outage/bounce.js', web), 'utf8').replace(
 );
 
 const page = readFileSync(new URL('outage/outage.template.html', web), 'utf8')
-  .replace('{{SAKURA_CSS}}', () => sakura('sakura.min.css'))
-  .replace('/* {{SAKURA_JS}} */', () => sakura('sakura.min.js'))
+  .replace('/* {{LEAVES_JS}} */', () => leaves)
   .replace('{{BOUNCE}}', () => bounce)
   .replace('{{POSES}}', JSON.stringify(['guide', 'call', 'schedule', 'report'].map(pose)))
   .replace('{{HAPPY}}', JSON.stringify(pose('done')));
