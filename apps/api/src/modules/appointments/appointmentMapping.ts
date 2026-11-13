@@ -47,7 +47,7 @@ export const appointmentDetailInclude = {
   cancelledBy: userRefSelect,
   sourceFiles: { orderBy: { createdAt: 'asc' }, include: { file: true } },
   rebookings: { select: { id: true } },
-  plan: { select: { id: true, attendees: { include: { user: userRefSelect } } } },
+  plan: { select: { id: true, status: true, attendees: { include: { user: userRefSelect } } } },
   preparations: {
     orderBy: { createdAt: 'asc' },
     include: { author: userRefSelect, attachments: { include: { file: true } } },
@@ -153,6 +153,8 @@ export function toDetail(
       rowNumber: source.rowNumber,
     })),
     attendees: row.plan?.attendees.map((attendee) => userRef(attendee.user)) ?? [],
+    planId: row.plan?.id ?? null,
+    tentative: row.plan?.status === 'TENTATIVE',
     preparations: row.preparations.map((preparation) => ({
       id: preparation.id,
       author: userRef(preparation.author),

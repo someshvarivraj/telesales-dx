@@ -64,6 +64,10 @@ export const createAppointmentRequestSchema = z
     bookedOn: dateString.nullish(),
     /** Re-booking after a cancellation links to the original. */
     originalAppointmentId: z.uuid().nullish(),
+    /** 仮予定 (11/13): not yet confirmed with the customer; the rep confirms it later. */
+    tentative: z.boolean().default(false),
+    /** 同席者 (11/13): colleagues joining the meeting (N9). */
+    attendeeIds: z.array(z.uuid()).max(20).default([]),
     ...appointmentContactFields,
   })
   .refine((value) => value.companyId || value.company, { path: ['company'], message: 'required' });
@@ -315,6 +319,10 @@ export interface AppointmentDetail extends AppointmentListItem {
   /** The CSV and/or PDF an existing-list appointment was read from. */
   sourceFiles: AppointmentSourceFileDto[];
   attendees: UserRef[];
+  /** The schedule plan that holds this appointment's time. */
+  planId: string | null;
+  /** 仮予定: not confirmed with the customer yet (11/13). */
+  tentative: boolean;
   preparations: PreparationDto[];
   results: MeetingResultDto[];
   changes: AppointmentChangeDto[];

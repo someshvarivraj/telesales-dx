@@ -81,13 +81,15 @@ export const EVENT_STYLE: Record<
 export function buildEvents(data: ScheduleResponse): CalendarEvent[] {
   const events: CalendarEvent[] = [];
   for (const plan of data.plans) {
-    const kind: EventKind = plan.appointment
-      ? plan.appointment.isTelema
-        ? 'appointment'
-        : 'salesAppointment'
-      : plan.status === 'TENTATIVE'
+    // A tentative appointment (11/13) is drawn like any 仮予定: dashed, until it is confirmed.
+    const kind: EventKind =
+      plan.status === 'TENTATIVE'
         ? 'tentative'
-        : 'plan';
+        : plan.appointment
+          ? plan.appointment.isTelema
+            ? 'appointment'
+            : 'salesAppointment'
+          : 'plan';
     events.push({
       key: plan.id,
       kind,

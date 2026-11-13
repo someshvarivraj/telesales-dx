@@ -37,7 +37,7 @@ function setup() {
   const service = new ScheduleService(
     prisma,
     { check: async () => ({ ok: true, problems: [], warnings: [] }) } as unknown as SlotGuard,
-    { canEditPlan: () => true } as unknown as AccessPolicy,
+    { canEditPlan: () => true, canConfirmPlan: () => true } as unknown as AccessPolicy,
     {} as SettingsService,
     { notify: async () => undefined } as unknown as NotificationService,
     { record: async () => undefined } as unknown as AuditLogger,

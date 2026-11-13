@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
+import { Switch } from '@/components/ui/Switch';
 import { BackLink } from '@/components/ui/BackLink';
 import { Button, LinkButton } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
@@ -58,6 +59,7 @@ import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useDraft } from '@/lib/drafts';
+import { AttendeePicker } from './AttendeePicker';
 import { defaultEndTime, formatDate, todayJst, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import {
@@ -183,24 +185,28 @@ function BookingForm(props: BookingFormProps) {
 
   // Everything typed is kept through a refresh or a closed window until it is registered (11/2).
   // The slot comes back too, but has to be held again (holds end with the page).
-  const draft = useDraft<{ slot: Slot; company: CompanyValues; values: AppointmentValues }>(
-    `booking:${original?.id ?? company?.id ?? 'new'}:${params.get('source') ?? ''}`,
-    () => {
-      const start = params.get('start') ?? '10:00';
-      return {
-        slot: {
-          repId: original?.salesRep.id ?? params.get('repId') ?? (salesBooked ? user.id : ''),
-          date: params.get('date') ?? todayJst(),
-          start,
-          end: params.get('end') ?? defaultEndTime(start),
-        },
-        company: emptyCompany,
-        values: initialValues(params, props, source),
-      };
-    },
-  );
+  const draft = useDraft<{
+    slot: Slot;
+    company: CompanyValues;
+    values: AppointmentValues;
+    /** A rep's own appointment: 仮予定 and 同席者 (11/13). */
+    extras?: { tentative: boolean; attendeeIds: string[] };
+  }>(`booking:${original?.id ?? company?.id ?? 'new'}:${params.get('source') ?? ''}`, () => {
+    const start = params.get('start') ?? '10:00';
+    return {
+      slot: {
+        repId: original?.salesRep.id ?? params.get('repId') ?? (salesBooked ? user.id : ''),
+        date: params.get('date') ?? todayJst(),
+        start,
+        end: params.get('end') ?? defaultEndTime(start),
+      },
+      company: emptyCompany,
+      values: initialValues(params, props, source),
+      extras: { tentative: false, attendeeIds: [] },
+    };
+  });
   const part =
-    <K extends 'slot' | 'company' | 'values'>(key: K) =>
+    <K extends 'slot' | 'company' | 'values' | 'extras'>(key: K) =>
     (next: SetStateAction<(typeof draft.value)[K]>) =>
       draft.set((current) => ({
         ...current,
@@ -222,6 +228,12 @@ function BookingForm(props: BookingFormProps) {
   const setCompanyValues = part('company');
   const values = draft.value.values;
   const setValues = part('values');
+  const extras = draft.value.extras ?? { tentative: false, attendeeIds: [] };
+  const setExtras = (patch: Partial<typeof extras>) =>
+    draft.set((current) => ({
+      ...current,
+      extras: { ...(current.extras ?? { tentative: false, attendeeIds: [] }), ...patch },
+    }));
 
   const readFiles = (selected: File[], rowIndex?: number) => {
     const list = selected.slice(0, 2);
@@ -296,6 +308,9 @@ function BookingForm(props: BookingFormProps) {
     bookedById: values.bookedById || null,
     bookedOn: values.bookedOn || null,
     originalAppointmentId: rebookOf,
+    // 仮予定・同席者 are asked on a rep's own appointment only (11/13).
+    tentative: salesBooked && !rebookOf ? extras.tentative : false,
+    attendeeIds: salesBooked && !rebookOf ? extras.attendeeIds : [],
     ...appointmentRequestFields(values),
   });
 
@@ -397,6 +412,17 @@ function BookingForm(props: BookingFormProps) {
           { label: '先方TEL', value: values.contactPhone },
           { label: quick ? '備考・メモ' : '伝達事項', value: values.handoverNotes, wide: true },
           { label: 'テレマリスト名', value: values.listName },
+          ...(quick && extras.tentative ? [{ label: '仮予定', value: 'はい（あとで確定）' }] : []),
+          ...(quick && extras.attendeeIds.length > 0
+            ? [
+                {
+                  label: '同席者',
+                  value: extras.attendeeIds
+                    .map((id) => people.data?.find((person) => person.id === id)?.name ?? '')
+                    .join('、'),
+                },
+              ]
+            : []),
           { label: '登録元', value: ja.source[source] },
         ]}
       />
@@ -417,7 +443,7 @@ function BookingForm(props: BookingFormProps) {
         />
         <div className="flex flex-col gap-5">
           <DraftNotice restoredAt={draft.restoredAt} onReset={draft.reset} />
-          <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(21rem,26rem)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(20rem,2fr)_minmax(24rem,3fr)]">
             <section
               aria-label="アポの内容"
               // The rep's day on the left, the form on the right (feedback 11/11); on a phone
@@ -459,6 +485,22 @@ function BookingForm(props: BookingFormProps) {
                   compact
                 />
                 <AppointmentFields values={values} onChange={setValues} part="essential" />
+                <Switch
+                  label="仮予定（先方の確定待ち）"
+                  checked={extras.tentative}
+                  onChange={(tentative) => setExtras({ tentative })}
+                />
+                <div>
+                  <p className="mb-1.5 text-[13px] font-bold">
+                    同席者
+                    {extras.attendeeIds.length > 0 && `（${extras.attendeeIds.length}人）`}
+                  </p>
+                  <AttendeePicker
+                    ownerId={slot.repId}
+                    value={extras.attendeeIds}
+                    onChange={(attendeeIds) => setExtras({ attendeeIds })}
+                  />
+                </div>
                 <SlotProblems data={slotData} held={held} />
                 {lockProblem && <Alert tone="error">{lockProblem}</Alert>}
                 {errorAlert}

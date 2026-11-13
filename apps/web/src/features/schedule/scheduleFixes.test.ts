@@ -25,6 +25,7 @@ function plan(patch: Partial<PlanDto>): PlanDto {
     attendees: [],
     appointment: null,
     canEdit: true,
+    canConfirm: false,
     ...patch,
   };
 }

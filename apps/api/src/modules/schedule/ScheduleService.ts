@@ -377,7 +377,7 @@ export class ScheduleService {
     if (!plan) {
       throw new NotFoundError();
     }
-    if (!this.policy.canEditPlan(actor, plan)) {
+    if (!this.policy.canConfirmPlan(actor, plan)) {
       throw new ForbiddenError();
     }
     if (plan.status !== PlanStatus.Tentative) {
@@ -530,6 +530,7 @@ export class ScheduleService {
           }
         : null,
       canEdit: this.policy.canEditPlan(actor, row),
+      canConfirm: row.status === PlanStatus.Tentative && this.policy.canConfirmPlan(actor, row),
     };
   }
 
