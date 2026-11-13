@@ -509,13 +509,55 @@ function drawLake(ctx, width, height, top, t, streaks) {
   }
 }
 
-/** Koi colours (11/13): body, patches, fins. */
+/**
+ * Koi (錦鯉, 11/13), seen from above as in a Japanese garden pond. Each variety has its own
+ * body colour and patches: [x, y, rx, ry, colour] along the body (nose at x = 0.5).
+ */
+var RED = '#e5391f';
+var INK = '#1f2328';
 var KOI = [
-  { body: '#ff8a3d', spot: '#fff4e8', fin: '#ffb27a' },
-  { body: '#fff4ea', spot: '#e8402a', fin: '#ffe2d2' },
-  { body: '#ffc23d', spot: '#ff7a1f', fin: '#ffe08a' },
-  { body: '#e0482c', spot: '#fff1e6', fin: '#f58a6e' },
-  { body: '#4f6f86', spot: '#2f4a5e', fin: '#7a96aa' },
+  // 紅白 Kohaku: white with large red patches.
+  {
+    body: '#fffaf3',
+    fin: 'rgba(255, 250, 243, 0.85)',
+    spots: [
+      [0.3, 0, 0.13, 0.11, RED],
+      [0.02, 0.02, 0.14, 0.1, RED],
+      [-0.24, -0.01, 0.08, 0.06, RED],
+    ],
+  },
+  // 丹頂 Tancho: white with one red circle on the head.
+  { body: '#fffaf3', fin: 'rgba(255, 250, 243, 0.85)', spots: [[0.33, 0, 0.07, 0.07, RED]] },
+  // 大正三色 Sanke: white, red and small black spots.
+  {
+    body: '#fffaf3',
+    fin: 'rgba(255, 250, 243, 0.85)',
+    spots: [
+      [0.24, 0.01, 0.13, 0.1, RED],
+      [-0.12, -0.02, 0.11, 0.08, RED],
+      [0.06, 0.06, 0.04, 0.03, INK],
+      [-0.26, 0.03, 0.04, 0.03, INK],
+      [0.12, -0.07, 0.03, 0.025, INK],
+    ],
+  },
+  // 昭和三色 Showa: black with red and white.
+  {
+    body: '#262a30',
+    fin: 'rgba(60, 64, 72, 0.8)',
+    spots: [
+      [0.3, 0, 0.12, 0.1, RED],
+      [-0.06, 0.04, 0.12, 0.07, '#fffaf3'],
+      [-0.25, -0.03, 0.08, 0.05, RED],
+    ],
+  },
+  // 黄金 Ogon: shining gold.
+  {
+    body: '#ffbf2e',
+    fin: 'rgba(255, 214, 110, 0.85)',
+    spots: [[0.1, -0.03, 0.3, 0.05, '#ffe9a6']],
+  },
+  // 山吹 / orange.
+  { body: '#ff7a1f', fin: 'rgba(255, 168, 100, 0.85)', spots: [[0.05, 0, 0.2, 0.06, '#ffab5c']] },
 ];
 
 /** Fish (11/13): koi swimming under the surface, some near the shore (small) and some in front. */
@@ -529,14 +571,14 @@ function makeFish(width, height, top) {
 function newFish(width, height, top, anywhere) {
   var depth = Math.random();
   var dir = Math.random() < 0.5 ? -1 : 1;
-  var length = 16 + depth * 18 + Math.random() * 6;
+  var length = 26 + depth * 24 + Math.random() * 8;
   return {
     depth: depth,
     dir: dir,
     length: length,
     x: anywhere ? Math.random() * width : dir > 0 ? -length * 2 : width + length * 2,
-    y: top + 24 + depth * (height - top - 44),
-    speed: 16 + Math.random() * 22,
+    y: top + 26 + depth * (height - top - 48),
+    speed: 14 + Math.random() * 18,
     boost: 0,
     wag: Math.random() * Math.PI * 2,
     wander: Math.random() * Math.PI * 2,
@@ -544,78 +586,104 @@ function newFish(width, height, top, anywhere) {
   };
 }
 
-/** One koi under water, facing right in its own coordinates; the tail swings as it swims. */
+/** One koi, seen from above, facing right in its own coordinates; the tail swings as it swims. */
 function drawFish(ctx, fish) {
   var L = fish.length;
-  var swing = Math.sin(fish.wag) * (0.35 + Math.min(0.4, fish.boost / 120));
+  var swing = Math.sin(fish.wag) * (0.32 + Math.min(0.4, fish.boost / 120));
+  var koi = fish.koi;
   ctx.save();
   ctx.translate(fish.x, fish.y);
-  ctx.scale(fish.dir, 1);
-  ctx.rotate(Math.sin(fish.wag + 1.2) * 0.06 + Math.cos(fish.wander) * 0.06);
-  // Under the water: softer the further away it swims.
-  ctx.globalAlpha = 0.5 + 0.35 * fish.depth;
+  ctx.scale(fish.dir, 0.62);
+  ctx.rotate(Math.sin(fish.wag + 1.2) * 0.05 + Math.cos(fish.wander) * 0.08);
+  // Just under the water: a little softer further away.
+  ctx.globalAlpha = 0.72 + 0.25 * fish.depth;
 
   // Shadow on the lake bed.
-  ctx.fillStyle = 'rgba(20, 60, 90, 0.18)';
+  ctx.fillStyle = 'rgba(20, 60, 90, 0.2)';
   ctx.beginPath();
-  ctx.ellipse(-L * 0.05, L * 0.42, L * 0.5, L * 0.12, 0, 0, Math.PI * 2);
+  ctx.ellipse(-L * 0.02, L * 0.34, L * 0.5, L * 0.13, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Tail fin.
+  // Flowing tail fin.
   ctx.save();
-  ctx.translate(-L * 0.38, 0);
+  ctx.translate(-L * 0.36, 0);
   ctx.rotate(swing);
-  ctx.fillStyle = fish.koi.fin;
+  ctx.fillStyle = koi.fin;
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.quadraticCurveTo(-L * 0.2, -L * 0.05, -L * 0.32, -L * 0.22);
-  ctx.quadraticCurveTo(-L * 0.22, 0, -L * 0.32, L * 0.22);
-  ctx.quadraticCurveTo(-L * 0.2, L * 0.05, 0, 0);
+  ctx.bezierCurveTo(-L * 0.12, -L * 0.06, -L * 0.24, -L * 0.24, -L * 0.36, -L * 0.2);
+  ctx.quadraticCurveTo(-L * 0.26, -L * 0.02, -L * 0.3, 0);
+  ctx.quadraticCurveTo(-L * 0.26, L * 0.02, -L * 0.36, L * 0.2);
+  ctx.bezierCurveTo(-L * 0.24, L * 0.24, -L * 0.12, L * 0.06, 0, 0);
   ctx.fill();
   ctx.restore();
 
-  // Side fins.
-  ctx.fillStyle = fish.koi.fin;
+  // Pectoral fins spread to the sides, and the small fins near the tail.
+  ctx.fillStyle = koi.fin;
   [-1, 1].forEach(function (side) {
     ctx.beginPath();
     ctx.ellipse(
+      L * 0.2,
+      side * L * 0.15,
       L * 0.12,
-      side * L * 0.16,
-      L * 0.12,
-      L * 0.05,
-      side * (0.7 + swing * 0.4),
+      L * 0.06,
+      side * (0.9 + swing * 0.5),
       0,
       Math.PI * 2,
     );
+    ctx.ellipse(-L * 0.18, side * L * 0.09, L * 0.06, L * 0.03, side * 0.8, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // Body: round head, narrowing to the tail.
+  // Body: a round head, the widest part just behind it, narrowing to the tail.
   ctx.beginPath();
   ctx.moveTo(L * 0.5, 0);
-  ctx.bezierCurveTo(L * 0.48, -L * 0.2, L * 0.1, -L * 0.21, -L * 0.15, -L * 0.13);
-  ctx.quadraticCurveTo(-L * 0.32, -L * 0.07, -L * 0.4, 0);
-  ctx.quadraticCurveTo(-L * 0.32, L * 0.07, -L * 0.15, L * 0.13);
-  ctx.bezierCurveTo(L * 0.1, L * 0.21, L * 0.48, L * 0.2, L * 0.5, 0);
+  ctx.bezierCurveTo(L * 0.5, -L * 0.1, L * 0.3, -L * 0.15, L * 0.1, -L * 0.14);
+  ctx.bezierCurveTo(-L * 0.12, -L * 0.12, -L * 0.3, -L * 0.06, -L * 0.38, 0);
+  ctx.bezierCurveTo(-L * 0.3, L * 0.06, -L * 0.12, L * 0.12, L * 0.1, L * 0.14);
+  ctx.bezierCurveTo(L * 0.3, L * 0.15, L * 0.5, L * 0.1, L * 0.5, 0);
   ctx.closePath();
-  ctx.fillStyle = fish.koi.body;
+  ctx.fillStyle = koi.body;
   ctx.fill();
-  // Koi patches and a light along the back.
   ctx.save();
   ctx.clip();
-  ctx.fillStyle = fish.koi.spot;
+  koi.spots.forEach(function (spot) {
+    ctx.fillStyle = spot[4];
+    ctx.beginPath();
+    ctx.ellipse(spot[0] * L, spot[1] * L, spot[2] * L, spot[3] * L, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  // Light along the back and faint scales.
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
   ctx.beginPath();
-  ctx.ellipse(L * 0.18, -L * 0.04, L * 0.15, L * 0.1, 0.3, 0, Math.PI * 2);
-  ctx.ellipse(-L * 0.16, L * 0.03, L * 0.1, L * 0.08, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(L * 0.02, 0, L * 0.4, L * 0.025, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
-  ctx.fillRect(-L * 0.4, -L * 0.04, L * 0.9, L * 0.05);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+  ctx.lineWidth = 0.8;
+  for (var k = 0; k < 5; k++) {
+    var sx = L * (0.18 - k * 0.1);
+    ctx.beginPath();
+    ctx.arc(sx, 0, L * 0.12, -0.9, 0.9);
+    ctx.stroke();
+  }
   ctx.restore();
-  // Eye.
-  ctx.fillStyle = 'rgba(30, 30, 40, 0.8)';
-  ctx.beginPath();
-  ctx.arc(L * 0.36, -L * 0.06, Math.max(1, L * 0.035), 0, Math.PI * 2);
-  ctx.fill();
+
+  // Eyes on the sides of the head, and the whiskers (barbels) koi are known for.
+  ctx.fillStyle = 'rgba(25, 25, 30, 0.85)';
+  [-1, 1].forEach(function (side) {
+    ctx.beginPath();
+    ctx.arc(L * 0.4, side * L * 0.075, Math.max(1, L * 0.025), 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.strokeStyle = koi.fin;
+  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  [-1, 1].forEach(function (side) {
+    ctx.beginPath();
+    ctx.moveTo(L * 0.48, side * L * 0.04);
+    ctx.quadraticCurveTo(L * 0.55, side * L * 0.07, L * 0.56, side * L * 0.11);
+    ctx.stroke();
+  });
   ctx.restore();
 }
 
@@ -759,6 +827,248 @@ function drawCroc(ctx, croc, t, look, blink) {
   ctx.restore();
 }
 
+/** Where the sun shines: the top-left corner, smaller on phones. */
+function sunOf(width) {
+  return width < 640
+    ? { x: 38, y: 38, r: 17 }
+    : width < 1024
+      ? { x: 54, y: 54, r: 24 }
+      : { x: 70, y: 70, r: 30 };
+}
+
+/**
+ * A smiling sun (11/13) in the top-left corner: a yellow face with triangle rays that turn
+ * slowly, a soft glow, rosy cheeks, and a blink now and then.
+ */
+function drawSun(ctx, sun, t, blink) {
+  var r = sun.r;
+  ctx.save();
+  ctx.translate(sun.x, sun.y);
+  var glow = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 2.8);
+  glow.addColorStop(0, 'rgba(255, 214, 64, 0.45)');
+  glow.addColorStop(1, 'rgba(255, 214, 64, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 2.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Triangle rays around the face, turning slowly; every other one a little longer.
+  var turn = t * 0.12;
+  var rays = 12;
+  for (var i = 0; i < rays; i++) {
+    var a = turn + (i / rays) * Math.PI * 2;
+    var half = (Math.PI / rays) * 0.55;
+    var out = r * (i % 2 ? 1.5 : 1.72) + Math.sin(t * 2 + i) * r * 0.04;
+    ctx.fillStyle = i % 2 ? '#ffc21a' : '#ffad14';
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a - half) * r * 1.08, Math.sin(a - half) * r * 1.08);
+    ctx.lineTo(Math.cos(a) * out, Math.sin(a) * out);
+    ctx.lineTo(Math.cos(a + half) * r * 1.08, Math.sin(a + half) * r * 1.08);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  var disc = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+  disc.addColorStop(0, '#fff6a0');
+  disc.addColorStop(0.6, '#ffdc2e');
+  disc.addColorStop(1, '#ffbf14');
+  ctx.fillStyle = disc;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#f5a10f';
+  ctx.lineWidth = Math.max(1, r * 0.05);
+  ctx.stroke();
+
+  // Face: eyes (closing on a blink), cheeks and a wide smile.
+  ctx.fillStyle = '#5a3a12';
+  ctx.strokeStyle = '#5a3a12';
+  ctx.lineCap = 'round';
+  [-1, 1].forEach(function (side) {
+    var ex = side * r * 0.33;
+    var ey = -r * 0.16;
+    if (blink > 0.5) {
+      ctx.lineWidth = Math.max(1.2, r * 0.07);
+      ctx.beginPath();
+      ctx.arc(ex, ey - r * 0.04, r * 0.1, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, r * 0.09, r * 0.13 * (1 - blink), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(ex + r * 0.03, ey - r * 0.05, r * 0.035, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#5a3a12';
+    }
+  });
+  ctx.fillStyle = 'rgba(255, 120, 90, 0.45)';
+  [-1, 1].forEach(function (side) {
+    ctx.beginPath();
+    ctx.ellipse(side * r * 0.55, r * 0.14, r * 0.15, r * 0.09, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.lineWidth = Math.max(1.4, r * 0.08);
+  ctx.beginPath();
+  ctx.arc(0, r * 0.06, r * 0.36, 0.18 * Math.PI, 0.82 * Math.PI);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Where the fisherman's boat floats: right of the middle, near the front of the lake. */
+function fisherOf(width, height) {
+  var scale = width < 760 ? 0.75 : 1;
+  // Narrower screens: the sign-in box covers the middle, so he sits at the right edge, facing left.
+  if (width < 1024) return { x: width - 60 * scale, y: height - 56 * scale, scale: scale, dir: -1 };
+  return { x: width * 0.76, y: height - 56 * scale, scale: scale, dir: 1 };
+}
+
+/**
+ * A man fishing from a small wooden boat (11/13): straw hat (菅笠), indigo jacket, a rod with
+ * its line and float. Every so often a fish bites: the float dips and the rod bends.
+ */
+function drawFisher(ctx, fisher, t, bite) {
+  var s = fisher.scale;
+  ctx.save();
+  ctx.translate(fisher.x, fisher.y + Math.sin(t * 1.3) * 1.2 * s);
+  ctx.scale(s * (fisher.dir || 1), s);
+
+  // Its reflection, the boat's shadow on the water.
+  ctx.fillStyle = 'rgba(30, 60, 80, 0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, 8, 54, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // The float on the water, ahead of the boat, and the rings around it.
+  var bx = 96;
+  var dip = bite * 5;
+  ctx.save();
+  ctx.rotate(Math.sin(t * 0.9) * 0.02);
+
+  // Rod: from the hands up and out to the right, bending when a fish bites.
+  var hx = 12;
+  var hy = -26;
+  var tipX = 70;
+  var tipY = -70 + bite * 18;
+  ctx.strokeStyle = '#4a3220';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(hx - 6, hy + 4);
+  ctx.quadraticCurveTo(hx + 30, -62 + bite * 4, tipX, tipY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Line from the rod tip down to the float.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.quadraticCurveTo(bx - 6, (tipY + dip) / 2, bx, -2 + dip);
+  ctx.stroke();
+  ctx.fillStyle = '#e5391f';
+  ctx.beginPath();
+  ctx.arc(bx, -3 + dip, 3, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(bx, -3 + dip, 3, 0, Math.PI);
+  ctx.fill();
+
+  ctx.rotate(Math.sin(t * 0.9) * 0.02);
+  // The man, sitting in the boat.
+  ctx.fillStyle = '#2f4f8a';
+  ctx.beginPath();
+  ctx.moveTo(-18, -10);
+  ctx.quadraticCurveTo(-20, -36, -6, -38);
+  ctx.quadraticCurveTo(6, -38, 6, -10);
+  ctx.closePath();
+  ctx.fill();
+  // White collar line of the jacket.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-10, -37);
+  ctx.lineTo(-2, -24);
+  ctx.stroke();
+  // Arm reaching to the rod, and the hand.
+  ctx.strokeStyle = '#26406f';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-4, -32);
+  ctx.quadraticCurveTo(4, -22, hx, hy);
+  ctx.stroke();
+  ctx.fillStyle = '#f0c49a';
+  ctx.beginPath();
+  ctx.arc(hx, hy, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Head, with a smile, looking out at the float.
+  ctx.beginPath();
+  ctx.arc(-5, -45, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2b2b2b';
+  ctx.beginPath();
+  ctx.arc(-1, -46, 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#7a4a2a';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.arc(-1.5, -43.5, 2.6, 0.1 * Math.PI, 0.6 * Math.PI);
+  ctx.stroke();
+  // Straw hat (菅笠).
+  ctx.fillStyle = '#e2bf72';
+  ctx.beginPath();
+  ctx.moveTo(-24, -49);
+  ctx.quadraticCurveTo(-5, -53, 14, -49);
+  ctx.lineTo(-5, -64);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#b8913f';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-5, -64);
+  ctx.lineTo(-12, -50);
+  ctx.moveTo(-5, -64);
+  ctx.lineTo(2, -50);
+  ctx.stroke();
+
+  // The wooden boat.
+  var wood = ctx.createLinearGradient(0, -12, 0, 6);
+  wood.addColorStop(0, '#a8714a');
+  wood.addColorStop(1, '#6e4529');
+  ctx.fillStyle = wood;
+  ctx.beginPath();
+  ctx.moveTo(-50, -14);
+  ctx.lineTo(48, -14);
+  ctx.quadraticCurveTo(44, 2, 30, 5);
+  ctx.lineTo(-36, 5);
+  ctx.quadraticCurveTo(-48, 2, -50, -14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#5a3820';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-50, -14);
+  ctx.lineTo(48, -14);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(60, 35, 18, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-44, -5);
+  ctx.lineTo(42, -5);
+  ctx.stroke();
+  // Water along the hull.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.ellipse(-2, 3, 50 + Math.sin(t * 1.5) * 2, 4, 0, Math.PI * 0.05, Math.PI * 0.95);
+  ctx.stroke();
+  ctx.restore();
+  return { x: fisher.x + bx * s * (fisher.dir || 1), y: fisher.y };
+}
+
 /**
  * Starts the leaves on a full-screen canvas. Returns a function that stops them.
  * Nothing moves for people who prefer reduced motion; it pauses while the tab is hidden.
@@ -788,7 +1098,9 @@ function startLeaves(canvas, options) {
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
       drawWaterfall(ctx, scenery, top, 0, []);
+      drawFisher(ctx, fisherOf(w, h), 0, 0);
       drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
+      drawSun(ctx, sunOf(w), 0, 0);
     };
     still();
     window.addEventListener('resize', still);
@@ -824,6 +1136,12 @@ function startLeaves(canvas, options) {
   var nextBlink = 3;
   var blinkAt = -1;
   var nextCrocRing = 0;
+  var sun = sunOf(0);
+  var fisher = fisherOf(0, 0);
+  var nextSunBlink = 4;
+  var sunBlinkAt = -1;
+  var nextBite = 5;
+  var biteAt = -10;
 
   function resize() {
     width = canvas.clientWidth || window.innerWidth;
@@ -839,6 +1157,8 @@ function startLeaves(canvas, options) {
       scenery = buildScenery(width, height, lakeTop, ratio);
       fish = makeFish(width, height, lakeTop);
       croc = crocOf(width, height);
+      sun = sunOf(width);
+      fisher = fisherOf(width, height);
     }
     floating = floating.filter(function (leaf) {
       return leaf.y0 > lakeTop && leaf.y0 < height;
@@ -1003,6 +1323,17 @@ function startLeaves(canvas, options) {
     clock += dt;
 
     if (lake) {
+      if (clock >= nextSunBlink) {
+        sunBlinkAt = clock;
+        nextSunBlink = clock + 3.5 + Math.random() * 4;
+      }
+      var sunSince = clock - sunBlinkAt;
+      drawSun(
+        ctx,
+        sun,
+        clock,
+        sunSince >= 0 && sunSince < 0.3 ? Math.sin((sunSince / 0.3) * Math.PI) : 0,
+      );
       drawScenery(ctx, scenery, width, height, lakeTop, false);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
@@ -1121,6 +1452,24 @@ function startLeaves(canvas, options) {
         nextCrocRing = clock + 2.6 + Math.random() * 1.6;
       }
       drawCroc(ctx, croc, clock, look, blink);
+
+      // The fisherman: now and then a fish bites — the float dips twice, with rings.
+      if (clock >= nextBite) {
+        biteAt = clock;
+        nextBite = clock + 6 + Math.random() * 6;
+      }
+      var biting = clock - biteAt;
+      var bite = biting < 1.6 ? Math.max(0, Math.sin((biting / 0.8) * Math.PI)) : 0;
+      var float = drawFisher(ctx, fisher, clock, bite);
+      if (biting >= 0 && biting < dt + 0.0001) {
+        ripples.push({
+          x: float.x,
+          y: float.y - 2,
+          age: 0,
+          size: 46 * fisher.scale,
+          strength: 0.6,
+        });
+      }
     }
 
     for (var i = resting.length - 1; i >= 0; i--) {
