@@ -58,9 +58,17 @@ export function AuthLayout({
   return (
     <LastThemeProvider>
       <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
-        <GridBackdrop />
-        {/* Leaves fall over the grid, behind the sign-in box, onto a lake at the bottom (11/13). */}
+        {/* Leaves fall behind the sign-in box onto a lake under an evening sky (11/13). No grid
+            here: only its click ripple, over the sky, fading out above the mountains. */}
         {leaves && <FallingLeaves className="z-0" lake />}
+        {leaves ? (
+          <GridBackdrop
+            lines={false}
+            className="z-0 [mask-image:linear-gradient(to_bottom,black_45%,transparent_62%)]"
+          />
+        ) : (
+          <GridBackdrop />
+        )}
         <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
 
         <div className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16">

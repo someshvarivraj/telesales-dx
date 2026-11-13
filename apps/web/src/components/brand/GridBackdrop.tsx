@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { cn } from '@/components/ui/cn';
 
 const CELL = 32;
 const MAX_LIVE = 14;
@@ -38,7 +39,17 @@ interface LiveCell {
  * Sits behind everything (cards and menus stay plain white), never takes clicks, pauses
  * when the tab is hidden, and stays still for people who prefer reduced motion.
  */
-export function GridBackdrop() {
+export function GridBackdrop({
+  className,
+  lines = true,
+}: {
+  className?: string;
+  /**
+   * `false` (sign-in screen over the evening sky, 11/13): no grid lines and no slowly fading
+   * cells — only the ring of lit cells that spreads from a click.
+   */
+  lines?: boolean;
+} = {}) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -65,6 +76,7 @@ export function GridBackdrop() {
         context.strokeRect(cell.col * CELL + 0.5, cell.row * CELL + 0.5, CELL, CELL);
       }
       for (const ripple of ripples) drawRipple(ripple, now);
+      if (!lines) return;
       context.beginPath();
       for (let x = 0.5; x <= width; x += CELL) {
         context.moveTo(x, 0);
@@ -131,7 +143,7 @@ export function GridBackdrop() {
       last = now;
       cells = cells.filter((cell) => now - cell.born < cell.life);
       ripples = ripples.filter((ripple) => now - ripple.born < RIPPLE_MS);
-      if (cells.length < MAX_LIVE && Math.random() < 0.08) spawn(now);
+      if (lines && cells.length < MAX_LIVE && Math.random() < 0.08) spawn(now);
       draw(now);
     };
 
@@ -154,13 +166,16 @@ export function GridBackdrop() {
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointerdown', press);
     };
-  }, []);
+  }, [lines]);
 
   return (
     <canvas
       ref={ref}
       aria-hidden="true"
-      className="grid-backdrop pointer-events-none fixed inset-0 -z-10 h-full w-full"
+      className={cn(
+        'grid-backdrop pointer-events-none fixed inset-0 -z-10 h-full w-full',
+        className,
+      )}
     />
   );
 }
