@@ -75,7 +75,7 @@ export function defaultEndTime(start: string): string {
   return addMinutesToTime(start, DEFAULT_APPOINTMENT_MINUTES);
 }
 
-/** End of a new plan other than an appointment (1 hour). */
+/** End of a new plan other than an appointment (30 minutes). */
 export function defaultPlanEndTime(start: string): string {
   return addMinutesToTime(start, DEFAULT_PLAN_MINUTES);
 }

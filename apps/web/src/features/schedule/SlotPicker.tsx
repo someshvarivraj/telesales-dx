@@ -195,11 +195,7 @@ export function SlotDay({
         events={data.events}
         holidays={data.schedule?.holidays ?? []}
         onEvent={() => undefined}
-        onSlot={
-          held
-            ? undefined
-            : (_person, time) => onChange({ ...slot, start: time, end: defaultEndTime(time) })
-        }
+        onRange={held ? undefined : (_person, start, end) => onChange({ ...slot, start, end })}
         selection={{ personId: slot.repId, start: slot.start, end: slot.end }}
         maxHeight={maxHeight}
         step={BOOKING_STEP_MINUTES}
@@ -207,7 +203,7 @@ export function SlotDay({
         bufferMinutes={data.schedule?.travelBufferMinutes}
       />
       <p className="text-xs text-ink-sub">
-        空いている時間をクリックすると、その時刻から30分の枠が入ります（30分刻み）。
+        空いている時間をクリックすると30分の枠が入ります。ドラッグすると、好きな長さで選べます（30分刻み）。
       </p>
     </>
   );

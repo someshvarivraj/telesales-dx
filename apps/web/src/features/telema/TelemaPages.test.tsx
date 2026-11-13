@@ -94,6 +94,28 @@ describe('ShiftsPage', () => {
     }
   });
 
+  it('puts filling your own shifts first and keeps everyone for leads only', () => {
+    renderAs([Role.Telema], <ShiftsPage />, [[telemaKeys.shifts(month), shiftMonth]]);
+    expect(screen.getByRole('button', { name: '自分のシフトを埋める' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'まとめて入力' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: '全員分を埋める' })).not.toBeInTheDocument();
+  });
+
+  it('gives leads a separate button for everyone', () => {
+    renderAs([Role.TelemaLead], <ShiftsPage />, [[telemaKeys.shifts(month), shiftMonth]]);
+    expect(screen.getByRole('button', { name: '自分のシフトを埋める' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '全員分を埋める' })).toBeEnabled();
+  });
+
+  it('shows your own row first and marks today', () => {
+    const others = { ...shiftMonth, people: [person(OTHER, '同僚'), person(ME, '自分')] };
+    renderAs([Role.Telema], <ShiftsPage />, [[telemaKeys.shifts(month), others]]);
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows[0]).toHaveTextContent('自分');
+    expect(rows[0]).toHaveTextContent('あなた');
+    expect(screen.getByRole('columnheader', { current: 'date' })).toHaveTextContent('今日');
+  });
+
   it('shows the monthly total of working hours', () => {
     renderAs([Role.Telema], <ShiftsPage />, [[telemaKeys.shifts(month), shiftMonth]]);
     expect(screen.getByText('8時間')).toBeInTheDocument();
