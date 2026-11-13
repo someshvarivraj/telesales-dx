@@ -41,11 +41,14 @@ interface LiveCell {
  */
 export function GridBackdrop({
   className,
-  line = LINE,
+  lines = true,
 }: {
   className?: string;
-  /** Grid line colour; lighter over the sign-in screen's evening sky (11/13). */
-  line?: string;
+  /**
+   * `false` (sign-in screen over the evening sky, 11/13): no grid lines and no slowly fading
+   * cells — only the ring of lit cells that spreads from a click.
+   */
+  lines?: boolean;
 } = {}) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -73,6 +76,7 @@ export function GridBackdrop({
         context.strokeRect(cell.col * CELL + 0.5, cell.row * CELL + 0.5, CELL, CELL);
       }
       for (const ripple of ripples) drawRipple(ripple, now);
+      if (!lines) return;
       context.beginPath();
       for (let x = 0.5; x <= width; x += CELL) {
         context.moveTo(x, 0);
@@ -82,7 +86,7 @@ export function GridBackdrop({
         context.moveTo(0, y);
         context.lineTo(width, y);
       }
-      context.strokeStyle = line;
+      context.strokeStyle = LINE;
       context.lineWidth = 1;
       context.stroke();
     };
@@ -139,7 +143,7 @@ export function GridBackdrop({
       last = now;
       cells = cells.filter((cell) => now - cell.born < cell.life);
       ripples = ripples.filter((ripple) => now - ripple.born < RIPPLE_MS);
-      if (cells.length < MAX_LIVE && Math.random() < 0.08) spawn(now);
+      if (lines && cells.length < MAX_LIVE && Math.random() < 0.08) spawn(now);
       draw(now);
     };
 
@@ -162,7 +166,7 @@ export function GridBackdrop({
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointerdown', press);
     };
-  }, [line]);
+  }, [lines]);
 
   return (
     <canvas
