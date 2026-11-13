@@ -3,6 +3,7 @@ import {
   type AssistantActionKind,
   addMinutes,
   AppointmentSource,
+  DEFAULT_APPOINTMENT_MINUTES,
   fromJst,
   jstDate,
   OptionCategory,
@@ -73,7 +74,7 @@ export const ACTION_DEFINITIONS = [
         properties: {
           person: { type: 'string', description: '営業の名前の一部、または「自分」' },
           date: { type: 'string', description: '日付 YYYY-MM-DD（日本時間）' },
-          durationMinutes: { type: 'integer', description: '必要な長さ（分）。既定は60' },
+          durationMinutes: { type: 'integer', description: '必要な長さ（分）。既定は30' },
         },
         required: ['person', 'date'],
       },
@@ -116,7 +117,7 @@ export const ACTION_DEFINITIONS = [
           person: { type: 'string', description: '担当営業の名前の一部' },
           date: { type: 'string', description: 'YYYY-MM-DD' },
           start: { type: 'string', description: '開始 HH:MM（15分刻み）' },
-          end: { type: 'string', description: '終了 HH:MM（15分刻み）。既定は開始の60分後' },
+          end: { type: 'string', description: '終了 HH:MM（15分刻み）。既定は開始の30分後' },
           company: { type: 'string', description: 'アポ先の会社名（分かれば）' },
         },
         required: ['person', 'date', 'start'],
@@ -135,7 +136,7 @@ export const ACTION_DEFINITIONS = [
           company: { type: 'string', description: '会社名（登録済みの会社）' },
           date: { type: 'string', description: 'YYYY-MM-DD' },
           start: { type: 'string', description: '開始 HH:MM（15分刻み）' },
-          end: { type: 'string', description: '終了 HH:MM。既定は開始の60分後' },
+          end: { type: 'string', description: '終了 HH:MM。既定は開始の30分後' },
           format: { type: 'string', enum: ['VISIT', 'ONLINE'], description: '訪問／オンライン' },
           salesRep: { type: 'string', description: '担当営業の名前（省くと営業担当表で判定）' },
           contactName: { type: 'string', description: '先方担当者' },
@@ -193,7 +194,7 @@ export const ACTION_NAMES: readonly string[] = ACTION_DEFINITIONS.map((tool) => 
 const freeArgs = z.object({
   person: z.string().trim().min(1).max(50),
   date: dateString,
-  durationMinutes: z.number().int().min(15).max(480).multipleOf(15).default(60),
+  durationMinutes: z.number().int().min(15).max(480).multipleOf(15).default(30),
 });
 const planArgs = z.object({
   person: z.string().trim().min(1).max(50),
@@ -394,7 +395,7 @@ export class AssistantActions {
     if (isLookupError(rep)) return rep;
     const company = args.company ? await findCompany(this.deps.prisma, args.company) : null;
     if (isLookupError(company)) return company;
-    const end = args.end ?? hhmm(minutesOf(args.start) + 60);
+    const end = args.end ?? hhmm(minutesOf(args.start) + DEFAULT_APPOINTMENT_MINUTES);
     const startsAt = fromJst(args.date, args.start);
     const endsAt = fromJst(args.date, end);
     const check = await this.deps.guard.check({
@@ -549,7 +550,7 @@ export class AssistantActions {
       repReason = suggestion.matchedBy;
     }
 
-    const end = args.end ?? hhmm(minutesOf(args.start) + 60);
+    const end = args.end ?? hhmm(minutesOf(args.start) + DEFAULT_APPOINTMENT_MINUTES);
     const startsAt = fromJst(args.date, args.start);
     const endsAt = fromJst(args.date, end);
     const check = await this.deps.guard.check({

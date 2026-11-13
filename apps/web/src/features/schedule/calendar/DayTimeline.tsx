@@ -1,5 +1,5 @@
 import type { UserRef } from '@telesales/shared';
-import { SLOT_MINUTES } from '@telesales/shared';
+import { BOOKING_STEP_MINUTES as STEP, DEFAULT_PLAN_MINUTES } from '@telesales/shared';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import { formatTime } from '@/lib/format';
@@ -179,27 +179,26 @@ export function DayTimeline({
                   }}
                   onKeyDown={(event) => {
                     if (onRange && !closed && event.key === 'Enter')
-                      onRange(person.id, '10:00', '11:00');
+                      onRange(person.id, '10:00', '10:30');
                   }}
                   onPointerDown={(event) => {
                     if (!onRange || closed || event.button !== 0 || event.pointerType === 'touch')
                       return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
-                    const at = Math.floor(minutesAt(event) / SLOT_MINUTES) * SLOT_MINUTES;
-                    setDrag({ id: person.id, anchor: at, current: at + 60 });
+                    const at = Math.floor(minutesAt(event) / STEP) * STEP;
+                    setDrag({ id: person.id, anchor: at, current: at + DEFAULT_PLAN_MINUTES });
                   }}
                   onPointerMove={(event) => {
                     if (drag?.id !== person.id) return;
-                    const at = Math.round(minutesAt(event) / SLOT_MINUTES) * SLOT_MINUTES;
-                    if (Math.abs(at - drag.anchor) >= SLOT_MINUTES)
-                      setDrag({ ...drag, current: at });
+                    const at = Math.round(minutesAt(event) / STEP) * STEP;
+                    if (Math.abs(at - drag.anchor) >= STEP) setDrag({ ...drag, current: at });
                   }}
                   onPointerUp={() => {
                     if (drag?.id !== person.id) return;
                     setDrag(null);
                     const start = Math.min(drag.anchor, drag.current);
-                    const end = Math.max(drag.anchor, drag.current, start + SLOT_MINUTES);
+                    const end = Math.max(drag.anchor, drag.current, start + STEP);
                     onRange?.(person.id, hhmm(Math.max(START, start)), hhmm(Math.min(END, end)));
                   }}
                   onPointerCancel={() => setDrag(null)}

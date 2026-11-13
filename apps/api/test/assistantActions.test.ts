@@ -135,7 +135,7 @@ describe('MoraBot actions', () => {
       repId: REP.id,
       date: '2026-11-03',
       start: '13:30',
-      end: '14:30',
+      end: '14:00',
       hold: '1',
       companyId: COMPANY.id,
     });
@@ -147,9 +147,9 @@ describe('MoraBot actions', () => {
       person: '営業',
       date: '2026-11-03',
     })) as { free: string[] };
-    expect(result.free[0]).toBe('09:00〜10:00');
-    expect(result.free).not.toContain('10:00〜11:00');
-    expect(result.free.at(-1)).toBe('17:00〜18:00');
+    expect(result.free[0]).toBe('09:00〜09:30');
+    expect(result.free).not.toContain('10:00〜10:30');
+    expect(result.free.at(-1)).toBe('17:30〜18:00');
   });
 
   it('drafts a call result for the company', async () => {

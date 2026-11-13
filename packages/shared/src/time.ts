@@ -8,12 +8,12 @@ const DAY_MS = 24 * 60 * 60_000;
 
 /** Times are entered in 15-minute steps (spec §7). */
 export const SLOT_MINUTES = 15;
-/** Appointments are picked on the rep's day in 30-minute steps, 30 minutes long by default
- *  (request 11/12; times can still be typed to 15 minutes). */
+/** Clicking or dragging on a time grid (appointments and plans) goes in 30-minute steps,
+ *  30 minutes long by default (requests 11/12, 11/13; times can still be typed to 15 minutes). */
 export const BOOKING_STEP_MINUTES = 30;
 export const DEFAULT_APPOINTMENT_MINUTES = 30;
-/** Default length of other plans (会議・社内予定 …). */
-export const DEFAULT_PLAN_MINUTES = 60;
+/** Default length of other plans (会議・社内予定 …): 30 minutes, like appointments (11/13). */
+export const DEFAULT_PLAN_MINUTES = 30;
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;

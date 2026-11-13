@@ -1,4 +1,4 @@
-import { jstMinutesOfDay, SLOT_MINUTES } from '@telesales/shared';
+import { BOOKING_STEP_MINUTES, DEFAULT_PLAN_MINUTES, jstMinutesOfDay } from '@telesales/shared';
 import { Building2, Lock, Video } from 'lucide-react';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
@@ -37,7 +37,7 @@ interface TimeGridProps {
   dayEnd?: number;
   onEvent: (event: CalendarEvent) => void;
   peek?: PeekBinder;
-  /** Drag (or click) on empty time: the range is snapped to 15 minutes. */
+  /** Drag (or click) on empty time: the range is snapped to `step` (30 minutes). */
   onRange?: (column: GridColumn, start: string, end: string) => void;
   /** Highlight the slot being booked. */
   selection?: { personId: string; date: string; start: string; end: string } | null;
@@ -50,9 +50,9 @@ interface TimeGridProps {
   minColumnWidth?: number;
   /** Label for the empty-time area of one column (screen readers). */
   columnLabel?: (column: GridColumn) => string;
-  /** Minutes a click or drag snaps to (15; booking uses 30). */
+  /** Minutes a click or drag snaps to (30). */
   step?: number;
-  /** Length of the range a single click makes (an hour; booking uses 30 minutes). */
+  /** Length of the range a single click makes (30 minutes). */
   clickMinutes?: number;
 }
 
@@ -89,8 +89,8 @@ export function TimeGrid({
   maxHeight = 'calc(100dvh - 15rem)',
   minColumnWidth = 176,
   columnLabel,
-  step = SLOT_MINUTES,
-  clickMinutes = 60,
+  step = BOOKING_STEP_MINUTES,
+  clickMinutes = DEFAULT_PLAN_MINUTES,
 }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const now = useNow();
