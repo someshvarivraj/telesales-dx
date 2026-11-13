@@ -15,24 +15,11 @@ var LEAF_COLORS = [
   ['#ffd23a', '#ff9a14', '#e86a0a'],
 ];
 /**
- * Evening mode (request 11/13): from 17:00 to 5:00 Japan time the lake scene turns to dusk —
- * a moon instead of the sun, a few stars and now and then a shooting star. `?scene=evening` or
- * `?scene=day` in the address forces one (for demos). Set once per start.
+ * Sign-in lake sky (11/13): always a light early-evening sky, around 5 p.m. — soft blue
+ * overhead turning peach at the mountains, with the moon and a few stars already out.
+ * Set when the lake starts; the maintenance page (no lake) keeps its plain background.
  */
-var NIGHT = false;
-
-/** Whether the sign-in screen shows its evening scene now. */
-export function isEvening(now) {
-  try {
-    var forced = new URLSearchParams(window.location.search).get('scene');
-    if (forced === 'evening' || forced === 'night') return true;
-    if (forced === 'day') return false;
-  } catch (error) {
-    // No address to read (tests): go by the clock.
-  }
-  var hour = ((now || new Date()).getUTCHours() + 9) % 24;
-  return hour >= 17 || hour < 5;
-}
+var EVENING = false;
 
 /** How many leaves may lie on top of each other at one spot. */
 var LAYERS = 2;
@@ -165,27 +152,21 @@ function buildScenery(width, height, top, ratio) {
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   var rand = seeded(1113);
   var tall = Math.min(200, height * 0.21);
-  if (NIGHT) {
-    // Evening sky: deep blue overhead, warm dusk along the mountains.
+  if (EVENING) {
+    // Early evening, still light: soft blue overhead, lavender, then peach at the mountains.
     var sky = ctx.createLinearGradient(0, 0, 0, top);
-    sky.addColorStop(0, '#111a3c');
-    sky.addColorStop(0.5, '#25305f');
-    sky.addColorStop(0.8, '#5b4a7c');
-    sky.addColorStop(1, '#c98474');
+    sky.addColorStop(0, '#9aaad8');
+    sky.addColorStop(0.45, '#c1b9df');
+    sky.addColorStop(0.8, '#f2c6b8');
+    sky.addColorStop(1, '#ffdcb8');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, width, top + 4);
   }
-  var layers = NIGHT
-    ? [
-        { ridge: ridgeOf(top, tall, 0.0042, rand), from: '#5a5a8a', to: '#45467a' },
-        { ridge: ridgeOf(top, tall * 0.68, 0.0071, rand), from: '#3b3f6c', to: '#2e3259' },
-        { ridge: ridgeOf(top, tall * 0.22, 0.016, rand), from: '#4c3550', to: '#38283e' },
-      ]
-    : [
-        { ridge: ridgeOf(top, tall, 0.0042, rand), from: '#dfe6ee', to: '#c9d4df' },
-        { ridge: ridgeOf(top, tall * 0.68, 0.0071, rand), from: '#b4c3d2', to: '#9cadbf' },
-        { ridge: ridgeOf(top, tall * 0.22, 0.016, rand), from: '#a5705e', to: '#7e5446' },
-      ];
+  var layers = [
+    { ridge: ridgeOf(top, tall, 0.0042, rand), from: '#dfe6ee', to: '#c9d4df' },
+    { ridge: ridgeOf(top, tall * 0.68, 0.0071, rand), from: '#b4c3d2', to: '#9cadbf' },
+    { ridge: ridgeOf(top, tall * 0.22, 0.016, rand), from: '#a5705e', to: '#7e5446' },
+  ];
   var fallX = fallXOf(width);
   layers.forEach(function (layer, index) {
     var highest = top - (index === 0 ? tall : index === 1 ? tall * 0.68 : tall * 0.22);
@@ -203,7 +184,7 @@ function buildScenery(width, height, top, ratio) {
       // Snow on the highest peaks of the far range.
       ctx.save();
       ctx.clip();
-      ctx.fillStyle = NIGHT ? 'rgba(220, 225, 255, 0.4)' : 'rgba(255, 255, 255, 0.75)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.fillRect(0, top - tall - 4, width, tall * 0.16);
       ctx.restore();
     }
@@ -212,9 +193,9 @@ function buildScenery(width, height, top, ratio) {
   // The cliff the water falls from: a rocky shoulder rising out of the middle range.
   var fallTop = top - tall * 0.62;
   var rock = ctx.createLinearGradient(fallX - 60, 0, fallX + 60, 0);
-  rock.addColorStop(0, NIGHT ? '#4d5470' : '#8d99a5');
-  rock.addColorStop(0.45, NIGHT ? '#383e58' : '#6a7682');
-  rock.addColorStop(1, NIGHT ? '#495070' : '#8592a0');
+  rock.addColorStop(0, '#8d99a5');
+  rock.addColorStop(0.45, '#6a7682');
+  rock.addColorStop(1, '#8592a0');
   ctx.fillStyle = rock;
   ctx.beginPath();
   ctx.moveTo(fallX - 78, top + 2);
@@ -244,9 +225,7 @@ function buildScenery(width, height, top, ratio) {
   });
 
   // Autumn trees along the near hills (left and right of the waterfall's rocks).
-  var trees = NIGHT
-    ? ['#8a2e2e', '#9a4a2a', '#a37030', '#76262a', '#6e3e22']
-    : ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
+  var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
   var near = layers[2].ridge;
   for (var t = 0; t < width / 7; t++) {
     var tx = rand() * width;
@@ -287,8 +266,8 @@ function drawWaterfall(ctx, scenery, top, t, falls) {
   var from = scenery.fallTop;
   var w = 30;
   var band = ctx.createLinearGradient(0, from, 0, top);
-  band.addColorStop(0, NIGHT ? 'rgba(150, 170, 210, 0.85)' : 'rgba(225, 240, 248, 0.92)');
-  band.addColorStop(1, NIGHT ? 'rgba(120, 145, 195, 0.9)' : 'rgba(200, 228, 242, 0.95)');
+  band.addColorStop(0, 'rgba(225, 240, 248, 0.92)');
+  band.addColorStop(1, 'rgba(200, 228, 242, 0.95)');
   ctx.fillStyle = band;
   ctx.beginPath();
   ctx.moveTo(x - w / 2 + 2, from);
@@ -306,7 +285,7 @@ function drawWaterfall(ctx, scenery, top, t, falls) {
     var y2 = Math.min(top, y + f.length);
     if (y2 <= y1) continue;
     var spread = (y1 - from) / span;
-    ctx.strokeStyle = 'rgba(255, 255, 255, ' + (f.alpha * (NIGHT ? 0.6 : 1)).toFixed(2) + ')';
+    ctx.strokeStyle = 'rgba(255, 255, 255, ' + f.alpha.toFixed(2) + ')';
     ctx.lineWidth = f.width;
     ctx.beginPath();
     ctx.moveTo(x + f.lane * (w / 2 + spread * 3), y1);
@@ -366,11 +345,11 @@ function shoreAt(x, top, t) {
 }
 
 /** Lake: still blue water fading deeper towards the front, a soft shore and glints. */
-function drawLake(ctx, width, height, top, t, streaks, moonX) {
+function drawLake(ctx, width, height, top, t, streaks) {
   // Haze just above the water.
   var haze = ctx.createLinearGradient(0, top - 28, 0, top);
-  haze.addColorStop(0, NIGHT ? 'rgba(200, 140, 140, 0)' : 'rgba(170, 210, 228, 0)');
-  haze.addColorStop(1, NIGHT ? 'rgba(200, 140, 140, 0.3)' : 'rgba(170, 210, 228, 0.35)');
+  haze.addColorStop(0, 'rgba(170, 210, 228, 0)');
+  haze.addColorStop(1, 'rgba(170, 210, 228, 0.35)');
   ctx.fillStyle = haze;
   ctx.fillRect(0, top - 28, width, 28);
 
@@ -381,9 +360,9 @@ function drawLake(ctx, width, height, top, t, streaks, moonX) {
   ctx.lineTo(0, height);
   ctx.closePath();
   var water = ctx.createLinearGradient(0, top, 0, height);
-  water.addColorStop(0, NIGHT ? 'rgba(92, 96, 150, 0.98)' : 'rgba(196, 228, 241, 0.96)');
-  water.addColorStop(0.35, NIGHT ? 'rgba(42, 56, 108, 0.98)' : 'rgba(132, 190, 220, 0.97)');
-  water.addColorStop(1, NIGHT ? 'rgba(14, 24, 58, 0.99)' : 'rgba(58, 118, 160, 0.98)');
+  water.addColorStop(0, 'rgba(196, 228, 241, 0.96)');
+  water.addColorStop(0.35, 'rgba(132, 190, 220, 0.97)');
+  water.addColorStop(1, 'rgba(58, 118, 160, 0.98)');
   ctx.fillStyle = water;
   ctx.fill();
 
@@ -391,29 +370,9 @@ function drawLake(ctx, width, height, top, t, streaks, moonX) {
   ctx.beginPath();
   ctx.moveTo(0, shoreAt(0, top, t));
   for (var x2 = 12; x2 <= width + 12; x2 += 12) ctx.lineTo(x2, shoreAt(x2, top, t));
-  ctx.strokeStyle = NIGHT ? 'rgba(255, 220, 200, 0.5)' : 'rgba(255, 255, 255, 0.85)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
-
-  // Evening: the moon's light on the water, a shimmering path of short silver lines.
-  if (NIGHT && moonX !== undefined) {
-    ctx.lineCap = 'round';
-    for (var m = 0; m < 16; m++) {
-      var k = m / 15;
-      var my = top + 6 + k * (height - top - 12);
-      var half = 6 + k * 26 + Math.sin(t * 1.7 + m * 1.3) * (3 + k * 6);
-      var mx = moonX + Math.sin(t * 0.9 + m * 0.8) * (2 + k * 5);
-      ctx.strokeStyle =
-        'rgba(255, 248, 220, ' +
-        (0.18 + 0.22 * (0.5 + 0.5 * Math.sin(t * 2.3 + m))).toFixed(3) +
-        ')';
-      ctx.lineWidth = 1.2 + k * 1.4;
-      ctx.beginPath();
-      ctx.moveTo(mx - half, my);
-      ctx.lineTo(mx + half, my);
-      ctx.stroke();
-    }
-  }
 
   // Glints: shorter and fainter far away (near the shore), longer at the front.
   var depthPx = height - top;
@@ -752,7 +711,7 @@ function drawCroc(ctx, croc, t, look, blink) {
   ctx.restore();
 }
 
-/** Where the sun shines: the top-left corner, smaller on phones. */
+/** Where the moon is: the top-left corner, smaller on phones. */
 function sunOf(width) {
   return width < 640
     ? { x: 46, y: 46, r: 24 }
@@ -766,8 +725,8 @@ var MALLET_DOWN = 0.5;
 var MALLET_UP = -0.95;
 
 /**
- * The sun (11/13, after the senior's request): a round golden disc with a soft glow, no rays. On
- * it, like the rabbit in the moon (月のうさぎ), a rabbit pounds mochi in a mortar: the mallet
+ * The moon in the evening sky (11/13, after the senior's requests): a pale round disc with a
+ * soft glow. On it the rabbit in the moon (月のうさぎ) pounds mochi in a mortar: the mallet
  * rises slowly and comes down quickly, and the mochi gives a little at each strike.
  */
 function drawSun(ctx, sun, t) {
@@ -778,30 +737,29 @@ function drawSun(ctx, sun, t) {
   // Soft glow, breathing slowly.
   var breath = 0.5 + 0.5 * Math.sin(t * 0.8);
   var glow = ctx.createRadialGradient(0, 0, r * 0.8, 0, 0, r * (2.2 + 0.15 * breath));
-  glow.addColorStop(0, NIGHT ? 'rgba(225, 232, 255, 0.32)' : 'rgba(255, 200, 60, 0.42)');
-  glow.addColorStop(1, NIGHT ? 'rgba(225, 232, 255, 0)' : 'rgba(255, 200, 60, 0)');
+  glow.addColorStop(0, 'rgba(255, 255, 245, 0.55)');
+  glow.addColorStop(1, 'rgba(255, 255, 245, 0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(0, 0, r * 2.4, 0, Math.PI * 2);
   ctx.fill();
 
   var disc = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-  // Evening: the moon, pale cream, where the rabbit traditionally lives.
-  disc.addColorStop(0, NIGHT ? '#fffdf0' : '#fff3a8');
-  disc.addColorStop(0.55, NIGHT ? '#f6efd2' : '#ffd84a');
-  disc.addColorStop(1, NIGHT ? '#e2d7b2' : '#ffb81f');
+  disc.addColorStop(0, '#fffef6');
+  disc.addColorStop(0.55, '#fbf5dc');
+  disc.addColorStop(1, '#ece2c0');
   ctx.fillStyle = disc;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // The rabbit and mortar, in unit size (the disc's radius is 1), in a deeper gold.
+  // The rabbit and mortar, in unit size (the disc's radius is 1), in a soft grey-gold.
   ctx.save();
   ctx.beginPath();
   ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2);
   ctx.clip();
   ctx.scale(r, r);
-  var mark = NIGHT ? 'rgba(150, 138, 108, 0.62)' : 'rgba(214, 128, 14, 0.78)';
+  var mark = 'rgba(160, 146, 112, 0.6)';
   ctx.fillStyle = mark;
   ctx.strokeStyle = mark;
   ctx.lineCap = 'round';
@@ -1019,34 +977,6 @@ function drawFisher(ctx, fisher, t, bite) {
   ctx.lineTo(2, -50);
   ctx.stroke();
 
-  // Evening: a paper lantern (提灯) on a short pole at the back of the boat.
-  if (NIGHT) {
-    var flicker = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.1);
-    var lamp = ctx.createRadialGradient(-42, -34, 1, -42, -34, 34);
-    lamp.addColorStop(0, 'rgba(255, 190, 110, ' + (0.55 * flicker).toFixed(3) + ')');
-    lamp.addColorStop(1, 'rgba(255, 190, 110, 0)');
-    ctx.fillStyle = lamp;
-    ctx.beginPath();
-    ctx.arc(-42, -34, 34, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#4a3220';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-46, -12);
-    ctx.lineTo(-46, -46);
-    ctx.lineTo(-42, -46);
-    ctx.lineTo(-42, -41);
-    ctx.stroke();
-    ctx.fillStyle = '#ff8a3a';
-    ctx.beginPath();
-    ctx.ellipse(-42, -34, 5, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255, 236, 170, ' + flicker.toFixed(3) + ')';
-    ctx.beginPath();
-    ctx.ellipse(-42, -34, 2.6, 4.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   // The wooden boat.
   var wood = ctx.createLinearGradient(0, -12, 0, 6);
   wood.addColorStop(0, '#a8714a');
@@ -1082,11 +1012,12 @@ function drawFisher(ctx, fisher, t, bite) {
   return { x: fisher.x + bx * s * (fisher.dir || 1), y: fisher.y };
 }
 
-/** Evening: a few dotted stars above the mountains (not too many), away from the moon. */
+/** A few dotted stars high in the evening sky (not too many), away from the moon. */
 function makeStars(width, top, moon) {
   var list = [];
-  var count = Math.min(46, Math.round(width / 30));
-  var ceiling = top - Math.min(200, top * 0.3) - 14;
+  // A light sky: only a few, high up where it is bluest.
+  var count = Math.min(28, Math.round(width / 50));
+  var ceiling = (top - Math.min(200, top * 0.3)) * 0.5;
   for (var tries = 0; list.length < count && tries < count * 6; tries++) {
     var x = Math.random() * width;
     var y = 6 + Math.random() * Math.max(20, ceiling - 6);
@@ -1096,7 +1027,7 @@ function makeStars(width, top, moon) {
     list.push({
       x: x,
       y: y,
-      size: 0.6 + Math.random() * 1.1,
+      size: 1.3 + Math.random() * 1.1,
       phase: Math.random() * Math.PI * 2,
       rate: 0.8 + Math.random() * 1.6,
     });
@@ -1107,15 +1038,15 @@ function makeStars(width, top, moon) {
 function drawStars(ctx, stars, t) {
   for (var i = 0; i < stars.length; i++) {
     var st = stars[i];
-    var a = 0.45 + 0.5 * (0.5 + 0.5 * Math.sin(t * st.rate + st.phase));
-    ctx.fillStyle = 'rgba(255, 250, 230, ' + a.toFixed(3) + ')';
+    var a = 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(t * st.rate + st.phase));
+    ctx.fillStyle = 'rgba(255, 255, 250, ' + a.toFixed(3) + ')';
     ctx.beginPath();
     ctx.arc(st.x, st.y, st.size, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
-/** Evening: a shooting star (流れ星) crossing the upper sky, its tail fading behind it. */
+/** A shooting star (流れ星) crossing the upper sky, its tail fading behind it. */
 function newShootingStar(width, top) {
   var dir = Math.random() < 0.5 ? -1 : 1;
   return {
@@ -1165,7 +1096,7 @@ export function startLeaves(canvas, options) {
   var ctx = canvas.getContext('2d');
   if (!ctx) return function () {};
   var lake = Boolean(opts.lake);
-  NIGHT = lake && Boolean(opts.evening);
+  EVENING = lake;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     if (!lake) return function () {};
     // Still water, no leaves.
@@ -1180,9 +1111,9 @@ export function startLeaves(canvas, options) {
       var scenery = buildScenery(w, h, top, r);
       var moon = sunOf(w);
       drawScenery(ctx, scenery, w, h, top, false);
-      if (NIGHT) drawStars(ctx, makeStars(w, top, moon), 0);
+      if (EVENING) drawStars(ctx, makeStars(w, top, moon), 0);
       drawSun(ctx, moon, 0);
-      drawLake(ctx, w, h, top, 0, [], moon.x);
+      drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
       drawWaterfall(ctx, scenery, top, 0, []);
       drawFisher(ctx, fisherOf(w, h), 0, 0);
@@ -1245,7 +1176,7 @@ export function startLeaves(canvas, options) {
       fish = makeFish(width, height, lakeTop);
       croc = crocOf(width, height);
       sun = sunOf(width);
-      if (NIGHT) stars = makeStars(width, lakeTop, sun);
+      if (EVENING) stars = makeStars(width, lakeTop, sun);
       fisher = fisherOf(width, height);
     }
     floating = floating.filter(function (leaf) {
@@ -1412,7 +1343,7 @@ export function startLeaves(canvas, options) {
 
     if (lake) {
       drawScenery(ctx, scenery, width, height, lakeTop, false);
-      if (NIGHT) {
+      if (EVENING) {
         drawStars(ctx, stars, clock);
         if (!shooting && clock >= nextShooting) shooting = newShootingStar(width, lakeTop);
         if (shooting) {
@@ -1424,7 +1355,7 @@ export function startLeaves(canvas, options) {
         }
       }
       drawSun(ctx, sun, clock);
-      drawLake(ctx, width, height, lakeTop, clock, streaks, sun.x);
+      drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawWaterfall(ctx, scenery, lakeTop, clock, falls);
       swimFish(fish, dt, width, height, lakeTop);

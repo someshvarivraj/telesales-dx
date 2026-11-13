@@ -1,10 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
 import { MoraBotStory, type StoryStep } from '@/components/brand/MoraBotStory';
 import { FallingLeaves } from '@/components/brand/FallingLeaves';
-import { cn } from '@/components/ui/cn';
-import { isEvening } from '../../../outage/leaves.js';
 import { LastThemeProvider } from '@/components/brand/theme';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -57,29 +55,20 @@ export function AuthLayout({
   mood = 'default',
   leaves = false,
 }: AuthLayoutProps) {
-  // Evening (17:00–5:00 JST): the lake at dusk, so the words above MoraBot turn light.
-  const [evening] = useState(() => leaves && isEvening());
   return (
     <LastThemeProvider>
       <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
         <GridBackdrop />
         {/* Leaves fall over the grid, behind the sign-in box, onto a lake at the bottom (11/13). */}
-        {leaves && <FallingLeaves className="z-0" lake evening={evening} />}
+        {leaves && <FallingLeaves className="z-0" lake />}
         <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
 
         <div className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16">
           <section className="max-w-md flex-1 max-lg:hidden">
-            <p
-              className={cn(
-                'text-2xl leading-snug font-bold',
-                evening ? 'text-white [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]' : 'text-ink',
-              )}
-            >
+            <p className="text-2xl leading-snug font-bold text-ink">
               架電からアポ、打ち合わせの結果まで。
             </p>
-            <p className={cn('mt-1 mb-4 text-sm', evening ? 'text-white/85' : 'text-ink-sub')}>
-              テレマと営業が、同じ情報で動けます。
-            </p>
+            <p className="mt-1 mb-4 text-sm text-ink-sub">テレマと営業が、同じ情報で動けます。</p>
             <MoraBotStory steps={STEPS} />
           </section>
 
