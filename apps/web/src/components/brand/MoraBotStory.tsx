@@ -129,7 +129,8 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
         </p>
       </div>
 
-      <ol className="mt-6 flex flex-col gap-1.5">
+      {/* Every step is a solid card, so it stays readable over the lake scenery (11/13). */}
+      <ol className="mt-6 flex flex-col gap-2">
         {steps.map((item, i) => {
           const on = i === index;
           return (
@@ -139,8 +140,10 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
                 aria-current={on ? 'step' : undefined}
                 onClick={() => setIndex(i)}
                 className={cn(
-                  'relative flex w-full cursor-pointer items-start gap-3 overflow-hidden border-l-4 px-3 py-2 text-left transition-colors',
-                  on ? 'border-main bg-surface' : 'border-transparent hover:bg-surface/60',
+                  'relative flex w-full cursor-pointer items-start gap-3 overflow-hidden border border-l-4 border-line bg-surface px-3 py-2 text-left transition-[border-color,box-shadow]',
+                  on
+                    ? 'border-l-main shadow-(--shadow-raised)'
+                    : 'border-l-line-strong shadow-(--shadow-card) hover:border-l-main-line',
                 )}
               >
                 <span
@@ -152,9 +155,7 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
                   {i + 1}
                 </span>
                 <span className="text-sm">
-                  <span className={cn('font-bold', on ? 'text-ink' : 'text-ink-sub')}>
-                    {item.title}
-                  </span>
+                  <span className="font-bold text-ink">{item.title}</span>
                   <span className="block text-ink-sub">{item.text}</span>
                 </span>
                 {on && (
