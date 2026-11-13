@@ -78,6 +78,15 @@ export const useShiftMonth = (month: string) =>
 export const useSaveShift = () =>
   useTelemaMutation((request: ShiftRequest) => apiClient.put<ShiftDto>('/telema/shifts', request));
 
+/** Several days at once (まとめて入力): saved one by one, each checked by the server. */
+export const useSaveShifts = () =>
+  useTelemaMutation(async (requests: ShiftRequest[]) => {
+    const saved: ShiftDto[] = [];
+    for (const request of requests)
+      saved.push(await apiClient.put<ShiftDto>('/telema/shifts', request));
+    return saved;
+  });
+
 export const useDeleteShift = () =>
   useTelemaMutation((id: string) => apiClient.delete<undefined>(`/telema/shifts/${id}`));
 
