@@ -697,88 +697,147 @@ function drawCroc(ctx, croc, t, look, blink) {
 /** Where the sun shines: the top-left corner, smaller on phones. */
 function sunOf(width) {
   return width < 640
-    ? { x: 38, y: 38, r: 17 }
+    ? { x: 46, y: 46, r: 24 }
     : width < 1024
-      ? { x: 54, y: 54, r: 24 }
-      : { x: 70, y: 70, r: 30 };
+      ? { x: 64, y: 64, r: 34 }
+      : { x: 84, y: 84, r: 46 };
 }
 
+/** The rabbit's mallet (杵): where it strikes, and how high it is raised. */
+var MALLET_DOWN = 0.5;
+var MALLET_UP = -0.95;
+
 /**
- * A smiling sun (11/13) in the top-left corner: a yellow face with triangle rays that turn
- * slowly, a soft glow, rosy cheeks, and a blink now and then.
+ * The sun (11/13, after the senior's request): a round golden disc with a soft glow, no rays. On
+ * it, like the rabbit in the moon (月のうさぎ), a rabbit pounds mochi in a mortar: the mallet
+ * rises slowly and comes down quickly, and the mochi gives a little at each strike.
  */
-function drawSun(ctx, sun, t, blink) {
+function drawSun(ctx, sun, t) {
   var r = sun.r;
   ctx.save();
   ctx.translate(sun.x, sun.y);
-  var glow = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 2.8);
-  glow.addColorStop(0, 'rgba(255, 214, 64, 0.45)');
-  glow.addColorStop(1, 'rgba(255, 214, 64, 0)');
+
+  // Soft glow, breathing slowly.
+  var breath = 0.5 + 0.5 * Math.sin(t * 0.8);
+  var glow = ctx.createRadialGradient(0, 0, r * 0.8, 0, 0, r * (2.2 + 0.15 * breath));
+  glow.addColorStop(0, 'rgba(255, 200, 60, 0.42)');
+  glow.addColorStop(1, 'rgba(255, 200, 60, 0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 2.8, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 2.4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Triangle rays around the face, turning slowly; every other one a little longer.
-  var turn = t * 0.12;
-  var rays = 12;
-  for (var i = 0; i < rays; i++) {
-    var a = turn + (i / rays) * Math.PI * 2;
-    var half = (Math.PI / rays) * 0.55;
-    var out = r * (i % 2 ? 1.5 : 1.72) + Math.sin(t * 2 + i) * r * 0.04;
-    ctx.fillStyle = i % 2 ? '#ffc21a' : '#ffad14';
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a - half) * r * 1.08, Math.sin(a - half) * r * 1.08);
-    ctx.lineTo(Math.cos(a) * out, Math.sin(a) * out);
-    ctx.lineTo(Math.cos(a + half) * r * 1.08, Math.sin(a + half) * r * 1.08);
-    ctx.closePath();
-    ctx.fill();
-  }
-
   var disc = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-  disc.addColorStop(0, '#fff6a0');
-  disc.addColorStop(0.6, '#ffdc2e');
-  disc.addColorStop(1, '#ffbf14');
+  disc.addColorStop(0, '#fff3a8');
+  disc.addColorStop(0.55, '#ffd84a');
+  disc.addColorStop(1, '#ffb81f');
   ctx.fillStyle = disc;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#f5a10f';
-  ctx.lineWidth = Math.max(1, r * 0.05);
-  ctx.stroke();
 
-  // Face: eyes (closing on a blink), cheeks and a wide smile.
-  ctx.fillStyle = '#5a3a12';
-  ctx.strokeStyle = '#5a3a12';
-  ctx.lineCap = 'round';
-  [-1, 1].forEach(function (side) {
-    var ex = side * r * 0.33;
-    var ey = -r * 0.16;
-    if (blink > 0.5) {
-      ctx.lineWidth = Math.max(1.2, r * 0.07);
-      ctx.beginPath();
-      ctx.arc(ex, ey - r * 0.04, r * 0.1, 0.15 * Math.PI, 0.85 * Math.PI);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.ellipse(ex, ey, r * 0.09, r * 0.13 * (1 - blink), 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(ex + r * 0.03, ey - r * 0.05, r * 0.035, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#5a3a12';
-    }
-  });
-  ctx.fillStyle = 'rgba(255, 120, 90, 0.45)';
-  [-1, 1].forEach(function (side) {
-    ctx.beginPath();
-    ctx.ellipse(side * r * 0.55, r * 0.14, r * 0.15, r * 0.09, 0, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  ctx.lineWidth = Math.max(1.4, r * 0.08);
+  // The rabbit and mortar, in unit size (the disc's radius is 1), in a deeper gold.
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(0, r * 0.06, r * 0.36, 0.18 * Math.PI, 0.82 * Math.PI);
+  ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.scale(r, r);
+  var mark = 'rgba(214, 128, 14, 0.78)';
+  ctx.fillStyle = mark;
+  ctx.strokeStyle = mark;
+  ctx.lineCap = 'round';
+
+  // Pounding: a slow lift (70% of the beat), then a quick strike.
+  var beat = (t * 0.85) % 1;
+  var lift = beat < 0.7 ? Math.sin((beat / 0.7) * Math.PI * 0.5) : 1 - (beat - 0.7) / 0.3;
+  var hit = beat > 0.97 || beat < 0.06 ? 1 : 0;
+  var angle = MALLET_DOWN + (MALLET_UP - MALLET_DOWN) * lift;
+
+  // Mortar (臼) with the mochi on top, squashed a little at each strike.
+  ctx.beginPath();
+  ctx.moveTo(0.14, 0.36);
+  ctx.lineTo(0.62, 0.36);
+  ctx.lineTo(0.54, 0.74);
+  ctx.lineTo(0.22, 0.74);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0.38, 0.36, 0.25, 0.06, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 252, 235, 0.95)';
+  ctx.beginPath();
+  ctx.ellipse(0.38, 0.32 + hit * 0.015, 0.16 + hit * 0.03, 0.06 - hit * 0.015, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = mark;
+
+  // Rabbit, sitting up and facing the mortar: body, feet, tail, head and two long ears.
+  ctx.beginPath();
+  ctx.ellipse(-0.32, 0.3, 0.24, 0.3, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-0.26, 0.6, 0.16, 0.06, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-0.56, 0.42, 0.07, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-0.18, -0.08, 0.16, 0.14, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  var twitch = Math.sin(t * 3) * 0.04;
+  ctx.beginPath();
+  ctx.ellipse(-0.32, -0.38, 0.05, 0.2, -0.45 + twitch, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-0.19, -0.4, 0.05, 0.21, -0.15 - twitch, 0, Math.PI * 2);
+  ctx.fill();
+  // Eye.
+  ctx.fillStyle = 'rgba(255, 240, 190, 0.95)';
+  ctx.beginPath();
+  ctx.arc(-0.1, -0.1, 0.03, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = mark;
+
+  // Arms and the mallet (杵), swinging from the paws.
+  var px = -0.08;
+  var py = 0.08;
+  ctx.lineWidth = 0.08;
+  ctx.beginPath();
+  ctx.moveTo(-0.22, 0.12);
+  ctx.lineTo(px, py);
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(angle);
+  ctx.lineWidth = 0.05;
+  ctx.beginPath();
+  ctx.moveTo(-0.04, 0);
+  ctx.lineTo(0.46, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.rect(0.42, -0.11, 0.13, 0.22);
+  ctx.fill();
+  ctx.restore();
+
+  // A small puff of flour at each strike.
+  if (hit) {
+    ctx.fillStyle = 'rgba(255, 252, 235, 0.8)';
+    [
+      [0.18, 0.2],
+      [0.58, 0.18],
+      [0.4, 0.12],
+    ].forEach(function (d) {
+      ctx.beginPath();
+      ctx.arc(d[0], d[1], 0.025, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  ctx.restore();
+
+  // A thin bright rim.
+  ctx.strokeStyle = 'rgba(255, 250, 220, 0.7)';
+  ctx.lineWidth = Math.max(1, r * 0.04);
+  ctx.beginPath();
+  ctx.arc(0, 0, r - r * 0.02, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }
@@ -967,7 +1026,7 @@ export function startLeaves(canvas, options) {
       drawWaterfall(ctx, scenery, top, 0, []);
       drawFisher(ctx, fisherOf(w, h), 0, 0);
       drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
-      drawSun(ctx, sunOf(w), 0, 0);
+      drawSun(ctx, sunOf(w), 0);
     };
     still();
     window.addEventListener('resize', still);
@@ -1005,8 +1064,6 @@ export function startLeaves(canvas, options) {
   var nextCrocRing = 0;
   var sun = sunOf(0);
   var fisher = fisherOf(0, 0);
-  var nextSunBlink = 4;
-  var sunBlinkAt = -1;
   var nextBite = 5;
   var biteAt = -10;
 
@@ -1190,17 +1247,7 @@ export function startLeaves(canvas, options) {
     clock += dt;
 
     if (lake) {
-      if (clock >= nextSunBlink) {
-        sunBlinkAt = clock;
-        nextSunBlink = clock + 3.5 + Math.random() * 4;
-      }
-      var sunSince = clock - sunBlinkAt;
-      drawSun(
-        ctx,
-        sun,
-        clock,
-        sunSince >= 0 && sunSince < 0.3 ? Math.sin((sunSince / 0.3) * Math.PI) : 0,
-      );
+      drawSun(ctx, sun, clock);
       drawScenery(ctx, scenery, width, height, lakeTop, false);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
