@@ -101,6 +101,207 @@ function leafSprite(size, colors) {
   return canvas;
 }
 
+/** Same numbers every time (mountains keep their shape when the window is resized). */
+function seeded(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    var t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** One mountain range: a ridge line with peaks (sharper where |sin| meets 1). */
+function ridgeOf(base, amp, freq, rand) {
+  var p1 = rand() * 10;
+  var p2 = rand() * 10;
+  var p3 = rand() * 10;
+  return function (x) {
+    var peaks = 1 - Math.abs(Math.sin(x * freq + p1));
+    var roll = 0.5 + 0.5 * Math.sin(x * freq * 2.3 + p2);
+    var fine = 0.5 + 0.5 * Math.sin(x * freq * 6.1 + p3);
+    return base - amp * (0.55 * peaks + 0.3 * roll + 0.15 * fine);
+  };
+}
+
+/** Where the waterfall comes down: right of the sign-in box on wide screens. */
+function fallXOf(width) {
+  // Clear of the sign-in box, which sits in the middle (right of centre on wide screens).
+  return width * (width < 760 ? 0.88 : 0.91);
+}
+
+/**
+ * Lake scenery (11/13): distant blue mountains, a nearer range with a cliff and autumn hills
+ * with red, orange and amber trees along the shore. Drawn once per size onto its own canvas.
+ */
+function buildScenery(width, height, top, ratio) {
+  var canvas = document.createElement('canvas');
+  canvas.width = Math.round(width * ratio);
+  canvas.height = Math.round(height * ratio);
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  var rand = seeded(1113);
+  var tall = Math.min(200, height * 0.21);
+  var layers = [
+    { ridge: ridgeOf(top, tall, 0.0042, rand), from: '#dfe6ee', to: '#c9d4df' },
+    { ridge: ridgeOf(top, tall * 0.68, 0.0071, rand), from: '#b4c3d2', to: '#9cadbf' },
+    { ridge: ridgeOf(top, tall * 0.22, 0.016, rand), from: '#a5705e', to: '#7e5446' },
+  ];
+  var fallX = fallXOf(width);
+  layers.forEach(function (layer, index) {
+    var highest = top - (index === 0 ? tall : index === 1 ? tall * 0.68 : tall * 0.22);
+    var fill = ctx.createLinearGradient(0, highest, 0, top);
+    fill.addColorStop(0, layer.from);
+    fill.addColorStop(1, layer.to);
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(0, top + 2);
+    for (var x = 0; x <= width + 8; x += 8) ctx.lineTo(x, layer.ridge(x));
+    ctx.lineTo(width, top + 2);
+    ctx.closePath();
+    ctx.fill();
+    if (index === 0) {
+      // Snow on the highest peaks of the far range.
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.fillRect(0, top - tall - 4, width, tall * 0.16);
+      ctx.restore();
+    }
+  });
+
+  // The cliff the water falls from: a rocky shoulder rising out of the middle range.
+  var fallTop = top - tall * 0.62;
+  var rock = ctx.createLinearGradient(fallX - 60, 0, fallX + 60, 0);
+  rock.addColorStop(0, '#8d99a5');
+  rock.addColorStop(0.45, '#6a7682');
+  rock.addColorStop(1, '#8592a0');
+  ctx.fillStyle = rock;
+  ctx.beginPath();
+  ctx.moveTo(fallX - 78, top + 2);
+  ctx.lineTo(fallX - 58, fallTop + tall * 0.34);
+  ctx.lineTo(fallX - 44, fallTop + tall * 0.2);
+  ctx.lineTo(fallX - 34, fallTop + 10);
+  ctx.lineTo(fallX - 20, fallTop - 6);
+  ctx.lineTo(fallX - 6, fallTop - 2);
+  ctx.lineTo(fallX + 10, fallTop - 9);
+  ctx.lineTo(fallX + 26, fallTop + 4);
+  ctx.lineTo(fallX + 40, fallTop + tall * 0.16);
+  ctx.lineTo(fallX + 54, fallTop + tall * 0.3);
+  ctx.lineTo(fallX + 82, top + 2);
+  ctx.closePath();
+  ctx.fill();
+  // Darker ledges on the rock.
+  ctx.strokeStyle = 'rgba(70, 80, 92, 0.45)';
+  ctx.lineWidth = 1.2;
+  [0.3, 0.55, 0.78].forEach(function (k) {
+    var y = fallTop + (top - fallTop) * k;
+    ctx.beginPath();
+    ctx.moveTo(fallX - 50 + k * 10, y);
+    ctx.lineTo(fallX - 22, y + 3);
+    ctx.moveTo(fallX + 22, y - 2);
+    ctx.lineTo(fallX + 46 - k * 8, y + 2);
+    ctx.stroke();
+  });
+
+  // Autumn trees along the near hills (left and right of the waterfall's rocks).
+  var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
+  var near = layers[2].ridge;
+  for (var t = 0; t < width / 7; t++) {
+    var tx = rand() * width;
+    if (Math.abs(tx - fallX) < 70) continue;
+    var ground = near(tx);
+    var ty = ground + rand() * (top - ground) * 0.85;
+    var r = 3 + rand() * 4;
+    ctx.fillStyle = trees[Math.floor(rand() * trees.length)];
+    ctx.beginPath();
+    ctx.ellipse(tx, ty, r, r * 1.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return { canvas: canvas, fallX: fallX, fallTop: fallTop };
+}
+
+/** Lake scenery: the mountains, and their faint reflection in the water. */
+function drawScenery(ctx, scenery, width, height, top, below) {
+  if (!scenery) return;
+  if (!below) {
+    ctx.drawImage(scenery.canvas, 0, 0, width, height);
+    return;
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, top, width, height - top);
+  ctx.clip();
+  ctx.globalAlpha = 0.16;
+  ctx.translate(0, top * 2);
+  ctx.scale(1, -1);
+  ctx.drawImage(scenery.canvas, 0, 0, width, height);
+  ctx.restore();
+}
+
+/** The waterfall: falling streaks over a pale band, mist and foam where it meets the lake. */
+function drawWaterfall(ctx, scenery, top, t, falls) {
+  if (!scenery) return;
+  var x = scenery.fallX;
+  var from = scenery.fallTop;
+  var w = 30;
+  var band = ctx.createLinearGradient(0, from, 0, top);
+  band.addColorStop(0, 'rgba(225, 240, 248, 0.92)');
+  band.addColorStop(1, 'rgba(200, 228, 242, 0.95)');
+  ctx.fillStyle = band;
+  ctx.beginPath();
+  ctx.moveTo(x - w / 2 + 2, from);
+  ctx.lineTo(x + w / 2 - 2, from);
+  ctx.lineTo(x + w / 2 + 3, top);
+  ctx.lineTo(x - w / 2 - 3, top);
+  ctx.closePath();
+  ctx.fill();
+  var span = top - from;
+  ctx.lineCap = 'round';
+  for (var i = 0; i < falls.length; i++) {
+    var f = falls[i];
+    var y = from + ((f.offset + t * f.speed) % (span + f.length)) - f.length;
+    var y1 = Math.max(from, y);
+    var y2 = Math.min(top, y + f.length);
+    if (y2 <= y1) continue;
+    var spread = (y1 - from) / span;
+    ctx.strokeStyle = 'rgba(255, 255, 255, ' + f.alpha.toFixed(2) + ')';
+    ctx.lineWidth = f.width;
+    ctx.beginPath();
+    ctx.moveTo(x + f.lane * (w / 2 + spread * 3), y1);
+    ctx.lineTo(x + f.lane * (w / 2 + ((y2 - from) / span) * 3), y2);
+    ctx.stroke();
+  }
+  // Mist and foam at the foot.
+  var pulse = 0.5 + 0.5 * Math.sin(t * 2.1);
+  var mist = ctx.createRadialGradient(x, top, 2, x, top, 60);
+  mist.addColorStop(0, 'rgba(255, 255, 255, ' + (0.75 + 0.15 * pulse).toFixed(2) + ')');
+  mist.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = mist;
+  ctx.beginPath();
+  ctx.ellipse(x, top + 2, 60, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Waterfall streaks: lanes across the band, each falling at its own speed. */
+function makeFalls() {
+  var list = [];
+  for (var i = 0; i < 34; i++) {
+    list.push({
+      lane: Math.random() * 2 - 1,
+      offset: Math.random() * 400,
+      speed: 140 + Math.random() * 120,
+      length: 14 + Math.random() * 30,
+      width: 1 + Math.random() * 1.6,
+      alpha: 0.45 + Math.random() * 0.45,
+    });
+  }
+  return list;
+}
+
 /** Lake: where the water starts — about a quarter of the screen, never too thin or too tall. */
 function lakeTopOf(height) {
   return height - Math.max(120, Math.min(250, height * 0.26));
@@ -198,7 +399,12 @@ export function startLeaves(canvas, options) {
       canvas.width = Math.round(w * r);
       canvas.height = Math.round(h * r);
       ctx.setTransform(r, 0, 0, r, 0, 0);
-      drawLake(ctx, w, h, lakeTopOf(h), 0, []);
+      var top = lakeTopOf(h);
+      var scenery = buildScenery(w, h, top, r);
+      drawScenery(ctx, scenery, w, h, top, false);
+      drawLake(ctx, w, h, top, 0, []);
+      drawScenery(ctx, scenery, w, h, top, true);
+      drawWaterfall(ctx, scenery, top, 0, []);
     };
     still();
     window.addEventListener('resize', still);
@@ -224,6 +430,9 @@ export function startLeaves(canvas, options) {
   var ripples = [];
   var streaks = makeStreaks();
   var clock = 0;
+  var scenery = null;
+  var falls = makeFalls();
+  var nextFoam = 0;
 
   function resize() {
     width = canvas.clientWidth || window.innerWidth;
@@ -235,6 +444,7 @@ export function startLeaves(canvas, options) {
     resting = [];
     heights = new Array(Math.ceil(width / BUCKET) + 1).fill(0);
     lakeTop = lakeTopOf(height);
+    if (lake) scenery = buildScenery(width, height, lakeTop, ratio);
     floating = floating.filter(function (leaf) {
       return leaf.y0 > lakeTop && leaf.y0 < height;
     });
@@ -383,7 +593,21 @@ export function startLeaves(canvas, options) {
     clock += dt;
 
     if (lake) {
+      drawScenery(ctx, scenery, width, height, lakeTop, false);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
+      drawScenery(ctx, scenery, width, height, lakeTop, true);
+      drawWaterfall(ctx, scenery, lakeTop, clock, falls);
+      // Rings spreading from the foot of the waterfall.
+      if (scenery && clock >= nextFoam) {
+        ripples.push({
+          x: scenery.fallX + (Math.random() - 0.5) * 16,
+          y: lakeTop + 10 + Math.random() * 6,
+          age: 0,
+          size: 40 + Math.random() * 24,
+          strength: 0.5,
+        });
+        nextFoam = clock + 0.55 + Math.random() * 0.4;
+      }
       for (var k = ripples.length - 1; k >= 0; k--) {
         var rp = ripples[k];
         rp.age += dt;
