@@ -376,6 +376,256 @@ function drawLake(ctx, width, height, top, t, streaks) {
   }
 }
 
+/** Koi colours (11/13): body, patches, fins. */
+var KOI = [
+  { body: '#ff8a3d', spot: '#fff4e8', fin: '#ffb27a' },
+  { body: '#fff4ea', spot: '#e8402a', fin: '#ffe2d2' },
+  { body: '#ffc23d', spot: '#ff7a1f', fin: '#ffe08a' },
+  { body: '#e0482c', spot: '#fff1e6', fin: '#f58a6e' },
+  { body: '#4f6f86', spot: '#2f4a5e', fin: '#7a96aa' },
+];
+
+/** Fish (11/13): koi swimming under the surface, some near the shore (small) and some in front. */
+function makeFish(width, height, top) {
+  var count = width < 760 ? 4 : 8;
+  var list = [];
+  for (var i = 0; i < count; i++) list.push(newFish(width, height, top, true));
+  return list;
+}
+
+function newFish(width, height, top, anywhere) {
+  var depth = Math.random();
+  var dir = Math.random() < 0.5 ? -1 : 1;
+  var length = 16 + depth * 18 + Math.random() * 6;
+  return {
+    depth: depth,
+    dir: dir,
+    length: length,
+    x: anywhere ? Math.random() * width : dir > 0 ? -length * 2 : width + length * 2,
+    y: top + 24 + depth * (height - top - 44),
+    speed: 16 + Math.random() * 22,
+    boost: 0,
+    wag: Math.random() * Math.PI * 2,
+    wander: Math.random() * Math.PI * 2,
+    koi: KOI[Math.floor(Math.random() * KOI.length)],
+  };
+}
+
+/** One koi under water, facing right in its own coordinates; the tail swings as it swims. */
+function drawFish(ctx, fish) {
+  var L = fish.length;
+  var swing = Math.sin(fish.wag) * (0.35 + Math.min(0.4, fish.boost / 120));
+  ctx.save();
+  ctx.translate(fish.x, fish.y);
+  ctx.scale(fish.dir, 1);
+  ctx.rotate(Math.sin(fish.wag + 1.2) * 0.06 + Math.cos(fish.wander) * 0.06);
+  // Under the water: softer the further away it swims.
+  ctx.globalAlpha = 0.5 + 0.35 * fish.depth;
+
+  // Shadow on the lake bed.
+  ctx.fillStyle = 'rgba(20, 60, 90, 0.18)';
+  ctx.beginPath();
+  ctx.ellipse(-L * 0.05, L * 0.42, L * 0.5, L * 0.12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tail fin.
+  ctx.save();
+  ctx.translate(-L * 0.38, 0);
+  ctx.rotate(swing);
+  ctx.fillStyle = fish.koi.fin;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(-L * 0.2, -L * 0.05, -L * 0.32, -L * 0.22);
+  ctx.quadraticCurveTo(-L * 0.22, 0, -L * 0.32, L * 0.22);
+  ctx.quadraticCurveTo(-L * 0.2, L * 0.05, 0, 0);
+  ctx.fill();
+  ctx.restore();
+
+  // Side fins.
+  ctx.fillStyle = fish.koi.fin;
+  [-1, 1].forEach(function (side) {
+    ctx.beginPath();
+    ctx.ellipse(
+      L * 0.12,
+      side * L * 0.16,
+      L * 0.12,
+      L * 0.05,
+      side * (0.7 + swing * 0.4),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  });
+
+  // Body: round head, narrowing to the tail.
+  ctx.beginPath();
+  ctx.moveTo(L * 0.5, 0);
+  ctx.bezierCurveTo(L * 0.48, -L * 0.2, L * 0.1, -L * 0.21, -L * 0.15, -L * 0.13);
+  ctx.quadraticCurveTo(-L * 0.32, -L * 0.07, -L * 0.4, 0);
+  ctx.quadraticCurveTo(-L * 0.32, L * 0.07, -L * 0.15, L * 0.13);
+  ctx.bezierCurveTo(L * 0.1, L * 0.21, L * 0.48, L * 0.2, L * 0.5, 0);
+  ctx.closePath();
+  ctx.fillStyle = fish.koi.body;
+  ctx.fill();
+  // Koi patches and a light along the back.
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = fish.koi.spot;
+  ctx.beginPath();
+  ctx.ellipse(L * 0.18, -L * 0.04, L * 0.15, L * 0.1, 0.3, 0, Math.PI * 2);
+  ctx.ellipse(-L * 0.16, L * 0.03, L * 0.1, L * 0.08, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+  ctx.fillRect(-L * 0.4, -L * 0.04, L * 0.9, L * 0.05);
+  ctx.restore();
+  // Eye.
+  ctx.fillStyle = 'rgba(30, 30, 40, 0.8)';
+  ctx.beginPath();
+  ctx.arc(L * 0.36, -L * 0.06, Math.max(1, L * 0.035), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Moves the fish; they swim back in from the side they left, at a new depth. */
+function swimFish(list, dt, width, height, top) {
+  for (var i = 0; i < list.length; i++) {
+    var f = list[i];
+    f.wander += dt * 0.6;
+    f.wag += dt * (5 + f.boost / 12);
+    f.boost *= Math.pow(0.3, dt);
+    f.x += f.dir * (f.speed + f.boost) * dt;
+    f.y += Math.sin(f.wander) * 6 * dt;
+    f.y = Math.max(top + 18, Math.min(height - 14, f.y));
+    if (f.x < -f.length * 3 || f.x > width + f.length * 3)
+      list[i] = newFish(width, height, top, false);
+  }
+}
+
+/** Where the crocodile rests: the bottom-left corner of the lake. */
+function crocOf(width, height) {
+  var scale = width < 760 ? 0.72 : 1;
+  return { x: 26 + 70 * scale, y: height - 30 * scale, scale: scale };
+}
+
+/**
+ * A friendly crocodile (11/13) lying in the bottom-left corner: only the top of its head is out
+ * of the water — two eyes that follow the pointer, the snout, and a smile. It blinks now and then.
+ */
+function drawCroc(ctx, croc, t, look, blink) {
+  var s = croc.scale;
+  var bob = Math.sin(t * 1.1) * 1.4;
+  ctx.save();
+  ctx.translate(croc.x, croc.y + bob);
+  ctx.scale(s, s);
+
+  // Its shape under the water.
+  ctx.fillStyle = 'rgba(30, 70, 50, 0.22)';
+  ctx.beginPath();
+  ctx.ellipse(6, 10, 92, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  var skin = ctx.createLinearGradient(0, -26, 0, 6);
+  skin.addColorStop(0, '#7dbb4f');
+  skin.addColorStop(1, '#3f7a34');
+  ctx.fillStyle = skin;
+  // Back of the head and the long snout, just above the water line (y = 0).
+  ctx.beginPath();
+  ctx.moveTo(-52, 2);
+  ctx.bezierCurveTo(-50, -16, -24, -20, 0, -15);
+  ctx.bezierCurveTo(22, -11, 50, -12, 66, -10);
+  ctx.bezierCurveTo(78, -9, 82, -2, 80, 2);
+  ctx.closePath();
+  ctx.fill();
+  // Nostril bump at the tip.
+  ctx.beginPath();
+  ctx.ellipse(70, -10, 9, 5.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2c5426';
+  ctx.beginPath();
+  ctx.ellipse(67, -12, 1.6, 1.1, 0, 0, Math.PI * 2);
+  ctx.ellipse(73, -12, 1.6, 1.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Little bumps along the head.
+  ctx.fillStyle = 'rgba(44, 84, 38, 0.55)';
+  [
+    [-38, -9],
+    [-30, -13],
+    [12, -12],
+    [26, -11],
+    [40, -11],
+  ].forEach(function (b) {
+    ctx.beginPath();
+    ctx.ellipse(b[0], b[1], 2.4, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // The smile: along the snout, curling up at the corner of the mouth, with a rosy cheek.
+  ctx.strokeStyle = '#24461f';
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(76, -4);
+  ctx.quadraticCurveTo(30, 5, -4, -1);
+  ctx.quadraticCurveTo(-14, -3, -17, -11);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255, 140, 140, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(-12, -2, 6, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // A white tooth peeking out.
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(46, 0.6);
+  ctx.lineTo(49, 4.4);
+  ctx.lineTo(52, 0.2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eyes on top of the head.
+  [-36, -14].forEach(function (ex) {
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.arc(ex, -20, 10, Math.PI, 0);
+    ctx.lineTo(ex + 10, -14);
+    ctx.lineTo(ex - 10, -14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fffbea';
+    ctx.beginPath();
+    ctx.arc(ex, -20, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1f2a1c';
+    ctx.beginPath();
+    ctx.ellipse(ex + look.x * 2.6, -20 + look.y * 2.2, 2.6, 4.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ex + look.x * 2.6 + 1.2, -21.6 + look.y * 2.2, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+    if (blink > 0) {
+      // Eyelid closing over the eye.
+      ctx.fillStyle = '#5f9c43';
+      ctx.beginPath();
+      ctx.rect(ex - 8, -28, 16, 15 * blink);
+      ctx.fill();
+      ctx.strokeStyle = '#24461f';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(ex - 6, -28 + 15 * blink);
+      ctx.lineTo(ex + 6, -28 + 15 * blink);
+      ctx.stroke();
+    }
+  });
+
+  // Water lapping at the head: a bright line and a soft band below it.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(12, 1.5, 74 + Math.sin(t * 1.6) * 2, 5, 0, Math.PI * 0.05, Math.PI * 0.95);
+  ctx.stroke();
+  ctx.restore();
+}
+
 /**
  * Starts the leaves on a full-screen canvas. Returns a function that stops them.
  * Nothing moves for people who prefer reduced motion; it pauses while the tab is hidden.
@@ -405,6 +655,7 @@ export function startLeaves(canvas, options) {
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
       drawWaterfall(ctx, scenery, top, 0, []);
+      drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
     };
     still();
     window.addEventListener('resize', still);
@@ -433,6 +684,13 @@ export function startLeaves(canvas, options) {
   var scenery = null;
   var falls = makeFalls();
   var nextFoam = 0;
+  var fish = [];
+  var croc = crocOf(0, 0);
+  var look = { x: 0.6, y: -0.2 };
+  var pointer = null;
+  var nextBlink = 3;
+  var blinkAt = -1;
+  var nextCrocRing = 0;
 
   function resize() {
     width = canvas.clientWidth || window.innerWidth;
@@ -444,7 +702,11 @@ export function startLeaves(canvas, options) {
     resting = [];
     heights = new Array(Math.ceil(width / BUCKET) + 1).fill(0);
     lakeTop = lakeTopOf(height);
-    if (lake) scenery = buildScenery(width, height, lakeTop, ratio);
+    if (lake) {
+      scenery = buildScenery(width, height, lakeTop, ratio);
+      fish = makeFish(width, height, lakeTop);
+      croc = crocOf(width, height);
+    }
     floating = floating.filter(function (leaf) {
       return leaf.y0 > lakeTop && leaf.y0 < height;
     });
@@ -506,6 +768,11 @@ export function startLeaves(canvas, options) {
     if (floating.length > 36) floating[0].life = Math.min(floating[0].life, floating[0].age + 2);
   }
 
+  /** Lake: the crocodile's eyes follow the pointer. */
+  function track(event) {
+    pointer = { x: event.clientX, y: event.clientY };
+  }
+
   /** Lake: a click or tap on the water. */
   function poke(event) {
     if (!lake || event.clientY < lakeTop + 4) return;
@@ -514,6 +781,16 @@ export function startLeaves(canvas, options) {
     var y = event.clientY - rect.top;
     ripples.push({ x: x, y: y, age: 0, size: 120, strength: 1 });
     ripples.push({ x: x, y: y, age: -0.3, size: 80, strength: 0.7 });
+    // Fish nearby dart away; the crocodile blinks.
+    fish.forEach(function (f) {
+      var dx = f.x - x;
+      var dy = (f.y - y) * 2;
+      if (Math.sqrt(dx * dx + dy * dy) < 170) {
+        f.dir = dx >= 0 ? 1 : -1;
+        f.boost = 140 + Math.random() * 60;
+      }
+    });
+    if (Math.abs(x - croc.x) < 110 * croc.scale && Math.abs(y - croc.y) < 50) blinkAt = clock;
     floating.forEach(function (leaf) {
       var dx = leaf.x - x;
       var dy = (leaf.y0 - y) * 3;
@@ -597,6 +874,13 @@ export function startLeaves(canvas, options) {
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawWaterfall(ctx, scenery, lakeTop, clock, falls);
+      swimFish(fish, dt, width, height, lakeTop);
+      fish.sort(function (a, b) {
+        return a.y - b.y;
+      });
+      fish.forEach(function (f) {
+        drawFish(ctx, f);
+      });
       // Rings spreading from the foot of the waterfall.
       if (scenery && clock >= nextFoam) {
         ripples.push({
@@ -677,6 +961,35 @@ export function startLeaves(canvas, options) {
       }
     }
 
+    if (lake) {
+      var want = { x: 0.6, y: -0.2 };
+      if (pointer) {
+        var px = pointer.x - (croc.x - 25 * croc.scale);
+        var py = pointer.y - (croc.y - 20 * croc.scale);
+        var pd = Math.max(1, Math.sqrt(px * px + py * py));
+        want = { x: px / pd, y: py / pd };
+      }
+      look.x += (want.x - look.x) * Math.min(1, dt * 6);
+      look.y += (want.y - look.y) * Math.min(1, dt * 6);
+      if (clock >= nextBlink) {
+        blinkAt = clock;
+        nextBlink = clock + 3 + Math.random() * 4;
+      }
+      var since = clock - blinkAt;
+      var blink = since >= 0 && since < 0.26 ? Math.sin((since / 0.26) * Math.PI) : 0;
+      if (clock >= nextCrocRing) {
+        ripples.push({
+          x: croc.x + 12 * croc.scale,
+          y: croc.y + 2,
+          age: 0,
+          size: 150 * croc.scale,
+          strength: 0.35,
+        });
+        nextCrocRing = clock + 2.6 + Math.random() * 1.6;
+      }
+      drawCroc(ctx, croc, clock, look, blink);
+    }
+
     for (var i = resting.length - 1; i >= 0; i--) {
       var r = resting[i];
       r.age += dt;
@@ -744,13 +1057,17 @@ export function startLeaves(canvas, options) {
   resize();
   window.addEventListener('resize', resize);
   document.addEventListener('visibilitychange', visibility);
-  if (lake) window.addEventListener('pointerdown', poke);
+  if (lake) {
+    window.addEventListener('pointerdown', poke);
+    window.addEventListener('pointermove', track);
+  }
   raf = window.requestAnimationFrame(frame);
   return function stop() {
     window.cancelAnimationFrame(raf);
     window.removeEventListener('resize', resize);
     document.removeEventListener('visibilitychange', visibility);
     window.removeEventListener('pointerdown', poke);
+    window.removeEventListener('pointermove', track);
     ctx.clearRect(0, 0, width, height);
   };
 }
