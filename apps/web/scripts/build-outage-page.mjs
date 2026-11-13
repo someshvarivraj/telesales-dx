@@ -8,12 +8,12 @@ const pose = (name) =>
   `data:image/webp;base64,${readFileSync(new URL(`public/morabot/${name}.webp`, web)).toString('base64')}`;
 
 // The falling leaves (11/12), shared with the app's overlay and sign-in screen.
-const leaves = readFileSync(new URL('outage/leaves.js', web), 'utf8').replace(
+const leaves = readFileSync(new URL('outage/leaves.js', web), 'utf8').replaceAll(
   'export function',
   'function',
 );
 
-const bounce = readFileSync(new URL('outage/bounce.js', web), 'utf8').replace(
+const bounce = readFileSync(new URL('outage/bounce.js', web), 'utf8').replaceAll(
   'export function',
   'function',
 );
