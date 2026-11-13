@@ -1,4 +1,10 @@
-import { DayBeforeResult, jstDate, meetingFormatLabel, OptionCategory } from '@telesales/shared';
+import {
+  DayBeforeResult,
+  jstDate,
+  meetingFormatLabel,
+  OptionCategory,
+  Permission,
+} from '@telesales/shared';
 import {
   CalendarClock,
   Check,
@@ -19,7 +25,10 @@ import { Card } from '@/components/ui/Card';
 import { DescriptionList } from '@/components/ui/DescriptionList';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { QueryState } from '@/components/ui/QueryState';
+import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { CommentThread } from '@/features/comments/CommentThread';
+import { useConfirmCandidate } from '@/features/schedule/api';
+import { Badge } from '@/components/ui/Badge';
 import { useOptionList } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatDateTime, formatRange } from '@/lib/format';
@@ -65,6 +74,8 @@ export function AppointmentPage() {
   const query = useAppointment(id);
   const confirm = useConfirmAppointment(id);
   const dayBefore = useDayBeforeCheck();
+  const confirmTentative = useConfirmCandidate();
+  const me = useCurrentUser();
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const [dialog, setDialog] = useState<OpenDialog>(() =>
     search.get('edit') === '1' ? 'edit' : null,
@@ -166,6 +177,7 @@ export function AppointmentPage() {
                 </span>
                 <FormatBadge format={appointment.format} label={meetingFormatLabel(appointment)} />
                 <AppointmentStatusBadge status={appointment.status} />
+                {appointment.tentative && <Badge tone="warning">仮予定</Badge>}
                 {appointment.status === 'SCHEDULED' && (
                   <ConfirmedBadge confirmedAt={appointment.salesConfirmedAt} />
                 )}
@@ -177,8 +189,35 @@ export function AppointmentPage() {
             </PageHeader>
 
             <div className="mb-5 flex flex-col gap-2">
-              {(confirm.isError || dayBefore.isError) && (
-                <Alert tone="error">{errorMessageOf(confirm.error ?? dayBefore.error)}</Alert>
+              {(confirm.isError || dayBefore.isError || confirmTentative.isError) && (
+                <Alert tone="error">
+                  {errorMessageOf(confirm.error ?? dayBefore.error ?? confirmTentative.error)}
+                </Alert>
+              )}
+              {appointment.tentative && appointment.status === 'SCHEDULED' && (
+                <Alert
+                  tone="warning"
+                  action={
+                    appointment.planId &&
+                    (appointment.salesRep.id === me.id ||
+                      me.permissions.includes(Permission.Administer)) && (
+                      <Button
+                        size="sm"
+                        loading={confirmTentative.isPending}
+                        onClick={() =>
+                          appointment.planId &&
+                          confirmTentative.mutate(appointment.planId, {
+                            onSuccess: () => void query.refetch(),
+                          })
+                        }
+                      >
+                        確定する
+                      </Button>
+                    )
+                  }
+                >
+                  仮予定です。先方と日時が決まったら「確定する」を押してください。
+                </Alert>
               )}
               {mailSaved && !sent && (
                 <Alert tone="success">メール（N1）を下書きとして保存しました。</Alert>

@@ -57,13 +57,13 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
               アポのページを開く
             </Link>
           )}
-          {plan?.canEdit && plan.status === 'TENTATIVE' && (
+          {plan?.canConfirm && (
             <Button
               variant="secondary"
               loading={confirm.isPending}
               onClick={() => confirm.mutate(plan.id, { onSuccess: close })}
             >
-              この候補日で確定
+              {plan.appointment ? '仮予定を確定する' : 'この候補日で確定'}
             </Button>
           )}
           {plan?.canEdit && (

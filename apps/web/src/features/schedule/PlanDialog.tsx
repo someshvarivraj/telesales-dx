@@ -50,6 +50,7 @@ import { jstDate } from '@telesales/shared';
 import { useSavePlan, useSchedule } from './api';
 import { freeRanges, hhmm, toMinutes } from './calendar/layout';
 import { buildEvents, eventsOn } from './events';
+import { AttendeePicker } from './AttendeePicker';
 import { Avatar } from './calendar/Avatar';
 import { personColor } from './calendar/people';
 import { slotProblemText } from './slotProblems';
@@ -151,18 +152,9 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
     );
   };
 
-  // Attendees are sales reps (spec §6: 同席 is another rep joining the visit).
-  const others = (sales.data ?? []).filter((person) => person.id !== values.ownerId);
   const problems = (save.error as { details?: unknown } | null)?.details;
 
   const order = (people.data ?? []).map((person) => person.id);
-  const toggleAttendee = (id: string) =>
-    set(
-      'attendeeIds',
-      values.attendeeIds.includes(id)
-        ? values.attendeeIds.filter((x) => x !== id)
-        : [...values.attendeeIds, id],
-    );
 
   return (
     <Dialog
@@ -368,37 +360,11 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
           icon={<Users className="size-4" />}
           label={`同席者${values.attendeeIds.length ? `（${values.attendeeIds.length}人）` : ''}`}
         >
-          <div
-            className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto"
-            role="group"
-            aria-label="同席者"
-          >
-            {others.map((person) => {
-              const on = values.attendeeIds.includes(person.id);
-              return (
-                <button
-                  key={person.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => toggleAttendee(person.id)}
-                  className={cn(
-                    'flex h-8 cursor-pointer items-center gap-1.5 border pr-3 pl-1 text-sm transition-colors',
-                    on
-                      ? 'border-success/50 bg-success-soft font-bold text-ink'
-                      : 'border-line text-ink-sub hover:border-line-strong hover:text-ink',
-                  )}
-                >
-                  <Avatar
-                    size="sm"
-                    name={person.name}
-                    color={personColor(person.id, order)}
-                    className={cn(!on && 'opacity-50')}
-                  />
-                  {person.name}
-                </button>
-              );
-            })}
-          </div>
+          <AttendeePicker
+            ownerId={values.ownerId}
+            value={values.attendeeIds}
+            onChange={(ids) => set('attendeeIds', ids)}
+          />
         </Row>
 
         {!plan && !withCandidates && (

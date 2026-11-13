@@ -13,7 +13,7 @@ interface AuthLayoutProps {
   footer?: ReactNode;
   /** MoraBot's expression, e.g. `trouble` after a failed login. */
   mood?: MoraBotMood;
-  /** Golden leaves falling behind the page (request 11/12: the sign-in screen only). */
+  /** Red leaves falling onto a lake behind the page (requests 11/12, 11/13: sign-in only). */
   leaves?: boolean;
 }
 
@@ -59,8 +59,8 @@ export function AuthLayout({
     <LastThemeProvider>
       <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
         <GridBackdrop />
-        {/* Leaves fall over the grid, behind the sign-in box, and gather at the bottom. */}
-        {leaves && <FallingLeaves className="z-0" />}
+        {/* Leaves fall over the grid, behind the sign-in box, onto a lake at the bottom (11/13). */}
+        {leaves && <FallingLeaves className="z-0" lake />}
         <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
 
         <div className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16">

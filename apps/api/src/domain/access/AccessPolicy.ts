@@ -115,6 +115,14 @@ export class AccessPolicy {
    * Sales add and change their own and other reps' plans (not appointments).
    * Plans that are appointments are only moved through the appointment.
    */
+  /** Confirming a tentative plan; a tentative appointment by its rep or an admin (11/13). */
+  canConfirmPlan(actor: Actor, plan: PlanFacts): boolean {
+    if (plan.appointmentId) {
+      return plan.ownerId === actor.id || this.isAdmin(actor);
+    }
+    return this.canEditPlan(actor, plan);
+  }
+
   canEditPlan(actor: Actor, plan: PlanFacts): boolean {
     if (plan.appointmentId) {
       return false;

@@ -96,6 +96,8 @@ export interface PlanDto {
     isTelema: boolean;
   } | null;
   canEdit: boolean;
+  /** A tentative plan (or tentative appointment) this user may confirm. */
+  canConfirm: boolean;
 }
 
 export interface TimeOffDto {

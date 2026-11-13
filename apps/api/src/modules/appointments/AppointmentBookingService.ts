@@ -12,6 +12,7 @@ import {
   MeetingFormat,
   NoticeCode,
   phoneDigitsOf,
+  PlanStatus,
   type RescheduleRequest,
   Role,
   SourceFileType,
@@ -140,6 +141,9 @@ export class AppointmentBookingService {
       }
     }
 
+    const attendeeIds = [...new Set(command.attendeeIds)].filter(
+      (userId) => userId !== command.salesRepId,
+    );
     let appointmentId: string;
     try {
       appointmentId = await this.prisma.$transaction(async (tx) => {
@@ -211,6 +215,8 @@ export class AppointmentBookingService {
             startsAt,
             endsAt,
             appointmentId: appointment.id,
+            status: command.tentative ? PlanStatus.Tentative : PlanStatus.Fixed,
+            attendees: { create: attendeeIds.map((userId) => ({ userId })) },
           },
         });
         await this.guard.releaseFor(tx, actor.id, command.salesRepId);
@@ -234,9 +240,20 @@ export class AppointmentBookingService {
         format: detail.format,
         source: detail.source,
         originalAppointmentId: detail.originalAppointmentId,
+        tentative: command.tentative,
+        attendeeIds,
       },
     });
     await this.notifyBooked(actor, detail);
+    if (attendeeIds.length > 0) {
+      await this.notifications.notify({
+        code: NoticeCode.AddedAsAttendee,
+        title: `同席者に入りました：${detail.company.name}（${formatJstDateTime(new Date(detail.startsAt))}）`,
+        linkPath: `/appointments/${detail.id}`,
+        actorId: actor.id,
+        context: { ATTENDEES: attendeeIds },
+      });
+    }
     return detail;
   }
 
