@@ -1,13 +1,18 @@
-// Light golden maple leaves drifting down and settling at the bottom of the screen (request
-// 11/12). Plain browser JavaScript with no imports: the maintenance page (outage.html) inlines
+// Red autumn maple leaves (紅葉) drifting down and settling at the bottom of the screen (request
+// 11/12; red since 11/13). Plain browser JavaScript with no imports: the maintenance page (outage.html) inlines
 // it, and the app imports it, so both draw exactly the same leaves.
 
-/** Pale cream to warm gold, like a backlit autumn leaf. */
+/**
+ * Vivid autumn maple (request 11/13, after a photo of 紅葉): scarlet, crimson, red-orange and
+ * a few orange and amber leaves. Each runs from a sunlit centre to a deeper edge.
+ */
 var LEAF_COLORS = [
-  ['#fff6d8', '#f3dc98', '#d9aa4f'],
-  ['#fdf0c4', '#eccb7a', '#c99137'],
-  ['#fff9e6', '#f6e3a6', '#dcb565'],
-  ['#fbe9b3', '#e6bd62', '#b97f2c'],
+  ['#ff5a1f', '#ff1a1a', '#c4001a'],
+  ['#ff4a2a', '#f20d2e', '#b0001f'],
+  ['#ff7a1f', '#ff3314', '#d10a14'],
+  ['#ff6a24', '#fa2222', '#c20f1e'],
+  ['#ffae2b', '#ff6a0f', '#e03a0a'],
+  ['#ffd23a', '#ff9a14', '#e86a0a'],
 ];
 /** How many leaves may lie on top of each other at one spot. */
 var LAYERS = 2;
@@ -74,10 +79,10 @@ function leafSprite(size, colors) {
   glow.addColorStop(1, colors[2]);
   mapleOutline(ctx);
   ctx.fillStyle = glow;
-  ctx.globalAlpha = 0.92;
+  ctx.globalAlpha = 1;
   ctx.fill();
   // Veins from the stem to each lobe, and the stem.
-  ctx.globalAlpha = 0.55;
+  ctx.globalAlpha = 0.35;
   ctx.strokeStyle = colors[2];
   ctx.lineWidth = 0.03;
   ctx.lineCap = 'round';
@@ -243,7 +248,7 @@ export function startLeaves(canvas, options) {
           continue;
         }
       }
-      draw(r.sprite, r.x, r.y, r.angle, 1, r.squash, 0.95 * Math.max(0, r.fade));
+      draw(r.sprite, r.x, r.y, r.angle, 1, r.squash, Math.max(0, r.fade));
     }
 
     for (var j = falling.length - 1; j >= 0; j--) {
@@ -260,7 +265,7 @@ export function startLeaves(canvas, options) {
         continue;
       }
       // The leaf turns over as it flutters (narrower when seen edge-on).
-      draw(f.sprite, f.x, f.y, f.angle, 0.35 + 0.65 * Math.abs(Math.cos(f.flip)), 1, 0.95);
+      draw(f.sprite, f.x, f.y, f.angle, 0.35 + 0.65 * Math.abs(Math.cos(f.flip)), 1, 1);
     }
     raf = window.requestAnimationFrame(frame);
   }
