@@ -288,10 +288,10 @@ function buildScenery(width, height, top, ratio) {
   if (EVENING) {
     // Early evening, still light: soft blue overhead, lavender, then peach at the mountains.
     var sky = ctx.createLinearGradient(0, 0, 0, top);
-    sky.addColorStop(0, '#9aaad8');
-    sky.addColorStop(0.45, '#c1b9df');
-    sky.addColorStop(0.8, '#f2c6b8');
-    sky.addColorStop(1, '#ffdcb8');
+    sky.addColorStop(0, '#b3c1e8');
+    sky.addColorStop(0.45, '#d3cdeb');
+    sky.addColorStop(0.8, '#f7d8cc');
+    sky.addColorStop(1, '#ffe6c8');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, width, top + 4);
   }

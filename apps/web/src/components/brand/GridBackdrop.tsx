@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { cn } from '@/components/ui/cn';
 
 const CELL = 32;
 const MAX_LIVE = 14;
@@ -38,7 +39,14 @@ interface LiveCell {
  * Sits behind everything (cards and menus stay plain white), never takes clicks, pauses
  * when the tab is hidden, and stays still for people who prefer reduced motion.
  */
-export function GridBackdrop() {
+export function GridBackdrop({
+  className,
+  line = LINE,
+}: {
+  className?: string;
+  /** Grid line colour; lighter over the sign-in screen's evening sky (11/13). */
+  line?: string;
+} = {}) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -74,7 +82,7 @@ export function GridBackdrop() {
         context.moveTo(0, y);
         context.lineTo(width, y);
       }
-      context.strokeStyle = LINE;
+      context.strokeStyle = line;
       context.lineWidth = 1;
       context.stroke();
     };
@@ -154,13 +162,16 @@ export function GridBackdrop() {
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointerdown', press);
     };
-  }, []);
+  }, [line]);
 
   return (
     <canvas
       ref={ref}
       aria-hidden="true"
-      className="grid-backdrop pointer-events-none fixed inset-0 -z-10 h-full w-full"
+      className={cn(
+        'grid-backdrop pointer-events-none fixed inset-0 -z-10 h-full w-full',
+        className,
+      )}
     />
   );
 }
