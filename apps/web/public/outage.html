@@ -946,137 +946,215 @@ function drawCroc(ctx, croc, t, look, blink) {
   ctx.restore();
 }
 
-/** Where the moon is: the top-left corner, smaller on phones. */
+/** Where the moon is: the top-left corner; large on wide screens, smaller on phones. */
 function sunOf(width) {
-  return width < 640
-    ? { x: 46, y: 46, r: 24 }
-    : width < 1024
-      ? { x: 64, y: 64, r: 34 }
-      : { x: 84, y: 84, r: 46 };
+  if (width < 640) return { x: 50, y: 50, r: 30 };
+  if (width < 1024) return { x: 70, y: 70, r: 42 };
+  if (width < 1320) return { x: 76, y: 76, r: 48 };
+  return { x: 100, y: 100, r: 68 };
 }
 
-/** The rabbit's mallet (杵): where it strikes, and how high it is raised. */
-var MALLET_DOWN = 0.5;
-var MALLET_UP = -0.95;
+/** The mallet (杵): pointing at the mortar when down, raised over the rabbit's head when up. */
+var MALLET_DOWN = Math.PI + 0.06;
+var MALLET_UP = Math.PI + 1.5;
+/** Soft craters on the moon: [x, y, rx, ry] in unit size. */
+var CRATERS = [
+  [-0.45, -0.55, 0.22, 0.14],
+  [0.5, -0.5, 0.16, 0.12],
+  [0.62, 0.42, 0.13, 0.1],
+  [-0.66, 0.2, 0.1, 0.14],
+  [0.05, -0.78, 0.12, 0.07],
+];
+
+/** A little four-pointed sparkle. */
+function sparkle(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - size);
+  ctx.quadraticCurveTo(x, y, x + size, y);
+  ctx.quadraticCurveTo(x, y, x, y + size);
+  ctx.quadraticCurveTo(x, y, x - size, y);
+  ctx.quadraticCurveTo(x, y, x, y - size);
+  ctx.fill();
+}
+
+/** One rabbit sitting up, facing right (`face` 1) or left (-1), in the moon's unit size. */
+function moonRabbit(ctx, x, y, face, lean) {
+  ctx.save();
+  ctx.translate(x, y + 0.26);
+  ctx.rotate(lean * face);
+  ctx.translate(0, -0.26);
+  ctx.scale(face, 1);
+  // Body, feet and the round tail.
+  ctx.beginPath();
+  ctx.ellipse(0, 0.04, 0.16, 0.24, 0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0.03, 0.27, 0.14, 0.05, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-0.13, 0.13, 0.065, 0, Math.PI * 2);
+  ctx.fill();
+  // Head and two long ears, leaning back a little.
+  ctx.beginPath();
+  ctx.ellipse(0.07, -0.26, 0.11, 0.1, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-0.04, -0.47, 0.04, 0.16, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0.06, -0.5, 0.04, 0.16, -0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
 
 /**
- * The moon in the evening sky (11/13, after the senior's requests): a pale round disc with a
- * soft glow. On it the rabbit in the moon (月のうさぎ) pounds mochi in a mortar: the mallet
- * rises slowly and comes down quickly, and the mochi gives a little at each strike.
+ * The moon (11/13–14, after the senior's requests, as in the classic 月のうさぎ picture): a
+ * large pale disc with soft craters and two rabbits making mochi. The one on the right swings
+ * the mallet over its head and brings it down; the one on the left kneels at the mortar and
+ * turns the mochi between strikes, pulling its paws back just before each one.
+ * `poked`: seconds since the moon was clicked — it bounces, the rabbits hop and sparkles fly.
  */
-function drawSun(ctx, sun, t) {
+function drawSun(ctx, sun, t, poked) {
   var r = sun.r;
+  var p = poked >= 0 && poked < 1.2 ? poked / 1.2 : -1;
   ctx.save();
   ctx.translate(sun.x, sun.y);
 
-  // Soft glow, breathing slowly.
+  // Soft glow, breathing slowly; brighter for a moment after a click.
   var breath = 0.5 + 0.5 * Math.sin(t * 0.8);
-  var glow = ctx.createRadialGradient(0, 0, r * 0.8, 0, 0, r * (2.2 + 0.15 * breath));
-  glow.addColorStop(0, 'rgba(255, 255, 245, 0.55)');
-  glow.addColorStop(1, 'rgba(255, 255, 245, 0)');
+  var flash = p >= 0 ? 1 - p : 0;
+  var glow = ctx.createRadialGradient(0, 0, r * 0.8, 0, 0, r * (2 + 0.15 * breath + 0.4 * flash));
+  glow.addColorStop(0, 'rgba(255, 250, 225, ' + (0.55 + 0.3 * flash).toFixed(3) + ')');
+  glow.addColorStop(1, 'rgba(255, 250, 225, 0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 2.4, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
   ctx.fill();
 
+  // Sparkles flying out after a click.
+  if (p >= 0) {
+    for (var i = 0; i < 12; i++) {
+      var a = (i / 12) * Math.PI * 2 + 0.3;
+      var dist = r * (1.05 + 0.9 * Math.sqrt(p) + (i % 3) * 0.08);
+      ctx.fillStyle =
+        'rgba(255, ' +
+        (i % 2 ? 236 : 250) +
+        ', ' +
+        (i % 2 ? 150 : 225) +
+        ', ' +
+        (1 - p).toFixed(3) +
+        ')';
+      sparkle(
+        ctx,
+        Math.cos(a) * dist,
+        Math.sin(a) * dist,
+        r * (0.09 + (i % 2) * 0.04) * (1 - p * 0.5),
+      );
+    }
+  }
+
+  // The moon bounces when clicked.
+  var bounce = p >= 0 ? 1 + 0.08 * Math.sin(p * Math.PI * 3) * (1 - p) : 1;
+  ctx.scale(bounce, bounce);
   var disc = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-  disc.addColorStop(0, '#fffef6');
-  disc.addColorStop(0.55, '#fbf5dc');
-  disc.addColorStop(1, '#ece2c0');
+  disc.addColorStop(0, '#fffbe6');
+  disc.addColorStop(0.6, '#fbefc0');
+  disc.addColorStop(1, '#f1dc98');
   ctx.fillStyle = disc;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // The rabbit and mortar, in unit size (the disc's radius is 1), in a soft grey-gold.
   ctx.save();
   ctx.beginPath();
-  ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 0.98, 0, Math.PI * 2);
   ctx.clip();
   ctx.scale(r, r);
-  var mark = 'rgba(160, 146, 112, 0.6)';
+  ctx.fillStyle = 'rgba(232, 196, 110, 0.28)';
+  CRATERS.forEach(function (c) {
+    ctx.beginPath();
+    ctx.ellipse(c[0], c[1], c[2], c[3], 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Rabbits and mortar: soft amber shapes; where they overlap they look a little deeper.
+  ctx.save();
+  ctx.translate(0, -0.04);
+  ctx.scale(1.14, 1.14);
+  var mark = 'rgba(214, 150, 60, 0.5)';
   ctx.fillStyle = mark;
   ctx.strokeStyle = mark;
   ctx.lineCap = 'round';
+  // After a click both rabbits hop.
+  var hop = p >= 0 && p < 0.6 ? -0.12 * Math.sin((p / 0.6) * Math.PI) : 0;
 
-  // Pounding: a slow lift (70% of the beat), then a quick strike.
-  var beat = (t * 0.85) % 1;
-  var lift = beat < 0.7 ? Math.sin((beat / 0.7) * Math.PI * 0.5) : 1 - (beat - 0.7) / 0.3;
-  var hit = beat > 0.97 || beat < 0.06 ? 1 : 0;
+  // Pounding: a slow lift (65% of the beat), then a quick strike.
+  var beat = (t * 0.7) % 1;
+  var lift = beat < 0.65 ? Math.sin((beat / 0.65) * Math.PI * 0.5) : 1 - (beat - 0.65) / 0.35;
+  var hit = beat > 0.96 || beat < 0.05 ? 1 : 0;
   var angle = MALLET_DOWN + (MALLET_UP - MALLET_DOWN) * lift;
+  // The turner reaches in while the mallet is up and pulls back before it comes down.
+  var reach = beat > 0.12 && beat < 0.62 ? Math.sin(((beat - 0.12) / 0.5) * Math.PI) : 0;
 
-  // Mortar (臼) with the mochi on top, squashed a little at each strike.
+  // Mortar (臼) in the middle, with the mochi on top.
   ctx.beginPath();
-  ctx.moveTo(0.14, 0.36);
-  ctx.lineTo(0.62, 0.36);
-  ctx.lineTo(0.54, 0.74);
-  ctx.lineTo(0.22, 0.74);
+  ctx.moveTo(-0.2, 0.12);
+  ctx.lineTo(0.2, 0.12);
+  ctx.lineTo(0.16, 0.56);
+  ctx.lineTo(-0.16, 0.56);
   ctx.closePath();
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(0.38, 0.36, 0.25, 0.06, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0.12, 0.22, 0.05, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255, 252, 235, 0.95)';
+  ctx.fillStyle = 'rgba(255, 253, 240, 0.95)';
   ctx.beginPath();
-  ctx.ellipse(0.38, 0.32 + hit * 0.015, 0.16 + hit * 0.03, 0.06 - hit * 0.015, 0, Math.PI, 0);
-  ctx.fill();
-  ctx.fillStyle = mark;
-
-  // Rabbit, sitting up and facing the mortar: body, feet, tail, head and two long ears.
-  ctx.beginPath();
-  ctx.ellipse(-0.32, 0.3, 0.24, 0.3, -0.15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(-0.26, 0.6, 0.16, 0.06, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(-0.56, 0.42, 0.07, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(-0.18, -0.08, 0.16, 0.14, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  var twitch = Math.sin(t * 3) * 0.04;
-  ctx.beginPath();
-  ctx.ellipse(-0.32, -0.38, 0.05, 0.2, -0.45 + twitch, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(-0.19, -0.4, 0.05, 0.21, -0.15 - twitch, 0, Math.PI * 2);
-  ctx.fill();
-  // Eye.
-  ctx.fillStyle = 'rgba(255, 240, 190, 0.95)';
-  ctx.beginPath();
-  ctx.arc(-0.1, -0.1, 0.03, 0, Math.PI * 2);
+  ctx.ellipse(0, 0.09 + hit * 0.01, 0.14 + hit * 0.03, 0.05 - hit * 0.012, 0, Math.PI, 0);
   ctx.fill();
   ctx.fillStyle = mark;
 
-  // Arms and the mallet (杵), swinging from the paws.
-  var px = -0.08;
-  var py = 0.08;
-  ctx.lineWidth = 0.08;
+  // Left rabbit: kneels at the mortar and turns the mochi.
+  moonRabbit(ctx, -0.46, 0.22 + hop, 1, 0.12 + reach * 0.22);
+  ctx.lineWidth = 0.07;
   ctx.beginPath();
-  ctx.moveTo(-0.22, 0.12);
+  ctx.moveTo(-0.36, 0.14 + hop);
+  ctx.quadraticCurveTo(
+    -0.26 + reach * 0.06,
+    0.02 + hop,
+    -0.24 + reach * 0.2,
+    0.08 + hop - reach * 0.02,
+  );
+  ctx.stroke();
+
+  // Right rabbit: stands and swings the mallet.
+  moonRabbit(ctx, 0.5, 0.2 + hop, -1, -0.04 + lift * 0.08);
+  var px = 0.34;
+  var py = 0.04 + hop;
+  ctx.lineWidth = 0.07;
+  ctx.beginPath();
+  ctx.moveTo(0.44, 0.1 + hop);
   ctx.lineTo(px, py);
   ctx.stroke();
   ctx.save();
   ctx.translate(px, py);
   ctx.rotate(angle);
-  ctx.lineWidth = 0.05;
+  ctx.lineWidth = 0.045;
   ctx.beginPath();
-  ctx.moveTo(-0.04, 0);
-  ctx.lineTo(0.46, 0);
+  ctx.moveTo(-0.05, 0);
+  ctx.lineTo(0.27, 0);
   ctx.stroke();
   ctx.beginPath();
-  ctx.rect(0.42, -0.11, 0.13, 0.22);
+  ctx.ellipse(0.31, 0, 0.06, 0.09, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
   // A small puff of flour at each strike.
   if (hit) {
-    ctx.fillStyle = 'rgba(255, 252, 235, 0.8)';
+    ctx.fillStyle = 'rgba(255, 253, 240, 0.9)';
     [
-      [0.18, 0.2],
-      [0.58, 0.18],
-      [0.4, 0.12],
+      [-0.16, 0.0],
+      [0.15, -0.02],
+      [0.0, -0.06],
     ].forEach(function (d) {
       ctx.beginPath();
       ctx.arc(d[0], d[1], 0.025, 0, Math.PI * 2);
@@ -1084,12 +1162,13 @@ function drawSun(ctx, sun, t) {
     });
   }
   ctx.restore();
+  ctx.restore();
 
   // A thin bright rim.
-  ctx.strokeStyle = 'rgba(255, 250, 220, 0.7)';
-  ctx.lineWidth = Math.max(1, r * 0.04);
+  ctx.strokeStyle = 'rgba(255, 252, 235, 0.8)';
+  ctx.lineWidth = Math.max(1, r * 0.03);
   ctx.beginPath();
-  ctx.arc(0, 0, r - r * 0.02, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 0.99, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }
@@ -1356,7 +1435,7 @@ function startLeaves(canvas, options) {
       var moon = sunOf(w);
       drawScenery(ctx, scenery, w, h, top, false);
       if (EVENING) drawStars(ctx, makeStars(w, top, moon), 0);
-      drawSun(ctx, moon, 0);
+      drawSun(ctx, moon, 0, -1);
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
       drawWaterfall(ctx, scenery, top, 0, []);
@@ -1398,6 +1477,7 @@ function startLeaves(canvas, options) {
   var blinkAt = -1;
   var nextCrocRing = 0;
   var sun = sunOf(0);
+  var moonPokedAt = -10;
   var stars = [];
   var shooting = null;
   var nextShooting = 1.5;
@@ -1491,7 +1571,15 @@ function startLeaves(canvas, options) {
 
   /** Lake: a click or tap on the water. */
   function poke(event) {
-    if (!lake || event.clientY < lakeTop + 4) return;
+    if (!lake) return;
+    // A click on the moon: it bounces, the rabbits hop and sparkles fly.
+    var mx = event.clientX - sun.x;
+    var my = event.clientY - sun.y;
+    if (Math.sqrt(mx * mx + my * my) <= sun.r * 1.1) {
+      moonPokedAt = clock;
+      return;
+    }
+    if (event.clientY < lakeTop + 4) return;
     var rect = canvas.getBoundingClientRect();
     var x = event.clientX - rect.left;
     var y = event.clientY - rect.top;
@@ -1598,7 +1686,7 @@ function startLeaves(canvas, options) {
           } else drawShootingStar(ctx, shooting);
         }
       }
-      drawSun(ctx, sun, clock);
+      drawSun(ctx, sun, clock, clock - moonPokedAt);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawWaterfall(ctx, scenery, lakeTop, clock, falls);
