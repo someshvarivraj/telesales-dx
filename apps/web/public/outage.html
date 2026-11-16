@@ -333,8 +333,8 @@ function buildScenery(width, height, top, ratio) {
   var midY = lipY + (top - lipY) * 0.46;
   var fallTop = crestY;
   var fx = fallX;
-  // Smaller on phones, so the falls don't crowd the page.
-  var fallScale = width < 760 ? 0.66 : 1;
+  // Kept modest so it sits in the scene rather than taking it over (11/16); smaller on phones.
+  var fallScale = width < 760 ? 0.5 : 0.7;
   ctx.save();
   ctx.translate(fx, top);
   ctx.scale(fallScale, fallScale);
@@ -1714,7 +1714,8 @@ function drawStarMap(ctx, map, t, poked) {
     });
   });
 
-  // Kobe and Sanda: brighter, coloured, with a soft glow, a dotted line between and labels.
+  // Kobe and Sanda: brighter, coloured, with a soft glow and a dotted line between — no names,
+  // so the sign-in screen stays quiet (11/16).
   var kobe = mapPoint(map, KOBE);
   var sanda = mapPoint(map, SANDA);
   ctx.setLineDash([2, 3]);
@@ -1727,8 +1728,8 @@ function drawStarMap(ctx, map, t, poked) {
   ctx.setLineDash([]);
   var p = poked >= 0 && poked < 1.4 ? poked / 1.4 : -1;
   [
-    { at: kobe, color: '255, 205, 80', name: '神戸', dx: -8, dy: 10, phase: 0 },
-    { at: sanda, color: '255, 130, 170', name: '三田', dx: -8, dy: -7, phase: 1.6 },
+    { at: kobe, color: '255, 205, 80', phase: 0 },
+    { at: sanda, color: '255, 130, 170', phase: 1.6 },
   ].forEach(function (city) {
     var x = city.at[0];
     var y = city.at[1];
@@ -1755,14 +1756,6 @@ function drawStarMap(ctx, map, t, poked) {
       ctx.arc(x, y, 6 + 26 * p, 0, Math.PI * 2);
       ctx.stroke();
     }
-    ctx.font = "700 11px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(70, 70, 110, 0.55)';
-    ctx.strokeText(city.name, x + city.dx, y + city.dy);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(city.name, x + city.dx, y + city.dy);
   });
   ctx.restore();
 }
