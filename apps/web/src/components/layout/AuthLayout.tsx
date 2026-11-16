@@ -69,7 +69,7 @@ export function AuthLayout({
             type="button"
             aria-pressed={connected}
             onClick={() => setConnected((on) => !on)}
-            className="absolute top-4 left-1/2 z-10 flex h-8 -translate-x-1/2 cursor-pointer items-center gap-1.5 border border-white/70 bg-white/45 px-3 text-xs font-bold text-ink shadow-(--shadow-card) backdrop-blur-sm transition-colors hover:bg-white/75 max-lg:hidden"
+            className="absolute top-44 left-6 z-10 flex h-8 cursor-pointer items-center gap-1.5 border border-white/70 bg-white/45 px-3 text-xs font-bold text-ink shadow-(--shadow-card) backdrop-blur-sm transition-colors hover:bg-white/75 max-lg:hidden"
           >
             <Sparkles className="size-3.5 text-[#d6a21f]" aria-hidden="true" />
             {connected ? '線を消す' : '星をつなぐ'}
