@@ -67,7 +67,24 @@ export class AppointmentQueryService {
 
   async detail(actor: Actor, id: string): Promise<AppointmentDetail> {
     const row = await this.loadRow(id);
-    return toDetail(row, this.policy.abilitiesFor(actor, factsOf(row)));
+    // 候補日 (11/16): the other candidate times of a 仮予定, kept as plans in the same group.
+    const group = row.plan?.status === 'TENTATIVE' ? row.plan.candidateGroupId : null;
+    const siblings = group
+      ? await this.prisma.schedulePlan.findMany({
+          where: { candidateGroupId: group, appointmentId: null, deletedAt: null },
+          select: { id: true, startsAt: true, endsAt: true },
+          orderBy: { startsAt: 'asc' },
+        })
+      : [];
+    return toDetail(
+      row,
+      this.policy.abilitiesFor(actor, factsOf(row)),
+      siblings.map((plan) => ({
+        planId: plan.id,
+        startsAt: plan.startsAt.toISOString(),
+        endsAt: plan.endsAt.toISOString(),
+      })),
+    );
   }
 
   async list(query: ListQuery): Promise<Page<AppointmentListItem>> {

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { updateAppointmentDetailsRequestSchema } from '@telesales/shared';
 import {
   APP_KEY,
@@ -144,6 +144,17 @@ export class AppointmentBookingService {
     const attendeeIds = [...new Set(command.attendeeIds)].filter(
       (userId) => userId !== command.salesRepId,
     );
+    // 候補日 (11/16): a 仮予定 can offer more times; they are one group with the appointment's plan.
+    const candidates = command.tentative
+      ? command.candidates.map((slot) => ({
+          startsAt: new Date(slot.startsAt),
+          endsAt: new Date(slot.endsAt),
+        }))
+      : [];
+    if (candidates.some((slot) => slot.endsAt <= slot.startsAt)) {
+      throw new SlotUnavailableError([{ kind: 'INVALID_TIME' }]);
+    }
+    const candidateGroupId = candidates.length > 0 ? randomUUID() : null;
     let appointmentId: string;
     try {
       appointmentId = await this.prisma.$transaction(async (tx) => {
@@ -161,6 +172,22 @@ export class AppointmentBookingService {
         );
         if (!check.ok) {
           throw new SlotUnavailableError(check.problems);
+        }
+        for (const slot of candidates) {
+          const free = await this.guard.check(
+            {
+              salesRepId: command.salesRepId,
+              startsAt: slot.startsAt,
+              endsAt: slot.endsAt,
+              actorId: actor.id,
+              kind: 'APPOINTMENT',
+              salesBooked: command.source === AppointmentSource.SalesBooked,
+            },
+            tx,
+          );
+          if (!free.ok) {
+            throw new SlotUnavailableError(free.problems);
+          }
         }
         const companyId = await this.resolveCompany(tx, actor, command);
         const company = await tx.company.findUniqueOrThrow({ where: { id: companyId } });
@@ -216,9 +243,25 @@ export class AppointmentBookingService {
             endsAt,
             appointmentId: appointment.id,
             status: command.tentative ? PlanStatus.Tentative : PlanStatus.Fixed,
+            candidateGroupId,
             attendees: { create: attendeeIds.map((userId) => ({ userId })) },
           },
         });
+        for (const slot of candidates) {
+          await tx.schedulePlan.create({
+            data: {
+              ownerId: command.salesRepId,
+              createdById: actor.id,
+              type: APPOINTMENT_PLAN_TYPE[command.format],
+              title: company.name,
+              startsAt: slot.startsAt,
+              endsAt: slot.endsAt,
+              status: PlanStatus.Tentative,
+              candidateGroupId,
+              attendees: { create: attendeeIds.map((userId) => ({ userId })) },
+            },
+          });
+        }
         await this.guard.releaseFor(tx, actor.id, command.salesRepId);
         return appointment.id;
       });
@@ -241,6 +284,10 @@ export class AppointmentBookingService {
         source: detail.source,
         originalAppointmentId: detail.originalAppointmentId,
         tentative: command.tentative,
+        candidates: candidates.map((slot) => ({
+          startsAt: slot.startsAt.toISOString(),
+          endsAt: slot.endsAt.toISOString(),
+        })),
         attendeeIds,
       },
     });
@@ -255,6 +302,20 @@ export class AppointmentBookingService {
       });
     }
     return detail;
+  }
+
+  /** 候補日 (11/16): a moved or cancelled appointment no longer offers its other candidate times. */
+  private async dropCandidates(tx: Prisma.TransactionClient, appointmentId: string) {
+    const plan = await tx.schedulePlan.findUnique({
+      where: { appointmentId },
+      select: { id: true, candidateGroupId: true },
+    });
+    if (!plan?.candidateGroupId) return;
+    await tx.schedulePlan.updateMany({
+      where: { candidateGroupId: plan.candidateGroupId, id: { not: plan.id }, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    await tx.schedulePlan.update({ where: { id: plan.id }, data: { candidateGroupId: null } });
   }
 
   async updateDetails(
@@ -371,6 +432,7 @@ export class AppointmentBookingService {
         if (result.count === 0) {
           throw new VersionConflictError();
         }
+        await this.dropCandidates(tx, id);
         await tx.schedulePlan.updateMany({
           where: { appointmentId: id },
           data: { startsAt, endsAt, ownerId: command.salesRepId },
@@ -464,6 +526,7 @@ export class AppointmentBookingService {
       if (result.count === 0) {
         throw new VersionConflictError();
       }
+      await this.dropCandidates(tx, id);
       await tx.schedulePlan.updateMany({
         where: { appointmentId: id },
         data: { deletedAt: new Date() },

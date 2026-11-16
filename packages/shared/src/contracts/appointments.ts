@@ -66,6 +66,14 @@ export const createAppointmentRequestSchema = z
     originalAppointmentId: z.uuid().nullish(),
     /** 仮予定 (11/13): not yet confirmed with the customer; the rep confirms it later. */
     tentative: z.boolean().default(false),
+    /**
+     * 候補日 (11/16): more candidate times for a 仮予定, besides startsAt–endsAt. Saved as one
+     * group; confirming one moves the appointment there and removes the others.
+     */
+    candidates: z
+      .array(z.object({ startsAt: instantString, endsAt: instantString }))
+      .max(9)
+      .default([]),
     /** 同席者 (11/13): colleagues joining the meeting (N9). */
     attendeeIds: z.array(z.uuid()).max(20).default([]),
     ...appointmentContactFields,
@@ -323,6 +331,8 @@ export interface AppointmentDetail extends AppointmentListItem {
   planId: string | null;
   /** 仮予定: not confirmed with the customer yet (11/13). */
   tentative: boolean;
+  /** The other candidate times of a 仮予定 (11/16); confirming one moves the appointment there. */
+  candidates: { planId: string; startsAt: string; endsAt: string }[];
   preparations: PreparationDto[];
   results: MeetingResultDto[];
   changes: AppointmentChangeDto[];
