@@ -1516,3 +1516,221 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
     transparent 6px 9px
   );
 }
+
+/* ---------------------------------------------------------------------------
+   Small joys (11/16): booking celebration, the season strip, 今日のおみくじ,
+   and gentle motion when a page appears. All of it stops for reduced motion.
+   --------------------------------------------------------------------------- */
+.celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+.celebrate-leaf {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  animation: celebrate-leaf 1.35s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+@keyframes celebrate-leaf {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy)) scale(1) rotate(calc(var(--rot) * 0.7));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), calc(var(--dy) + 70px)) scale(0.9) rotate(var(--rot));
+  }
+}
+.celebrate-stamp {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border: 3px solid #d6401f;
+  border-radius: 50%;
+  background: #fffdf6;
+  color: #d6401f;
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  font-size: 28px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgb(214 64 31 / 0.25);
+  animation: celebrate-stamp 1.4s var(--ease-out-soft) forwards;
+}
+@keyframes celebrate-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-25deg);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.15) rotate(6deg);
+  }
+  30% {
+    transform: scale(1) rotate(0deg);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+}
+.celebrate-line {
+  position: absolute;
+  left: var(--lx, var(--x));
+  top: calc(var(--y) - 64px);
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: var(--shadow-raised);
+  animation: celebrate-line 1.5s var(--ease-out-soft) forwards;
+}
+@keyframes celebrate-line {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  15%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+
+.season-strip {
+  animation: fade-in 0.4s ease-out;
+}
+.season-icon {
+  transform-origin: 50% 90%;
+  animation: season-sway 3.2s ease-in-out infinite;
+}
+@keyframes season-sway {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+.season-strip.season-momiji {
+  border-left: 3px solid #e5391f;
+}
+.season-strip.season-sakura,
+.season-strip.season-plum {
+  border-left: 3px solid #e8517a;
+}
+.season-strip.season-green {
+  border-left: 3px solid #4caf50;
+}
+.season-strip.season-rain {
+  border-left: 3px solid #7c8fd6;
+}
+.season-strip.season-summer {
+  border-left: 3px solid #3b8dbd;
+}
+.season-strip.season-moon {
+  border-left: 3px solid #e0b84a;
+}
+.season-strip.season-snow {
+  border-left: 3px solid #6aa8d8;
+}
+
+.omikuji-shake {
+  transform-origin: 50% 100%;
+  animation: omikuji-shake 0.65s ease-in-out;
+}
+@keyframes omikuji-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(-14deg);
+  }
+  35% {
+    transform: rotate(12deg);
+  }
+  55% {
+    transform: rotate(-10deg) translateY(-2px);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+.omikuji-open {
+  transform-origin: top center;
+  animation: omikuji-open 0.45s var(--ease-out-soft);
+}
+@keyframes omikuji-open {
+  from {
+    opacity: 0;
+    transform: scaleY(0.4) translateY(-6px);
+  }
+}
+
+/* A page fades in and rises a few pixels when it opens; cards lift a little on hover. */
+.page-enter {
+  animation: page-enter 0.26s var(--ease-out-soft);
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+dialog[open] > div {
+  animation: pop-in 0.18s var(--ease-out-soft);
+  transform-origin: center top;
+}
+.lift {
+  transition:
+    transform 0.2s var(--ease-out-soft),
+    box-shadow 0.2s,
+    border-color 0.2s,
+    background-color 0.2s;
+}
+.lift:hover {
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-leaf,
+  .celebrate-stamp,
+  .season-icon,
+  .omikuji-shake,
+  .omikuji-open,
+  .page-enter,
+  dialog[open] > div {
+    animation: none !important;
+  }
+  .lift:hover {
+    transform: none;
+  }
+}

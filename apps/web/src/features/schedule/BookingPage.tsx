@@ -59,6 +59,7 @@ import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useDraft } from '@/lib/drafts';
+import { celebrate } from '@/components/fun/celebrate';
 import { AttendeePicker } from './AttendeePicker';
 import { defaultEndTime, formatDate, todayJst, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
@@ -317,6 +318,8 @@ function BookingForm(props: BookingFormProps) {
   const submit = () =>
     create.mutate(request(), {
       onSuccess: (appointment) => {
+        // A little celebration from the button (11/16).
+        celebrate();
         lock.forget();
         draft.reset();
         navigate(paths.appointmentMail(appointment.id, 'booking'), { replace: true });
