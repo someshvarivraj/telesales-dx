@@ -377,11 +377,61 @@ export class ScheduleService {
     if (!plan) {
       throw new NotFoundError();
     }
-    if (!this.policy.canConfirmPlan(actor, plan)) {
-      throw new ForbiddenError();
-    }
     if (plan.status !== PlanStatus.Tentative) {
       throw new InvalidStateError({ reason: 'not_tentative' });
+    }
+    // 候補日 of a self-booked 仮予定アポ (11/16): the appointment's own plan anchors the group.
+    // Confirming another candidate moves the appointment (and its plan) to that time.
+    const anchor =
+      !plan.appointmentId && plan.candidateGroupId
+        ? await this.prisma.schedulePlan.findFirst({
+            where: {
+              candidateGroupId: plan.candidateGroupId,
+              appointmentId: { not: null },
+              deletedAt: null,
+            },
+            include: planInclude,
+          })
+        : null;
+    if (!this.policy.canConfirmPlan(actor, anchor ?? plan)) {
+      throw new ForbiddenError();
+    }
+    if (anchor?.appointmentId) {
+      const appointmentId = anchor.appointmentId;
+      const moved = await this.prisma.$transaction(async (tx) => {
+        await tx.schedulePlan.updateMany({
+          where: {
+            candidateGroupId: plan.candidateGroupId,
+            id: { not: anchor.id },
+            deletedAt: null,
+          },
+          data: { deletedAt: new Date() },
+        });
+        await tx.appointment.update({
+          where: { id: appointmentId },
+          data: { startsAt: plan.startsAt, endsAt: plan.endsAt, version: { increment: 1 } },
+        });
+        return tx.schedulePlan.update({
+          where: { id: anchor.id },
+          data: {
+            status: PlanStatus.Fixed,
+            candidateGroupId: null,
+            startsAt: plan.startsAt,
+            endsAt: plan.endsAt,
+          },
+          include: planInclude,
+        });
+      });
+      await this.audit.record({
+        action: AuditAction.PlanUpdated,
+        actorUserId: actor.id,
+        targetType: 'plan',
+        targetId: anchor.id,
+        before: planAudit(anchor),
+        after: planAudit(moved),
+        metadata: { confirmedCandidate: true, candidatePlanId: plan.id, appointmentId },
+      });
+      return this.toPlanDto(actor, moved);
     }
     const row = await this.prisma.$transaction(async (tx) => {
       if (plan.candidateGroupId) {

@@ -147,8 +147,8 @@
         var cheer = document.getElementById('cheer');
         var hits = document.getElementById('hits');
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        // Light golden maple leaves drift down and gather at the bottom (outage/leaves.js).
-        startLeaves(document.getElementById('leaves'));
+        // The same evening lake as the sign-in screen (11/16): moon, Fuji, torii, koi and leaves.
+        startLeaves(document.getElementById('leaves'), { lake: true });
 
         var w, h, maxX, maxY;
         function measure() {

@@ -13,7 +13,8 @@ export function FallingLeaves({ className, lake = false }: { className?: string;
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     if (!ref.current) return;
-    return startLeaves(ref.current, { lake });
+    // Japan in stars sits in the open sky right of the sign-in box (wide screens only).
+    return startLeaves(ref.current, { lake, starMap: 'right' });
   }, [lake]);
   return (
     <canvas

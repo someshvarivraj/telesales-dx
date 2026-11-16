@@ -59,8 +59,10 @@ import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useDraft } from '@/lib/drafts';
+import { celebrate } from '@/components/fun/celebrate';
 import { AttendeePicker } from './AttendeePicker';
-import { defaultEndTime, formatDate, todayJst, toInstant } from '@/lib/format';
+import { type Candidate, CandidateEditor } from './CandidateEditor';
+import { defaultEndTime, formatDate, formatShortDate, todayJst, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import {
   lockProblemText,
@@ -189,8 +191,8 @@ function BookingForm(props: BookingFormProps) {
     slot: Slot;
     company: CompanyValues;
     values: AppointmentValues;
-    /** A rep's own appointment: 仮予定 and 同席者 (11/13). */
-    extras?: { tentative: boolean; attendeeIds: string[] };
+    /** A rep's own appointment: 仮予定 and 同席者 (11/13), and a 仮予定's 候補日 (11/16). */
+    extras?: { tentative: boolean; attendeeIds: string[]; candidates?: Candidate[] };
   }>(`booking:${original?.id ?? company?.id ?? 'new'}:${params.get('source') ?? ''}`, () => {
     const start = params.get('start') ?? '10:00';
     return {
@@ -202,7 +204,7 @@ function BookingForm(props: BookingFormProps) {
       },
       company: emptyCompany,
       values: initialValues(params, props, source),
-      extras: { tentative: false, attendeeIds: [] },
+      extras: { tentative: false, attendeeIds: [], candidates: [] },
     };
   });
   const part =
@@ -229,6 +231,9 @@ function BookingForm(props: BookingFormProps) {
   const values = draft.value.values;
   const setValues = part('values');
   const extras = draft.value.extras ?? { tentative: false, attendeeIds: [] };
+  // A draft saved before 候補日 existed has none.
+  const candidates = extras.tentative ? (extras.candidates ?? []) : [];
+  const candidatesValid = candidates.every((c) => c.date && c.end > c.start);
   const setExtras = (patch: Partial<typeof extras>) =>
     draft.set((current) => ({
       ...current,
@@ -311,12 +316,21 @@ function BookingForm(props: BookingFormProps) {
     // 仮予定・同席者 are asked on a rep's own appointment only (11/13).
     tentative: salesBooked && !rebookOf ? extras.tentative : false,
     attendeeIds: salesBooked && !rebookOf ? extras.attendeeIds : [],
+    candidates:
+      salesBooked && !rebookOf
+        ? candidates.map((c) => ({
+            startsAt: toInstant(c.date, c.start),
+            endsAt: toInstant(c.date, c.end),
+          }))
+        : [],
     ...appointmentRequestFields(values),
   });
 
   const submit = () =>
     create.mutate(request(), {
       onSuccess: (appointment) => {
+        // A little celebration from the button (11/16).
+        celebrate();
         lock.forget();
         draft.reset();
         navigate(paths.appointmentMail(appointment.id, 'booking'), { replace: true });
@@ -339,6 +353,7 @@ function BookingForm(props: BookingFormProps) {
     Boolean(slot.repId) &&
     missing.length === 0 &&
     (!needsCompany || companyValues.name.trim() !== '') &&
+    candidatesValid &&
     (held || slotData.result?.ok === true);
   const toConfirm = async () => {
     if (!held) {
@@ -413,6 +428,17 @@ function BookingForm(props: BookingFormProps) {
           { label: quick ? '備考・メモ' : '伝達事項', value: values.handoverNotes, wide: true },
           { label: 'テレマリスト名', value: values.listName },
           ...(quick && extras.tentative ? [{ label: '仮予定', value: 'はい（あとで確定）' }] : []),
+          ...(quick && candidates.length > 0
+            ? [
+                {
+                  label: `候補日（ほか${candidates.length}件）`,
+                  value: candidates
+                    .map((c) => `${formatShortDate(c.date)} ${c.start}〜${c.end}`)
+                    .join('、'),
+                  wide: true,
+                },
+              ]
+            : []),
           ...(quick && extras.attendeeIds.length > 0
             ? [
                 {
@@ -490,6 +516,19 @@ function BookingForm(props: BookingFormProps) {
                   checked={extras.tentative}
                   onChange={(tentative) => setExtras({ tentative })}
                 />
+                {extras.tentative && (
+                  <div>
+                    <p className="mb-1.5 text-[13px] font-bold">
+                      候補日（{candidates.length + 1}件・1つを確定すると、残りは消えます）
+                    </p>
+                    <CandidateEditor
+                      ownerId={slot.repId}
+                      first={{ date: slot.date, start: slot.start, end: slot.end }}
+                      candidates={candidates}
+                      onChange={(next) => setExtras({ candidates: next })}
+                    />
+                  </div>
+                )}
                 <div>
                   <p className="mb-1.5 text-[13px] font-bold">
                     同席者
@@ -545,7 +584,9 @@ function BookingForm(props: BookingFormProps) {
                       ? '会社名と訪問形態を入れてください。'
                       : missing.length > 0
                         ? `${missing.join('・')}を入れてください。`
-                        : ''}
+                        : !candidatesValid
+                          ? '候補日の時間を確かめてください（終了は開始より後に）。'
+                          : ''}
                   </p>
                 )}
               </footer>

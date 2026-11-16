@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { MoraBot } from '@/components/brand/MoraBot';
+import { DailyOmikuji } from '@/components/fun/DailyOmikuji';
 import { Scene, type SceneName } from '@/components/illustrations/Scenes';
 import { cn } from '@/components/ui/cn';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
@@ -54,7 +55,7 @@ function TaskTile({ task }: { task: Task }) {
     <Link
       to={task.to}
       className={cn(
-        'flex items-center gap-3 border bg-surface p-4 shadow-(--shadow-card) transition-colors hover:border-main-line hover:bg-main-soft/40',
+        'lift flex items-center gap-3 border bg-surface p-4 shadow-(--shadow-card) hover:border-main-line hover:bg-main-soft/40 hover:shadow-(--shadow-raised)',
         task.urgent && task.count > 0 ? 'border-danger/40' : 'border-line',
       )}
     >
@@ -257,6 +258,7 @@ export function HomePage() {
         </div>
         <Scene name={sceneFor(roles)} className="-my-3 w-60 shrink-0 max-sm:hidden" />
       </div>
+      <DailyOmikuji userId={userId} />
       {tasks.length > 0 && (
         <section aria-labelledby="tasks-title">
           <h1 id="tasks-title" className="mb-3 text-lg font-bold">

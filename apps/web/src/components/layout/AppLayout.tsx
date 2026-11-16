@@ -1,8 +1,10 @@
 import { Permission } from '@telesales/shared';
+import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
+import { SeasonStrip } from '@/components/fun/SeasonStrip';
 import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
@@ -24,7 +26,17 @@ export function AppLayout() {
   const admin = permissions.includes(Permission.Administer);
   const maintenance = status.data?.maintenance === true;
   // The schedule (request 10/29) and 架電状況 (request 11/12) use the full width of the screen.
-  const wide = isWidePage(useLocation().pathname);
+  const { pathname } = useLocation();
+  const wide = isWidePage(pathname);
+  // Each page fades in and rises a little when it opens (11/16), without remounting it.
+  const page = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = page.current;
+    if (!el) return;
+    el.classList.remove('page-enter');
+    void el.offsetWidth;
+    el.classList.add('page-enter');
+  }, [pathname]);
   return (
     <ThemeProvider userId={id} roles={roles}>
       <div className="min-h-dvh">
@@ -47,7 +59,8 @@ export function AppLayout() {
                 で終えられます）。
               </Alert>
             )}
-            {maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}
+            <SeasonStrip userId={id} />
+            <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
           </main>
         </div>
         <MobileNav />

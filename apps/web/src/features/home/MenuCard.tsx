@@ -21,7 +21,7 @@ export function MenuCard({ item }: { item: MenuItem }) {
       to={item.path}
       className={cn(
         'group flex items-center gap-4 border border-line bg-surface p-5 shadow-(--shadow-card)',
-        'transition-[border-color,box-shadow] duration-200 hover:shadow-(--shadow-raised)',
+        'lift hover:shadow-(--shadow-raised)',
         tone.hover,
       )}
     >
