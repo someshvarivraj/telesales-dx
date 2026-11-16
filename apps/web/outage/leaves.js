@@ -192,46 +192,221 @@ function buildScenery(width, height, top, ratio) {
     }
   });
 
-  // The cliff the water falls from: a rocky shoulder rising out of the middle range.
-  var fallTop = top - tall * 0.62;
-  var rock = ctx.createLinearGradient(fallX - 60, 0, fallX + 60, 0);
-  rock.addColorStop(0, '#8d99a5');
-  rock.addColorStop(0.45, '#6a7682');
-  rock.addColorStop(1, '#8592a0');
-  ctx.fillStyle = rock;
+  // The falls (11/16, after 布引の滝 in Shin-Kobe): a granite cliff with boulders and autumn
+  // trees, a small reservoir behind an old stone dam at the top, the water dropping in two
+  // tiers onto a rock ledge and into the lake. The moving water is drawn in drawWaterfall.
+  var lipY = top - tall * 0.8;
+  var crestY = lipY - 10;
+  var midY = lipY + (top - lipY) * 0.46;
+  var fallTop = crestY;
+  var fx = fallX;
+  // Smaller on phones, so the falls don't crowd the page.
+  var fallScale = width < 760 ? 0.66 : 1;
+  ctx.save();
+  ctx.translate(fx, top);
+  ctx.scale(fallScale, fallScale);
+  ctx.translate(-fx, -top);
+  // The cliff rises out of the middle range: a flat notch for the dam, shoulders sloping away.
+  var shoulder = top - tall * 0.26;
+  var cliffTop = function (cx) {
+    var d = Math.abs(cx - fx);
+    if (d <= 46) return lipY - 16;
+    if (d >= 175) return shoulder;
+    var k = (d - 46) / 129;
+    return (
+      lipY -
+      16 +
+      (shoulder - (lipY - 16)) * (0.5 - 0.5 * Math.cos(k * Math.PI)) +
+      Math.sin(cx * 0.21) * 3
+    );
+  };
+  var cliffFill = ctx.createLinearGradient(fx - 175, 0, fx + 175, 0);
+  cliffFill.addColorStop(0, 'rgba(156, 173, 191, 1)');
+  cliffFill.addColorStop(0.3, '#7b808d');
+  cliffFill.addColorStop(0.5, '#5b606c');
+  cliffFill.addColorStop(0.7, '#7b808d');
+  cliffFill.addColorStop(1, 'rgba(156, 173, 191, 1)');
+  ctx.fillStyle = cliffFill;
   ctx.beginPath();
-  ctx.moveTo(fallX - 78, top + 2);
-  ctx.lineTo(fallX - 58, fallTop + tall * 0.34);
-  ctx.lineTo(fallX - 44, fallTop + tall * 0.2);
-  ctx.lineTo(fallX - 34, fallTop + 10);
-  ctx.lineTo(fallX - 20, fallTop - 6);
-  ctx.lineTo(fallX - 6, fallTop - 2);
-  ctx.lineTo(fallX + 10, fallTop - 9);
-  ctx.lineTo(fallX + 26, fallTop + 4);
-  ctx.lineTo(fallX + 40, fallTop + tall * 0.16);
-  ctx.lineTo(fallX + 54, fallTop + tall * 0.3);
-  ctx.lineTo(fallX + 82, top + 2);
+  ctx.moveTo(fx - 180, top + 2);
+  for (var cx = fx - 180; cx <= fx + 180; cx += 4) ctx.lineTo(cx, cliffTop(cx));
+  ctx.lineTo(fx + 180, top + 2);
   ctx.closePath();
   ctx.fill();
-  // Darker ledges on the rock.
-  ctx.strokeStyle = 'rgba(70, 80, 92, 0.45)';
-  ctx.lineWidth = 1.2;
-  [0.3, 0.55, 0.78].forEach(function (k) {
-    var y = fallTop + (top - fallTop) * k;
+  // Rock strata: faint slanted lines on the face.
+  ctx.strokeStyle = 'rgba(40, 44, 52, 0.18)';
+  ctx.lineWidth = 1;
+  for (var sl = 0; sl < 9; sl++) {
+    var sy = lipY + 8 + sl * ((top - lipY) / 9);
     ctx.beginPath();
-    ctx.moveTo(fallX - 50 + k * 10, y);
-    ctx.lineTo(fallX - 22, y + 3);
-    ctx.moveTo(fallX + 22, y - 2);
-    ctx.lineTo(fallX + 46 - k * 8, y + 2);
+    ctx.moveTo(fx - 120 + sl * 6, sy + 6);
+    ctx.quadraticCurveTo(fx - 70, sy - 2, fx - 30, sy + 3);
+    ctx.moveTo(fx + 34, sy + 2);
+    ctx.quadraticCurveTo(fx + 76, sy - 3, fx + 124 - sl * 6, sy + 7);
     ctx.stroke();
+  }
+
+  // Autumn woods on the cliff top and shoulders: layered rounded canopies, darker underneath.
+  var leaves = ['#c2332a', '#d9452b', '#e8742a', '#f0a830', '#b5651d', '#e0582b', '#7d8a3a'];
+  for (var layer = 0; layer < 2; layer++) {
+    for (var tr = 0; tr < 70; tr++) {
+      var tx2 = fx - 178 + rand() * 356;
+      if (Math.abs(tx2 - fx) < 40 && layer === 1) continue;
+      var tyTop = cliffTop(tx2);
+      var tyy = tyTop + (layer === 0 ? -4 : 6) + rand() * (Math.abs(tx2 - fx) < 50 ? 6 : 22);
+      var tsz = 5 + rand() * 6;
+      ctx.fillStyle = 'rgba(70, 40, 30, 0.35)';
+      ctx.beginPath();
+      ctx.arc(tx2 + 1.5, tyy + 2, tsz, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = leaves[Math.floor(rand() * leaves.length)];
+      ctx.beginPath();
+      ctx.arc(tx2, tyy, tsz, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 230, 180, 0.25)';
+      ctx.beginPath();
+      ctx.arc(tx2 - tsz * 0.3, tyy - tsz * 0.35, tsz * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Trees on the far bank behind the reservoir, and bushes clinging to the cliff face.
+  var canopy = function (cx2, cy2, size2) {
+    ctx.fillStyle = 'rgba(70, 40, 30, 0.3)';
+    ctx.beginPath();
+    ctx.arc(cx2 + 1.5, cy2 + 2, size2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = leaves[Math.floor(rand() * leaves.length)];
+    ctx.beginPath();
+    ctx.arc(cx2, cy2, size2, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  for (var back = 0; back < 16; back++)
+    canopy(fx - 56 + back * 7.5, lipY - 25 - rand() * 6, 5 + rand() * 4);
+  for (var bush = 0; bush < 34; bush++) {
+    var bxx = fx + (rand() < 0.5 ? -1 : 1) * (70 + rand() * 100);
+    var byy = cliffTop(bxx) + 18 + rand() * (top - cliffTop(bxx) - 24);
+    canopy(bxx, byy, 3.5 + rand() * 4);
+  }
+
+  // The reservoir (貯水池): calm water with a bright rim, held by a stone masonry dam.
+  var pond = ctx.createLinearGradient(0, lipY - 24, 0, lipY - 10);
+  pond.addColorStop(0, '#9fcbd8');
+  pond.addColorStop(1, '#5f98ad');
+  ctx.fillStyle = pond;
+  ctx.beginPath();
+  ctx.ellipse(fx, lipY - 17, 48, 6.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(fx, lipY - 17, 48, 6.5, 0, Math.PI * 1.08, Math.PI * 1.92);
+  ctx.stroke();
+  var stone = ctx.createLinearGradient(0, crestY, 0, lipY + 2);
+  stone.addColorStop(0, '#c9c2b2');
+  stone.addColorStop(1, '#9d9585');
+  ctx.fillStyle = stone;
+  ctx.fillRect(fx - 34, crestY, 68, 12);
+  ctx.strokeStyle = 'rgba(90, 82, 68, 0.45)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  for (var row = 0; row < 3; row++) {
+    var ry = crestY + row * 4;
+    ctx.moveTo(fx - 34, ry);
+    ctx.lineTo(fx + 34, ry);
+    for (var col = -34 + (row % 2) * 4; col < 34; col += 8) {
+      ctx.moveTo(fx + col, ry);
+      ctx.lineTo(fx + col, ry + 4);
+    }
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#ddd7c9';
+  ctx.fillRect(fx - 36, crestY - 2, 72, 2.5);
+
+  // Wet dark rock behind the water.
+  var wet = ctx.createLinearGradient(fx - 26, 0, fx + 30, 0);
+  wet.addColorStop(0, 'rgba(46, 50, 58, 0)');
+  wet.addColorStop(0.5, 'rgba(46, 50, 58, 0.55)');
+  wet.addColorStop(1, 'rgba(46, 50, 58, 0)');
+  ctx.fillStyle = wet;
+  ctx.fillRect(fx - 26, lipY, 58, top - lipY);
+
+  // The ledge halfway down, with its small pool.
+  ctx.fillStyle = '#4b505a';
+  ctx.beginPath();
+  ctx.ellipse(fx + 2, midY + 5, 42, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(150, 156, 168, 0.8)';
+  ctx.beginPath();
+  ctx.ellipse(fx + 2, midY + 1.5, 40, 3, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = '#86bccb';
+  ctx.beginPath();
+  ctx.ellipse(fx + 2, midY + 2, 24, 3.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Granite rocks along the falls and piled at the foot: irregular, lit from the upper left,
+  // some with moss — as on the rocks beside 布引の雄滝.
+  var span = top - lipY;
+  var rock = function (bx, by, br, i) {
+    var pts = 7;
+    var shape = [];
+    for (var q = 0; q < pts; q++) {
+      var ang = (q / pts) * Math.PI * 2;
+      var rad = br * (0.78 + rand() * 0.3);
+      shape.push([bx + Math.cos(ang) * rad, by + Math.sin(ang) * rad * 0.72]);
+    }
+    var g = ctx.createRadialGradient(bx - br * 0.4, by - br * 0.45, br * 0.1, bx, by, br * 1.05);
+    g.addColorStop(0, '#aeb2bb');
+    g.addColorStop(0.55, '#70757f');
+    g.addColorStop(1, '#474b54');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    shape.forEach(function (pt, q) {
+      var next = shape[(q + 1) % pts];
+      var mx = (pt[0] + next[0]) / 2;
+      var my = (pt[1] + next[1]) / 2;
+      if (q === 0) ctx.moveTo(mx, my);
+      else ctx.quadraticCurveTo(pt[0], pt[1], mx, my);
+    });
+    ctx.quadraticCurveTo(
+      shape[0][0],
+      shape[0][1],
+      (shape[0][0] + shape[1][0]) / 2,
+      (shape[0][1] + shape[1][1]) / 2,
+    );
+    ctx.closePath();
+    ctx.fill();
+    if (i % 3 === 1) {
+      ctx.fillStyle = 'rgba(98, 132, 66, 0.62)';
+      ctx.beginPath();
+      ctx.ellipse(bx - br * 0.15, by - br * 0.5, br * 0.55, br * 0.2, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  var placed = 0;
+  [-1, 1].forEach(function (side) {
+    for (var rr = 0; rr < 9; rr++) {
+      var k2 = 0.05 + rr * 0.11 + rand() * 0.05;
+      var dx2 = side * (24 + rand() * 26 + k2 * 18);
+      rock(fx + 2 + dx2, lipY + k2 * span, 8 + rand() * 7 + k2 * 6, placed++);
+    }
   });
+  // The pile at the foot, bigger and overlapping.
+  for (var pr = 0; pr < 9; pr++) {
+    var px2 = fx + 3 + (pr - 4) * 15 + (rand() - 0.5) * 6;
+    if (Math.abs(px2 - fx - 3) < 18) continue;
+    rock(px2, top - 6 - rand() * 8, 11 + rand() * 8, placed++);
+  }
+
+  ctx.restore();
 
   // Autumn trees along the near hills (left and right of the waterfall's rocks).
   var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
   var near = layers[2].ridge;
   for (var t = 0; t < width / 7; t++) {
     var tx = rand() * width;
-    if (Math.abs(tx - fallX) < 70) continue;
+    if (Math.abs(tx - fallX) < 182 * fallScale) continue;
     var ground = near(tx);
     var ty = ground + rand() * (top - ground) * 0.85;
     var r = 3 + rand() * 4;
@@ -240,7 +415,14 @@ function buildScenery(width, height, top, ratio) {
     ctx.ellipse(tx, ty, r, r * 1.15, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  return { canvas: canvas, fallX: fallX, fallTop: fallTop };
+  return {
+    canvas: canvas,
+    fallX: fallX,
+    fallTop: fallTop,
+    crestY: crestY,
+    midY: midY,
+    fallScale: fallScale,
+  };
 }
 
 /** Lake scenery: the mountains, and their faint reflection in the water. */
@@ -261,61 +443,122 @@ function drawScenery(ctx, scenery, width, height, top, below) {
   ctx.restore();
 }
 
-/** The waterfall: falling streaks over a pale band, mist and foam where it meets the lake. */
-function drawWaterfall(ctx, scenery, top, t, falls) {
-  if (!scenery) return;
-  var x = scenery.fallX;
-  var from = scenery.fallTop;
-  var w = 30;
-  var band = ctx.createLinearGradient(0, from, 0, top);
-  band.addColorStop(0, 'rgba(225, 240, 248, 0.92)');
-  band.addColorStop(1, 'rgba(200, 228, 242, 0.95)');
-  ctx.fillStyle = band;
+/** One sheet of falling water: slightly bowed sides, light in the middle, streaks moving down. */
+function drawCurtain(ctx, x, from, to, wTop, wBottom, t, falls, tier) {
+  var sheet = ctx.createLinearGradient(0, from, 0, to);
+  sheet.addColorStop(0, 'rgba(236, 246, 251, 0.96)');
+  sheet.addColorStop(1, 'rgba(214, 234, 245, 0.92)');
+  ctx.fillStyle = sheet;
   ctx.beginPath();
-  ctx.moveTo(x - w / 2 + 2, from);
-  ctx.lineTo(x + w / 2 - 2, from);
-  ctx.lineTo(x + w / 2 + 3, top);
-  ctx.lineTo(x - w / 2 - 3, top);
+  ctx.moveTo(x - wTop / 2, from);
+  ctx.lineTo(x + wTop / 2, from);
+  ctx.quadraticCurveTo(x + wTop / 2 + 3, (from + to) / 2, x + wBottom / 2, to);
+  ctx.lineTo(x - wBottom / 2, to);
+  ctx.quadraticCurveTo(x - wTop / 2 - 3, (from + to) / 2, x - wTop / 2, from);
   ctx.closePath();
   ctx.fill();
-  var span = top - from;
+  // Volume: bluish edges, a bright core.
+  var depth = ctx.createLinearGradient(x - wBottom / 2, 0, x + wBottom / 2, 0);
+  depth.addColorStop(0, 'rgba(150, 186, 210, 0.45)');
+  depth.addColorStop(0.35, 'rgba(255, 255, 255, 0)');
+  depth.addColorStop(0.65, 'rgba(255, 255, 255, 0)');
+  depth.addColorStop(1, 'rgba(150, 186, 210, 0.45)');
+  ctx.fillStyle = depth;
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  var span = to - from;
   ctx.lineCap = 'round';
   for (var i = 0; i < falls.length; i++) {
     var f = falls[i];
+    if (f.tier !== tier) continue;
     var y = from + ((f.offset + t * f.speed) % (span + f.length)) - f.length;
-    var y1 = Math.max(from, y);
-    var y2 = Math.min(top, y + f.length);
-    if (y2 <= y1) continue;
-    var spread = (y1 - from) / span;
+    var k = (y - from) / span;
+    var w = wTop + (wBottom - wTop) * Math.max(0, k);
     ctx.strokeStyle = 'rgba(255, 255, 255, ' + f.alpha.toFixed(2) + ')';
     ctx.lineWidth = f.width;
     ctx.beginPath();
-    ctx.moveTo(x + f.lane * (w / 2 + spread * 3), y1);
-    ctx.lineTo(x + f.lane * (w / 2 + ((y2 - from) / span) * 3), y2);
+    ctx.moveTo(x + f.lane * w * 0.46, y);
+    ctx.lineTo(x + f.lane * w * 0.5, y + f.length);
     ctx.stroke();
   }
-  // Mist and foam at the foot.
-  var pulse = 0.5 + 0.5 * Math.sin(t * 2.1);
-  var mist = ctx.createRadialGradient(x, top, 2, x, top, 60);
-  mist.addColorStop(0, 'rgba(255, 255, 255, ' + (0.75 + 0.15 * pulse).toFixed(2) + ')');
+  // Pale sheets sliding down the curtain.
+  for (var band = 0; band < 3; band++) {
+    var by = from + ((t * 70 + band * span * 0.37) % span);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.fillRect(x - wBottom, by, wBottom * 2, 3);
+  }
+  ctx.restore();
+}
+
+/** Mist, foam and spray where falling water lands. */
+function drawSplash(ctx, x, y, size, t, seed) {
+  var pulse = 0.5 + 0.5 * Math.sin(t * 2.3 + seed);
+  var mist = ctx.createRadialGradient(x, y, 2, x, y - size * 0.2, size * 1.6);
+  mist.addColorStop(0, 'rgba(255, 255, 255, ' + (0.7 + 0.2 * pulse).toFixed(2) + ')');
   mist.addColorStop(1, 'rgba(255, 255, 255, 0)');
   ctx.fillStyle = mist;
   ctx.beginPath();
-  ctx.ellipse(x, top + 2, 60, 18, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y - size * 0.15, size * 1.6, size * 0.7, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+  ctx.beginPath();
+  ctx.ellipse(x, y, size * (0.75 + 0.06 * pulse), size * 0.16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Spray: droplets thrown up and out, falling back.
+  for (var i = 0; i < 12; i++) {
+    var p = (t * 1.3 + i / 12 + seed) % 1;
+    var side = i % 2 ? 1 : -1;
+    var dx = side * (size * 0.25 + (i % 6) * size * 0.12) * p;
+    var dy = -size * 0.9 * 4 * p * (1 - p);
+    ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.85 * (1 - p)).toFixed(2) + ')';
+    ctx.beginPath();
+    ctx.arc(x + dx, y + dy, 1.2 + (i % 3) * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
-/** Waterfall streaks: lanes across the band, each falling at its own speed. */
+/**
+ * The falls (11/16, after 布引の滝): water spills over the stone dam, drops onto the ledge, then
+ * falls wider into the lake's emerald plunge pool (滝壺), with mist and spray at each landing.
+ */
+function drawWaterfall(ctx, scenery, top, t, falls) {
+  if (!scenery) return;
+  var x = scenery.fallX;
+  var crest = scenery.crestY;
+  var mid = scenery.midY;
+  var k = scenery.fallScale || 1;
+  ctx.save();
+  ctx.translate(x, top);
+  ctx.scale(k, k);
+  ctx.translate(-x, -top);
+  // Emerald plunge pool under the falls.
+  ctx.fillStyle = 'rgba(80, 168, 158, 0.32)';
+  ctx.beginPath();
+  ctx.ellipse(x + 3, top + 9, 62, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // A thin sheet spilling over the dam's crest, then the two falls.
+  ctx.fillStyle = 'rgba(240, 248, 252, 0.9)';
+  ctx.fillRect(x - 13, crest - 1, 26, 3);
+  drawCurtain(ctx, x, crest + 1, mid + 1, 22, 30, t, falls, 0);
+  drawSplash(ctx, x + 1, mid + 2, 20, t, 0.3);
+  drawCurtain(ctx, x + 3, mid + 3, top + 1, 32, 46, t, falls, 1);
+  drawSplash(ctx, x + 3, top + 3, 36, t, 0.7);
+  ctx.restore();
+}
+
+/** Waterfall streaks: lanes across each fall, each moving at its own speed. */
 function makeFalls() {
   var list = [];
-  for (var i = 0; i < 34; i++) {
+  for (var i = 0; i < 56; i++) {
     list.push({
+      tier: i < 22 ? 0 : 1,
       lane: Math.random() * 2 - 1,
       offset: Math.random() * 400,
-      speed: 140 + Math.random() * 120,
-      length: 14 + Math.random() * 30,
-      width: 1 + Math.random() * 1.6,
-      alpha: 0.45 + Math.random() * 0.45,
+      speed: 130 + Math.random() * 110,
+      length: 10 + Math.random() * 26,
+      width: 0.8 + Math.random() * 1.4,
+      alpha: 0.4 + Math.random() * 0.5,
     });
   }
   return list;
