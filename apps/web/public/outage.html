@@ -108,6 +108,24 @@
         opacity: 0;
         transition: opacity 0.3s;
       }
+      /* 「星をつなぐ」 (11/16): join the sky's stars into the map of Japan. */
+      #connect {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 5;
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.45);
+        color: #2a2116;
+        font: 700 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', Meiryo, sans-serif;
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+      }
+      #connect:hover {
+        background: rgba(255, 255, 255, 0.75);
+      }
       .spark {
         position: fixed;
         width: 7px;
@@ -128,6 +146,7 @@
         The system is down for maintenance. This page returns by itself when it is back.
       </p>
     </main>
+    <button id="connect" type="button" aria-pressed="false">✦ 星をつなぐ</button>
     <div id="cheer" role="status"></div>
     <div id="hits"></div>
     <script>
@@ -149,7 +168,7 @@ var LEAF_COLORS = [
 ];
 /**
  * Sign-in lake sky (11/13): always a light early-evening sky, around 5 p.m. — soft blue
- * overhead turning peach at the mountains, with the moon and a few stars already out.
+ * overhead turning peach at the mountains, with the moon and Japan drawn in stars.
  * Set when the lake starts; the maintenance page (no lake) keeps its plain background.
  */
 var EVENING = false;
@@ -1572,8 +1591,8 @@ function drawFisher(ctx, fisher, t, bite) {
 }
 
 /**
- * Japan as a constellation (11/16): the coasts of the four main islands as stars joined by faint
- * lines, [longitude, latitude]. Kobe (神戸) and Sanda (三田) shine brighter in their own colours.
+ * Japan in stars (11/16): the coasts of the four main islands, [longitude, latitude].
+ * Kobe (神戸) and Sanda (三田) shine brighter in their own colours.
  */
 var JAPAN = [
   // Hokkaido
@@ -1645,109 +1664,139 @@ var JAPAN = [
   ],
 ];
 var KOBE = [135.19, 34.69];
-/** Sanda is about 20 km north of Kobe; drawn a little further north so both stars can be seen. */
-var SANDA = [135.22, 35.4];
+var SANDA = [135.22, 34.89];
+
+/** Points along each island's coast, closer together than the outline, so the dots read as Japan. */
+function denseIslands() {
+  return JAPAN.map(function (island) {
+    var out = [];
+    island.forEach(function (p, i) {
+      var q = island[(i + 1) % island.length];
+      out.push({ lonLat: p, main: true });
+      var d = Math.hypot((q[0] - p[0]) * 0.81, q[1] - p[1]);
+      var extra = Math.floor(d / 0.55);
+      for (var k = 1; k <= extra; k++) {
+        var f = k / (extra + 1);
+        out.push({ lonLat: [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f], main: false });
+      }
+    });
+    return out;
+  });
+}
 
 /**
- * Where the star map sits. `right` (sign-in): in the open sky right of the sign-in group (it is
- * 960px wide in the middle), above the waterfall; none when that gap is too narrow. Otherwise
- * (maintenance page): the middle of the upper sky.
+ * Japan in stars across the whole evening sky (11/16): turned a little so the islands run from
+ * one side of the screen to the other, sized to fill the sky above the mountains. Only dots at
+ * first; 「星をつなぐ」 draws the lines between them.
  */
-function starMapOf(width, height, place) {
-  var h;
-  var cx;
-  var cy;
-  if (place === 'right') {
-    var left = width / 2 + 480 + 16;
-    var room = width - left - 20;
-    if (room < 130) return null;
-    h = Math.min(230, room / 0.92, height * 0.3);
-    cx = left + room / 2;
-    cy = 66 + h / 2;
-  } else {
-    if (width < 360) return null;
-    h = Math.max(110, Math.min(250, height * 0.27));
-    cx = width * (width < 760 ? 0.6 : 0.52);
-    cy = 16 + h / 2;
-  }
-  var s = h / 14.6;
-  return { cx: cx, cy: cy, s: s, h: h, w: 13.4 * s };
+function starMapOf(width, height, top) {
+  var tall = Math.min(200, height * 0.21);
+  var skyBottom = top - tall * 1.05;
+  if (skyBottom < 80 || width < 320) return null;
+  var turn = 0.72;
+  var cos = Math.cos(turn);
+  var sin = Math.sin(turn);
+  var project = function (lonLat) {
+    var x = (lonLat[0] - 137.75) * 0.81;
+    var y = -(lonLat[1] - 38.2);
+    return [x * cos - y * sin, x * sin + y * cos];
+  };
+  var islands = denseIslands().map(function (island) {
+    return island.map(function (pt) {
+      return { xy: project(pt.lonLat), main: pt.main };
+    });
+  });
+  var minX = Infinity;
+  var maxX = -Infinity;
+  var minY = Infinity;
+  var maxY = -Infinity;
+  islands.forEach(function (island) {
+    island.forEach(function (pt) {
+      minX = Math.min(minX, pt.xy[0]);
+      maxX = Math.max(maxX, pt.xy[0]);
+      minY = Math.min(minY, pt.xy[1]);
+      maxY = Math.max(maxY, pt.xy[1]);
+    });
+  });
+  var areaW = width * 0.94;
+  var areaH = skyBottom - 14;
+  var s = Math.min(areaW / (maxX - minX), areaH / (maxY - minY));
+  var ox = width / 2 - ((minX + maxX) / 2) * s;
+  var oy = 10 + areaH / 2 - ((minY + maxY) / 2) * s;
+  var place = function (xy) {
+    return [ox + xy[0] * s, oy + xy[1] * s];
+  };
+  return {
+    islands: islands.map(function (island) {
+      return island.map(function (pt, i) {
+        return { at: place(pt.xy), main: pt.main, phase: i * 1.7 + pt.xy[0] };
+      });
+    }),
+    kobe: place(project(KOBE)),
+    sanda: place(project(SANDA)),
+    size: Math.max(1, Math.min(1.6, s / 30)),
+  };
 }
 
-function mapPoint(map, lonLat) {
-  return [map.cx + (lonLat[0] - 137.75) * 0.81 * map.s, map.cy - (lonLat[1] - 38.2) * map.s];
-}
-
-/** The constellation: lines trace in when the page opens, the stars twinkle. */
-function drawStarMap(ctx, map, t, poked) {
+/**
+ * The stars, twinkling. `link` (0–1) draws the lines island by island when 「星をつなぐ」 is on.
+ * Kobe (gold) and Sanda (pink) shine brighter; `poked` makes them send out a ring.
+ */
+function drawStarMap(ctx, map, t, poked, link) {
   if (!map) return;
-  var reveal = Math.min(1, t / 3);
   ctx.save();
+  ctx.shadowColor = 'rgba(60, 70, 150, 0.4)';
+  ctx.shadowBlur = 3;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  // A soft blue shadow so white lines and stars stand out on the light evening sky.
-  ctx.shadowColor = 'rgba(60, 70, 150, 0.45)';
-  ctx.shadowBlur = 4;
-  JAPAN.forEach(function (island, index) {
-    var pts = island.map(function (p) {
-      return mapPoint(map, p);
-    });
-    // Faint lines, drawn in island by island.
-    var share = Math.max(0, Math.min(1, reveal * JAPAN.length - index * 0.6));
-    var count = Math.floor(pts.length * share);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    for (var i = 0; i <= count && i <= pts.length; i++) {
-      var pt = pts[i % pts.length];
-      if (i === 0) ctx.moveTo(pt[0], pt[1]);
-      else ctx.lineTo(pt[0], pt[1]);
-    }
-    ctx.stroke();
-    pts.forEach(function (pt, i) {
-      if (island[i] === KOBE || (island[i][0] === KOBE[0] && island[i][1] === KOBE[1])) return;
-      var tw = 0.6 + 0.4 * Math.sin(t * (1.2 + (i % 5) * 0.3) + i * 1.7 + index);
-      ctx.fillStyle = 'rgba(255, 255, 250, ' + (0.7 + 0.3 * tw).toFixed(3) + ')';
+  if (link > 0) {
+    var total = map.islands.length;
+    map.islands.forEach(function (island, index) {
+      var share = Math.max(0, Math.min(1, link * total - index * 0.7));
+      if (share <= 0) return;
+      var count = Math.ceil(island.length * share);
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.85 * Math.min(1, link * 3)).toFixed(3) + ')';
+      ctx.lineWidth = 1.5 * map.size;
       ctx.beginPath();
-      ctx.arc(pt[0], pt[1], i % 4 === 0 ? 2.6 : 1.9, 0, Math.PI * 2);
+      for (var i = 0; i <= count; i++) {
+        var pt = island[i % island.length].at;
+        if (i === 0) ctx.moveTo(pt[0], pt[1]);
+        else ctx.lineTo(pt[0], pt[1]);
+      }
+      ctx.stroke();
+    });
+  }
+  map.islands.forEach(function (island) {
+    island.forEach(function (pt) {
+      var tw = 0.5 + 0.5 * Math.sin(t * (1.1 + (pt.phase % 1.3)) + pt.phase);
+      ctx.fillStyle = 'rgba(255, 255, 250, ' + (0.6 + 0.4 * tw).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(pt.at[0], pt.at[1], (pt.main ? 2.3 : 1.6) * map.size, 0, Math.PI * 2);
       ctx.fill();
     });
   });
-
-  // Kobe and Sanda: brighter, coloured, with a soft glow and a dotted line between — no names,
-  // so the sign-in screen stays quiet (11/16).
-  var kobe = mapPoint(map, KOBE);
-  var sanda = mapPoint(map, SANDA);
-  ctx.setLineDash([2, 3]);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(kobe[0], kobe[1]);
-  ctx.lineTo(sanda[0], sanda[1]);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.shadowBlur = 0;
   var p = poked >= 0 && poked < 1.4 ? poked / 1.4 : -1;
   [
-    { at: kobe, color: '255, 205, 80', phase: 0 },
-    { at: sanda, color: '255, 130, 170', phase: 1.6 },
+    { at: map.kobe, color: '255, 205, 80', phase: 0 },
+    { at: map.sanda, color: '255, 130, 170', phase: 1.6 },
   ].forEach(function (city) {
     var x = city.at[0];
     var y = city.at[1];
     var pulse = 0.5 + 0.5 * Math.sin(t * 2.2 + city.phase);
-    var glowR = 9 + 3 * pulse + (p >= 0 ? 10 * (1 - p) : 0);
+    var glowR = (9 + 3 * pulse) * map.size + (p >= 0 ? 12 * (1 - p) : 0);
     var glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
-    glow.addColorStop(0, 'rgba(' + city.color + ', 0.85)');
+    glow.addColorStop(0, 'rgba(' + city.color + ', 0.9)');
     glow.addColorStop(1, 'rgba(' + city.color + ', 0)');
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(x, y, glowR, 0, Math.PI * 2);
     ctx.fill();
-    // A four-pointed sparkle with a bright core.
     ctx.fillStyle = 'rgb(' + city.color + ')';
-    sparkle(ctx, x, y, 5.5 + pulse * 1.5);
+    sparkle(ctx, x, y, (5.5 + pulse * 1.5) * map.size);
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+    ctx.arc(x, y, 1.6 * map.size, 0, Math.PI * 2);
     ctx.fill();
     if (p >= 0) {
       ctx.strokeStyle = 'rgba(' + city.color + ', ' + (1 - p).toFixed(3) + ')';
@@ -1758,41 +1807,6 @@ function drawStarMap(ctx, map, t, poked) {
     }
   });
   ctx.restore();
-}
-
-/** A few dotted stars high in the evening sky (not too many), away from the moon. */
-function makeStars(width, top, moon, map) {
-  var list = [];
-  // A light sky: only a few, high up where it is bluest.
-  var count = Math.min(28, Math.round(width / 50));
-  var ceiling = (top - Math.min(200, top * 0.3)) * 0.5;
-  for (var tries = 0; list.length < count && tries < count * 6; tries++) {
-    var x = Math.random() * width;
-    var y = 6 + Math.random() * Math.max(20, ceiling - 6);
-    var dx = x - moon.x;
-    var dy = y - moon.y;
-    if (Math.sqrt(dx * dx + dy * dy) < moon.r * 2.2) continue;
-    if (map && Math.abs(x - map.cx) < map.w * 0.6 && Math.abs(y - map.cy) < map.h * 0.6) continue;
-    list.push({
-      x: x,
-      y: y,
-      size: 1.3 + Math.random() * 1.1,
-      phase: Math.random() * Math.PI * 2,
-      rate: 0.8 + Math.random() * 1.6,
-    });
-  }
-  return list;
-}
-
-function drawStars(ctx, stars, t) {
-  for (var i = 0; i < stars.length; i++) {
-    var st = stars[i];
-    var a = 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(t * st.rate + st.phase));
-    ctx.fillStyle = 'rgba(255, 255, 250, ' + a.toFixed(3) + ')';
-    ctx.beginPath();
-    ctx.arc(st.x, st.y, st.size, 0, Math.PI * 2);
-    ctx.fill();
-  }
 }
 
 /** Mt. Fuji (11/16): a wide cone with gently curving sides, a flat top and a snow cap. */
@@ -2021,8 +2035,9 @@ function startLeaves(canvas, options) {
   var ctx = canvas.getContext('2d');
   if (!ctx) return function () {};
   var lake = Boolean(opts.lake);
-  // Japan in stars (11/16); the sign-in screen puts it right of its box.
-  var mapPlace = opts.starMap || 'top';
+  // Japan in stars across the sky (11/16); lines only when 「星をつなぐ」 is on.
+  var linkOn = false;
+  var link = 0;
   EVENING = lake;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     if (!lake) return function () {};
@@ -2038,9 +2053,7 @@ function startLeaves(canvas, options) {
       var scenery = buildScenery(w, h, top, r);
       var moon = sunOf(w);
       drawScenery(ctx, scenery, w, h, top, false);
-      var stillMap = starMapOf(w, h, mapPlace);
-      if (EVENING) drawStars(ctx, makeStars(w, top, moon, stillMap), 0);
-      drawStarMap(ctx, stillMap, 10, -1);
+      drawStarMap(ctx, starMapOf(w, h, top), 0, -1, linkOn ? 1 : 0);
       drawSun(ctx, moon, 0, -1);
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
@@ -2051,9 +2064,14 @@ function startLeaves(canvas, options) {
     };
     still();
     window.addEventListener('resize', still);
-    return function () {
+    var stopStill = function () {
       window.removeEventListener('resize', still);
     };
+    stopStill.connectStars = function (on) {
+      linkOn = Boolean(on);
+      still();
+    };
+    return stopStill;
   }
   var ratio = Math.min(2, window.devicePixelRatio || 1);
   var width = 0;
@@ -2089,7 +2107,6 @@ function startLeaves(canvas, options) {
   var mapPokedAt = -10;
   var torii = toriiOf(0, 0, 0);
   var fortune = null;
-  var stars = [];
   var shooting = null;
   var nextShooting = 1.5;
   var fisher = fisherOf(0, 0);
@@ -2112,8 +2129,7 @@ function startLeaves(canvas, options) {
       croc = crocOf(width, height);
       sun = sunOf(width);
       torii = toriiOf(width, height, lakeTop);
-      starMap = starMapOf(width, height, mapPlace);
-      if (EVENING) stars = makeStars(width, lakeTop, sun, starMap);
+      starMap = starMapOf(width, height, lakeTop);
       fisher = fisherOf(width, height);
     }
     floating = floating.filter(function (leaf) {
@@ -2194,8 +2210,8 @@ function startLeaves(canvas, options) {
     }
     // A click near Kobe or Sanda: both stars send out a ring.
     if (starMap) {
-      var near = [KOBE, SANDA].some(function (city) {
-        var pt = mapPoint(starMap, city);
+      var near = [starMap.kobe, starMap.sanda].some(function (city) {
+        var pt = city;
         return Math.abs(event.clientX - pt[0]) < 22 && Math.abs(event.clientY - pt[1]) < 22;
       });
       if (near) {
@@ -2312,8 +2328,9 @@ function startLeaves(canvas, options) {
     if (lake) {
       drawScenery(ctx, scenery, width, height, lakeTop, false);
       if (EVENING) {
-        drawStars(ctx, stars, clock);
-        drawStarMap(ctx, starMap, clock, clock - mapPokedAt);
+        // Lines grow in over about 2.5 s and fade out quickly when turned off.
+        link = linkOn ? Math.min(1, link + dt / 2.5) : Math.max(0, link - dt * 2.5);
+        drawStarMap(ctx, starMap, clock, clock - mapPokedAt, link);
         if (!shooting && clock >= nextShooting) shooting = newShootingStar(width, lakeTop);
         if (shooting) {
           shooting.age += dt;
@@ -2538,7 +2555,7 @@ function startLeaves(canvas, options) {
     window.addEventListener('pointermove', track);
   }
   raf = window.requestAnimationFrame(frame);
-  return function stop() {
+  var stop = function () {
     window.cancelAnimationFrame(raf);
     window.removeEventListener('resize', resize);
     document.removeEventListener('visibilitychange', visibility);
@@ -2546,6 +2563,11 @@ function startLeaves(canvas, options) {
     window.removeEventListener('pointermove', track);
     ctx.clearRect(0, 0, width, height);
   };
+  /** 「星をつなぐ」: draw (or hide) the lines that join the stars into Japan. */
+  stop.connectStars = function (on) {
+    linkOn = Boolean(on);
+  };
+  return stop;
 }
 
     </script>
@@ -2613,7 +2635,15 @@ function stepBounce(s, dt, maxX, maxY, speed) {
         var hits = document.getElementById('hits');
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         // The same evening lake as the sign-in screen (11/16): moon, Fuji, torii, koi and leaves.
-        startLeaves(document.getElementById('leaves'), { lake: true });
+        var lakeScene = startLeaves(document.getElementById('leaves'), { lake: true });
+        var connect = document.getElementById('connect');
+        var connected = false;
+        connect.addEventListener('click', function () {
+          connected = !connected;
+          if (lakeScene.connectStars) lakeScene.connectStars(connected);
+          connect.setAttribute('aria-pressed', String(connected));
+          connect.textContent = connected ? '✦ 線を消す' : '✦ 星をつなぐ';
+        });
 
         var w, h, maxX, maxY;
         function measure() {
