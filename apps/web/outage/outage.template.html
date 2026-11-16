@@ -108,6 +108,29 @@
         opacity: 0;
         transition: opacity 0.3s;
       }
+      /* 「星をつなぐ」 (11/16): join the sky's stars into the map of Japan. */
+      #connect {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 5;
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.45);
+        color: #2a2116;
+        font:
+          700 12px 'Hiragino Sans',
+          'Noto Sans JP',
+          'Yu Gothic',
+          Meiryo,
+          sans-serif;
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+      }
+      #connect:hover {
+        background: rgba(255, 255, 255, 0.75);
+      }
       .spark {
         position: fixed;
         width: 7px;
@@ -128,6 +151,7 @@
         The system is down for maintenance. This page returns by itself when it is back.
       </p>
     </main>
+    <button id="connect" type="button" aria-pressed="false">✦ 星をつなぐ</button>
     <div id="cheer" role="status"></div>
     <div id="hits"></div>
     <script>
@@ -148,7 +172,15 @@
         var hits = document.getElementById('hits');
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         // The same evening lake as the sign-in screen (11/16): moon, Fuji, torii, koi and leaves.
-        startLeaves(document.getElementById('leaves'), { lake: true });
+        var lakeScene = startLeaves(document.getElementById('leaves'), { lake: true });
+        var connect = document.getElementById('connect');
+        var connected = false;
+        connect.addEventListener('click', function () {
+          connected = !connected;
+          if (lakeScene.connectStars) lakeScene.connectStars(connected);
+          connect.setAttribute('aria-pressed', String(connected));
+          connect.textContent = connected ? '✦ 線を消す' : '✦ 星をつなぐ';
+        });
 
         var w, h, maxX, maxY;
         function measure() {
