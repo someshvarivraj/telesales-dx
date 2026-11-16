@@ -86,7 +86,7 @@ describe('候補日 on a rep’s own 仮予定アポ (11/16)', () => {
 
   it('confirming another candidate moves the appointment there and removes the rest', async () => {
     const person = { id: REP, name: '千原' };
-    const row = (fields: Record<string, unknown>) => ({
+    const row = <T extends Record<string, unknown>>(fields: T) => ({
       ownerId: REP,
       createdById: REP,
       type: 'VISIT',
