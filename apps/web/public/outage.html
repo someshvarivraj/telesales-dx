@@ -320,6 +320,8 @@ function buildScenery(width, height, top, ratio) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.fillRect(0, top - tall - 4, width, tall * 0.16);
       ctx.restore();
+      // Mt. Fuji rises from the far range, behind the torii (11/16).
+      drawFuji(ctx, toriiOf(width, height, top).x + 30, top, tall);
     }
   });
 
@@ -1360,6 +1362,173 @@ function drawStars(ctx, stars, t) {
   }
 }
 
+/** Mt. Fuji (11/16): a wide cone with gently curving sides, a flat top and a snow cap. */
+function drawFuji(ctx, x, top, tall) {
+  var peak = top - tall * 1.45;
+  var half = tall * 2.3;
+  var cap = 14;
+  var outline = function () {
+    ctx.beginPath();
+    ctx.moveTo(x - half, top + 2);
+    ctx.quadraticCurveTo(x - half * 0.28, top - tall * 0.55, x - cap, peak);
+    ctx.lineTo(x - cap * 0.4, peak - 2);
+    ctx.lineTo(x + cap * 0.3, peak + 1);
+    ctx.lineTo(x + cap, peak);
+    ctx.quadraticCurveTo(x + half * 0.28, top - tall * 0.55, x + half, top + 2);
+    ctx.closePath();
+  };
+  var body = ctx.createLinearGradient(0, peak, 0, top);
+  body.addColorStop(0, '#a9b8cf');
+  body.addColorStop(1, '#c7d2e0');
+  ctx.fillStyle = body;
+  outline();
+  ctx.fill();
+  // Snow: down to about a third, with a jagged edge running down the ridges.
+  ctx.save();
+  outline();
+  ctx.clip();
+  var snowLine = peak + (top - peak) * 0.34;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.beginPath();
+  ctx.moveTo(x - half, peak - 4);
+  ctx.lineTo(x + half, peak - 4);
+  ctx.lineTo(x + half, snowLine - 30);
+  var teeth = 9;
+  for (var i = teeth; i >= 0; i--) {
+    var tx = x - half * 0.55 + (i / teeth) * half * 1.1;
+    var deep = i % 2 ? 0 : (top - peak) * (0.08 + 0.05 * Math.sin(i * 1.7));
+    ctx.lineTo(tx, snowLine - 8 + deep);
+  }
+  ctx.lineTo(x - half, snowLine - 30);
+  ctx.closePath();
+  ctx.fill();
+  // A soft shadow on the right slope.
+  var shade = ctx.createLinearGradient(x, 0, x + half * 0.6, 0);
+  shade.addColorStop(0, 'rgba(90, 110, 150, 0)');
+  shade.addColorStop(1, 'rgba(90, 110, 150, 0.14)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(x, peak - 4, half, top - peak + 8);
+  ctx.restore();
+}
+
+/** Where the floating torii stands: in the lake on the left, near the far shore. */
+function toriiOf(width, height, top) {
+  var h = Math.max(46, Math.min(84, (height - top) * 0.36));
+  return {
+    x: width < 760 ? Math.max(70, width * 0.13) : Math.max(110, width * 0.1),
+    y: top + 26,
+    h: h,
+  };
+}
+
+/**
+ * A floating torii (11/16), like the great gate of Itsukushima standing in the sea: vermilion
+ * pillars and beams, the black top beam curving up at the ends, and its reflection in the water.
+ */
+function drawTorii(ctx, torii, t) {
+  var H = torii.h;
+  var W = H * 1.15;
+  ctx.save();
+  ctx.translate(torii.x, torii.y);
+  var red = '#d6401f';
+  var dark = '#a82c14';
+  var paint = function (reflect) {
+    ctx.fillStyle = red;
+    // Pillars, a little wider at the foot.
+    [-1, 1].forEach(function (side) {
+      var px = side * W * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(px - W * 0.035, -H * 0.86);
+      ctx.lineTo(px + W * 0.035, -H * 0.86);
+      ctx.lineTo(px + W * 0.045, 0);
+      ctx.lineTo(px - W * 0.045, 0);
+      ctx.closePath();
+      ctx.fill();
+    });
+    // Lower beam (貫) through the pillars, and the centre post with its plaque.
+    ctx.fillRect(-W * 0.42, -H * 0.66, W * 0.84, H * 0.065);
+    ctx.fillRect(-W * 0.03, -H * 0.84, W * 0.06, H * 0.2);
+    ctx.fillStyle = reflect ? red : '#1f1f1f';
+    ctx.fillRect(-W * 0.065, -H * 0.8, W * 0.13, H * 0.11);
+    // Top beams: the red one (島木) under the black, upturned 笠木.
+    ctx.fillStyle = red;
+    ctx.fillRect(-W * 0.47, -H * 0.88, W * 0.94, H * 0.06);
+    ctx.fillStyle = reflect ? dark : '#262626';
+    ctx.beginPath();
+    ctx.moveTo(-W * 0.58, -H * 1.0);
+    ctx.quadraticCurveTo(-W * 0.3, -H * 0.92, 0, -H * 0.93);
+    ctx.quadraticCurveTo(W * 0.3, -H * 0.92, W * 0.58, -H * 1.0);
+    ctx.lineTo(W * 0.52, -H * 0.88);
+    ctx.quadraticCurveTo(0, -H * 0.86, -W * 0.52, -H * 0.88);
+    ctx.closePath();
+    ctx.fill();
+  };
+  // Reflection first, wobbling with the water.
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  ctx.translate(Math.sin(t * 1.3) * 1.5, 2);
+  ctx.scale(1 + Math.sin(t * 2.1) * 0.015, -0.8);
+  paint(true);
+  ctx.restore();
+  paint(false);
+  // Light on the left side of the pillars.
+  ctx.fillStyle = 'rgba(255, 230, 200, 0.25)';
+  [-1, 1].forEach(function (side) {
+    ctx.fillRect(side * W * 0.3 - W * 0.035, -H * 0.86, W * 0.022, H * 0.86);
+  });
+  // Water at the pillars' feet.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.lineWidth = 1.2;
+  [-1, 1].forEach(function (side) {
+    ctx.beginPath();
+    ctx.ellipse(side * W * 0.3, 0, W * 0.09 + Math.sin(t * 2 + side) * 1.2, 2.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+/** おみくじ (11/16): a click on the torii draws a fortune — only good ones. */
+var FORTUNES = [
+  ['大吉', '今日はアポが取れる日！'],
+  ['大吉', 'いい知らせが届きそう'],
+  ['中吉', 'いい商談になりそう'],
+  ['吉', '一本の電話がご縁に'],
+  ['小吉', 'コツコツが実を結ぶ'],
+  ['末吉', '午後から運気上昇'],
+];
+
+function drawFortune(ctx, fortune, torii) {
+  var p = fortune.age / 3.2;
+  if (p >= 1) return false;
+  var fade = p < 0.12 ? p / 0.12 : p > 0.75 ? 1 - (p - 0.75) / 0.25 : 1;
+  var rise = 26 * Math.sin(Math.min(1, p * 2.2) * Math.PI * 0.5);
+  var x = torii.x;
+  var y = torii.y - torii.h - 46 - rise;
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.translate(x, y);
+  ctx.rotate(Math.sin(fortune.age * 3) * 0.03);
+  var w = 150;
+  var h = 64;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+  ctx.fillRect(-w / 2 + 2, -h / 2 + 3, w, h);
+  ctx.fillStyle = '#fffdf6';
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  ctx.strokeStyle = '#d6401f';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-w / 2 + 3, -h / 2 + 3, w - 6, h - 6);
+  ctx.fillStyle = '#d6401f';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = "700 22px 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif";
+  ctx.fillText(fortune.text[0], 0, -10);
+  ctx.fillStyle = '#4a3a2a';
+  ctx.font = "600 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
+  ctx.fillText(fortune.text[1], 0, 15);
+  ctx.restore();
+  return true;
+}
+
 /** A shooting star (流れ星) crossing the upper sky, its tail fading behind it. */
 function newShootingStar(width, top) {
   var dir = Math.random() < 0.5 ? -1 : 1;
@@ -1439,6 +1608,7 @@ function startLeaves(canvas, options) {
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
       drawWaterfall(ctx, scenery, top, 0, []);
+      drawTorii(ctx, toriiOf(w, h, top), 0);
       drawFisher(ctx, fisherOf(w, h), 0, 0);
       drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
     };
@@ -1478,6 +1648,8 @@ function startLeaves(canvas, options) {
   var nextCrocRing = 0;
   var sun = sunOf(0);
   var moonPokedAt = -10;
+  var torii = toriiOf(0, 0, 0);
+  var fortune = null;
   var stars = [];
   var shooting = null;
   var nextShooting = 1.5;
@@ -1500,6 +1672,7 @@ function startLeaves(canvas, options) {
       fish = makeFish(width, height, lakeTop);
       croc = crocOf(width, height);
       sun = sunOf(width);
+      torii = toriiOf(width, height, lakeTop);
       if (EVENING) stars = makeStars(width, lakeTop, sun);
       fisher = fisherOf(width, height);
     }
@@ -1577,6 +1750,18 @@ function startLeaves(canvas, options) {
     var my = event.clientY - sun.y;
     if (Math.sqrt(mx * mx + my * my) <= sun.r * 1.1) {
       moonPokedAt = clock;
+      return;
+    }
+    // A click on the torii draws an おみくじ.
+    var tw = torii.h * 0.7;
+    if (
+      Math.abs(event.clientX - torii.x) <= tw &&
+      event.clientY <= torii.y + 6 &&
+      event.clientY >= torii.y - torii.h - 8
+    ) {
+      var pick = FORTUNES[Math.floor(Math.random() * FORTUNES.length)];
+      fortune = { text: pick, age: 0 };
+      ripples.push({ x: torii.x, y: torii.y, age: 0, size: torii.h * 1.6, strength: 0.8 });
       return;
     }
     if (event.clientY < lakeTop + 4) return;
@@ -1690,6 +1875,7 @@ function startLeaves(canvas, options) {
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawWaterfall(ctx, scenery, lakeTop, clock, falls);
+      drawTorii(ctx, torii, clock);
       swimFish(fish, dt, width, height, lakeTop);
       fish.sort(function (a, b) {
         return a.y - b.y;
@@ -1804,6 +1990,10 @@ function startLeaves(canvas, options) {
         nextCrocRing = clock + 2.6 + Math.random() * 1.6;
       }
       drawCroc(ctx, croc, clock, look, blink);
+      if (fortune) {
+        fortune.age += dt;
+        if (!drawFortune(ctx, fortune, torii)) fortune = null;
+      }
 
       // The fisherman: now and then a fish bites — the float dips twice, with rings.
       if (clock >= nextBite) {
@@ -1970,8 +2160,8 @@ function stepBounce(s, dt, maxX, maxY, speed) {
         var cheer = document.getElementById('cheer');
         var hits = document.getElementById('hits');
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        // Light golden maple leaves drift down and gather at the bottom (outage/leaves.js).
-        startLeaves(document.getElementById('leaves'));
+        // The same evening lake as the sign-in screen (11/16): moon, Fuji, torii, koi and leaves.
+        startLeaves(document.getElementById('leaves'), { lake: true });
 
         var w, h, maxX, maxY;
         function measure() {
