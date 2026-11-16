@@ -1522,7 +1522,7 @@ function denseIslands() {
       var q = island[(i + 1) % island.length];
       out.push({ lonLat: p, main: true });
       var d = Math.hypot((q[0] - p[0]) * 0.81, q[1] - p[1]);
-      var extra = Math.floor(d / 0.55);
+      var extra = Math.floor(d / 1.1);
       for (var k = 1; k <= extra; k++) {
         var f = k / (extra + 1);
         out.push({ lonLat: [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f], main: false });
@@ -1541,7 +1541,7 @@ function starMapOf(width, height, top) {
   var tall = Math.min(200, height * 0.21);
   var skyBottom = top - tall * 1.05;
   if (skyBottom < 80 || width < 320) return null;
-  var turn = 0.72;
+  var turn = 0.62;
   var cos = Math.cos(turn);
   var sin = Math.sin(turn);
   var project = function (lonLat) {
@@ -1566,13 +1566,13 @@ function starMapOf(width, height, top) {
       maxY = Math.max(maxY, pt.xy[1]);
     });
   });
-  var areaW = width * 0.94;
-  var areaH = skyBottom - 14;
-  var s = Math.min(areaW / (maxX - minX), areaH / (maxY - minY));
-  var ox = width / 2 - ((minX + maxX) / 2) * s;
-  var oy = 10 + areaH / 2 - ((minY + maxY) / 2) * s;
+  // Stretched to the whole sky, edge to edge (11/16): its own scale across and down.
+  var margin = Math.max(18, width * 0.025);
+  var sx = (width - margin * 2) / (maxX - minX);
+  var sy = (skyBottom - 26) / (maxY - minY);
+  var s = Math.min(sx, sy);
   var place = function (xy) {
-    return [ox + xy[0] * s, oy + xy[1] * s];
+    return [margin + (xy[0] - minX) * sx, 14 + (xy[1] - minY) * sy];
   };
   return {
     islands: islands.map(function (island) {
