@@ -194,31 +194,75 @@ export function AppointmentPage() {
                   {errorMessageOf(confirm.error ?? dayBefore.error ?? confirmTentative.error)}
                 </Alert>
               )}
-              {appointment.tentative && appointment.status === 'SCHEDULED' && (
-                <Alert
-                  tone="warning"
-                  action={
-                    appointment.planId &&
+              {appointment.tentative &&
+                appointment.status === 'SCHEDULED' &&
+                (() => {
+                  const canConfirm =
+                    Boolean(appointment.planId) &&
                     (appointment.salesRep.id === me.id ||
-                      me.permissions.includes(Permission.Administer)) && (
-                      <Button
-                        size="sm"
-                        loading={confirmTentative.isPending}
-                        onClick={() =>
-                          appointment.planId &&
-                          confirmTentative.mutate(appointment.planId, {
-                            onSuccess: () => void query.refetch(),
-                          })
+                      me.permissions.includes(Permission.Administer));
+                  const confirmPlan = (planId: string) =>
+                    confirmTentative.mutate(planId, { onSuccess: () => void query.refetch() });
+                  if (appointment.candidates.length === 0) {
+                    return (
+                      <Alert
+                        tone="warning"
+                        action={
+                          canConfirm && (
+                            <Button
+                              size="sm"
+                              loading={confirmTentative.isPending}
+                              onClick={() => appointment.planId && confirmPlan(appointment.planId)}
+                            >
+                              確定する
+                            </Button>
+                          )
                         }
                       >
-                        確定する
-                      </Button>
-                    )
+                        仮予定です。先方と日時が決まったら「確定する」を押してください。
+                      </Alert>
+                    );
                   }
-                >
-                  仮予定です。先方と日時が決まったら「確定する」を押してください。
-                </Alert>
-              )}
+                  // 候補日 (11/16): pick the time the customer chose; the others are removed.
+                  const options = [
+                    {
+                      planId: appointment.planId,
+                      startsAt: appointment.startsAt,
+                      endsAt: appointment.endsAt,
+                    },
+                    ...appointment.candidates,
+                  ];
+                  return (
+                    <Alert tone="warning">
+                      <p>
+                        仮予定です（候補日{options.length}
+                        件）。先方が選んだ日時を「この日時で確定」してください。残りの候補は消えます。
+                      </p>
+                      <ol className="mt-2 flex flex-col gap-1.5">
+                        {options.map((option, index) => (
+                          <li key={option.planId ?? index} className="flex items-center gap-2">
+                            <span className="flex size-6 shrink-0 items-center justify-center bg-ev-tentative-soft text-xs font-bold text-ev-tentative">
+                              {index + 1}
+                            </span>
+                            <span className="min-w-0 flex-1 font-medium tabular-nums">
+                              {formatRange(option.startsAt, option.endsAt)}
+                            </span>
+                            {canConfirm && option.planId && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={confirmTentative.isPending}
+                                onClick={() => option.planId && confirmPlan(option.planId)}
+                              >
+                                この日時で確定
+                              </Button>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    </Alert>
+                  );
+                })()}
               {mailSaved && !sent && (
                 <Alert tone="success">メール（N1）を下書きとして保存しました。</Alert>
               )}

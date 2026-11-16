@@ -1,6 +1,12 @@
 import { createAppointmentRequestSchema, Permission } from '@telesales/shared';
 import { describe, expect, it } from 'vitest';
 import { AccessPolicy, type Actor } from '../src/domain/access/AccessPolicy.js';
+import type { AuditLogger } from '../src/domain/audit/AuditLogger.js';
+import type { PrismaClient } from '../src/generated/prisma/client.js';
+import type { NotificationService } from '../src/modules/notifications/NotificationService.js';
+import { ScheduleService } from '../src/modules/schedule/ScheduleService.js';
+import type { SettingsService } from '../src/modules/settings/SettingsService.js';
+import type { SlotGuard } from '../src/modules/schedule/SlotGuard.js';
 
 const REP = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const OTHER = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -52,5 +58,140 @@ describe('仮予定・同席者 on a rep’s own appointment (11/13)', () => {
     });
     expect(withExtras.tentative).toBe(true);
     expect(withExtras.attendeeIds).toEqual([OTHER]);
+  });
+});
+
+describe('候補日 on a rep’s own 仮予定アポ (11/16)', () => {
+  const base = {
+    source: 'SALES_BOOKED',
+    company: { name: '試験工業' },
+    salesRepId: REP,
+    startsAt: '2026-11-16T01:00:00.000Z',
+    endsAt: '2026-11-16T01:30:00.000Z',
+    format: 'VISIT',
+    tentative: true,
+  };
+
+  it('accepts up to nine more candidate times, none by default', () => {
+    expect(createAppointmentRequestSchema.parse(base).candidates).toEqual([]);
+    const slot = { startsAt: '2026-11-17T01:00:00.000Z', endsAt: '2026-11-17T01:30:00.000Z' };
+    expect(
+      createAppointmentRequestSchema.parse({ ...base, candidates: Array(9).fill(slot) }).candidates,
+    ).toHaveLength(9);
+    expect(
+      createAppointmentRequestSchema.safeParse({ ...base, candidates: Array(10).fill(slot) })
+        .success,
+    ).toBe(false);
+  });
+
+  it('confirming another candidate moves the appointment there and removes the rest', async () => {
+    const person = { id: REP, name: '千原' };
+    const row = (fields: Record<string, unknown>) => ({
+      ownerId: REP,
+      createdById: REP,
+      type: 'VISIT',
+      title: '試験工業',
+      allDay: false,
+      holidayWork: false,
+      note: null,
+      companyName: null,
+      seriesId: null,
+      recurrenceRule: null,
+      owner: person,
+      createdBy: person,
+      attendees: [],
+      appointment: null,
+      ...fields,
+    });
+    const candidate = row({
+      id: 'cand',
+      appointmentId: null,
+      status: 'TENTATIVE',
+      candidateGroupId: 'group',
+      startsAt: new Date('2026-11-18T05:00:00.000Z'),
+      endsAt: new Date('2026-11-18T05:30:00.000Z'),
+    });
+    const anchor = row({
+      id: 'anchor',
+      appointmentId: 'appt-1',
+      status: 'TENTATIVE',
+      candidateGroupId: 'group',
+      startsAt: new Date('2026-11-16T01:00:00.000Z'),
+      endsAt: new Date('2026-11-16T01:30:00.000Z'),
+    });
+    const calls: { removed?: unknown; appointment?: unknown; plan?: Record<string, unknown> } = {};
+    const tx = {
+      schedulePlan: {
+        updateMany: async (args: unknown) => {
+          calls.removed = args;
+          return { count: 2 };
+        },
+        update: async ({ data }: { data: Record<string, unknown> }) => {
+          calls.plan = data;
+          return { ...anchor, ...data };
+        },
+      },
+      appointment: {
+        update: async (args: unknown) => {
+          calls.appointment = args;
+          return {};
+        },
+      },
+    };
+    let lookups = 0;
+    const prisma = {
+      schedulePlan: { findFirst: async () => (lookups++ === 0 ? candidate : anchor) },
+      $transaction: async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
+    } as unknown as PrismaClient;
+    const service = new ScheduleService(
+      prisma,
+      {} as SlotGuard,
+      new AccessPolicy(),
+      {} as SettingsService,
+      { notify: async () => undefined } as unknown as NotificationService,
+      { record: async () => undefined } as unknown as AuditLogger,
+    );
+
+    const dto = await service.confirmCandidate(actor(REP, Permission.WriteSalesPlans), 'cand');
+
+    expect(dto.id).toBe('anchor');
+    expect(dto.status).toBe('FIXED');
+    expect(calls.removed).toEqual({
+      where: { candidateGroupId: 'group', id: { not: 'anchor' }, deletedAt: null },
+      data: { deletedAt: expect.any(Date) },
+    });
+    expect(calls.appointment).toEqual({
+      where: { id: 'appt-1' },
+      data: {
+        startsAt: candidate.startsAt,
+        endsAt: candidate.endsAt,
+        version: { increment: 1 },
+      },
+    });
+    expect(calls.plan).toMatchObject({
+      status: 'FIXED',
+      candidateGroupId: null,
+      startsAt: candidate.startsAt,
+    });
+  });
+
+  it('only the rep or an admin may confirm a candidate of someone’s appointment', async () => {
+    const plan = { id: 'cand', appointmentId: null, status: 'TENTATIVE', candidateGroupId: 'g' };
+    const anchor = { id: 'anchor', ownerId: REP, appointmentId: 'appt-1' };
+    let lookups = 0;
+    const prisma = {
+      schedulePlan: { findFirst: async () => (lookups++ === 0 ? plan : anchor) },
+    } as unknown as PrismaClient;
+    const service = new ScheduleService(
+      prisma,
+      {} as SlotGuard,
+      new AccessPolicy(),
+      {} as SettingsService,
+      {} as NotificationService,
+      {} as AuditLogger,
+    );
+    await expect(
+      service.confirmCandidate(actor(OTHER, Permission.WriteSalesPlans), 'cand'),
+    ).rejects.toThrow();
   });
 });
