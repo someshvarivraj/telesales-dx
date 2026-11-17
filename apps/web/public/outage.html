@@ -399,7 +399,110 @@ function buildScenery(width, height, top, ratio) {
     ctx.ellipse(tx, ty, r, r * 1.15, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+  // Kobe Port Tower (11/17) on the far right shore, between the sign-in box and the waterfall.
+  drawPortTower(ctx, towerXOf(width), top - 1, Math.min(118, tall * 0.66));
   return { canvas: canvas, fallX: fallX, fallTop: fallTop, fallBottom: fallBottom };
+}
+
+/** Where Kobe Port Tower stands: right of the centred sign-in box, left of the waterfall. */
+function towerXOf(width) {
+  return width * (width < 760 ? 0.72 : 0.79);
+}
+
+/**
+ * Kobe Port Tower (11/17), seen across the water: the red hourglass of steel pipes. The shape is
+ * a hyperboloid, so it is drawn the way it is built: straight pipes between a wide ring at the
+ * foot and a narrower one under the deck, twisted, which pulls the middle into a waist. On top
+ * the observation deck with warm lit windows (it is evening), the roof and a mast with a red
+ * light. Part of the still scenery, so it is reflected in the lake too.
+ */
+function drawPortTower(ctx, cx, base, H) {
+  if (!(H > 30)) return;
+  var latticeTop = base - H * 0.84;
+  var bottomR = H * 0.17;
+  var topR = H * 0.14;
+  var twist = 2.45;
+  var radius = function (v) {
+    return Math.sqrt(
+      (1 - v) * (1 - v) * bottomR * bottomR +
+        v * v * topR * topR +
+        2 * v * (1 - v) * bottomR * topR * Math.cos(twist),
+    );
+  };
+  var yAt = function (v) {
+    return base - (base - latticeTop) * v;
+  };
+  ctx.save();
+  ctx.globalAlpha = 0.94;
+
+  // The pier it stands on.
+  ctx.fillStyle = '#8c8f99';
+  ctx.fillRect(cx - bottomR * 1.5, base - 3, bottomR * 3, 4);
+
+  // A faint red body inside the lattice, so it reads as a solid tower from afar.
+  ctx.fillStyle = 'rgba(205, 52, 40, 0.26)';
+  ctx.beginPath();
+  for (var i = 0; i <= 24; i++) ctx.lineTo(cx - radius(i / 24), yAt(i / 24));
+  for (var j = 24; j >= 0; j--) ctx.lineTo(cx + radius(j / 24), yAt(j / 24));
+  ctx.closePath();
+  ctx.fill();
+
+  // The observation floors sit inside the top of the lattice: pale walls, lit windows.
+  var deckBottom = yAt(0.86);
+  var deckR = radius(0.93) * 0.92;
+  ctx.fillStyle = '#efe7df';
+  ctx.fillRect(cx - deckR, latticeTop + 1, deckR * 2, deckBottom - latticeTop - 1);
+  ctx.fillStyle = '#ffd98a';
+  var floors = 3;
+  var floorH = (deckBottom - latticeTop) / floors;
+  for (var f = 0; f < floors; f++) {
+    ctx.fillRect(
+      cx - deckR + 1,
+      latticeTop + floorH * f + floorH * 0.3,
+      deckR * 2 - 2,
+      floorH * 0.4,
+    );
+  }
+
+  // The pipes: two families twisted opposite ways; the far side paler.
+  ctx.lineWidth = Math.max(0.9, H / 95);
+  var pipes = 18;
+  [twist, -twist].forEach(function (turn) {
+    for (var k = 0; k < pipes; k++) {
+      var a = (k / pipes) * Math.PI * 2;
+      var back = Math.sin(a) + Math.sin(a + turn) < 0;
+      ctx.strokeStyle = back ? 'rgba(178, 40, 32, 0.42)' : '#d6372a';
+      ctx.beginPath();
+      ctx.moveTo(cx + bottomR * Math.cos(a), base);
+      ctx.lineTo(cx + topR * Math.cos(a + turn), latticeTop);
+      ctx.stroke();
+    }
+  });
+  // Rings at the foot, the waist, under the floors and at the top.
+  ctx.strokeStyle = '#c42f24';
+  [0, 0.5, 0.86, 1].forEach(function (v) {
+    var r = radius(v);
+    ctx.beginPath();
+    ctx.ellipse(cx, yAt(v), r, r * 0.12, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  // A flat red roof and the mast with its red light.
+  var roofH = H * 0.035;
+  ctx.fillStyle = '#c42f24';
+  ctx.fillRect(cx - topR * 1.08, latticeTop - roofH, topR * 2.16, roofH);
+  var mastTop = latticeTop - roofH - H * 0.13;
+  ctx.strokeStyle = '#9b2a22';
+  ctx.lineWidth = Math.max(1, H / 70);
+  ctx.beginPath();
+  ctx.moveTo(cx, latticeTop - roofH);
+  ctx.lineTo(cx, mastTop);
+  ctx.stroke();
+  ctx.fillStyle = '#ff3b2f';
+  ctx.beginPath();
+  ctx.arc(cx, mastTop, Math.max(1.4, H / 60), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 /** Lake scenery: the mountains, and their faint reflection in the water. */
