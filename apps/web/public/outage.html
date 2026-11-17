@@ -306,12 +306,6 @@ function ridgeOf(base, amp, freq, rand) {
   };
 }
 
-/** Where the waterfall comes down: right of the sign-in box on wide screens. */
-function fallXOf(width) {
-  // Clear of the sign-in box, which sits in the middle (right of centre on wide screens).
-  return width * (width < 760 ? 0.88 : 0.91);
-}
-
 /**
  * Lake scenery (11/13): distant blue mountains, a nearer range with a cliff and autumn hills
  * with red, orange and amber trees along the shore. Drawn once per size onto its own canvas.
@@ -341,7 +335,6 @@ function buildScenery(width, height, top, ratio) {
     { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
     { ridge: ranges.near, from: '#a5705e', to: '#7e5446' },
   ];
-  var fallX = fallXOf(width);
   layers.forEach(function (layer, index) {
     var highest = top - (index === 0 ? tall : index === 1 ? tall * 0.68 : tall * 0.22);
     var fill = ctx.createLinearGradient(0, highest, 0, top);
@@ -364,27 +357,7 @@ function buildScenery(width, height, top, ratio) {
       // Mt. Fuji rises from the far range, behind the torii (11/16).
       drawFuji(ctx, toriiOf(width, height, top).x + 30, top, tall);
     }
-    if (index === 1) {
-      // A far waterfall (11/17): a hazy rocky cleft in the middle range; its foot is hidden by
-      // the near hills, so it reads as distant. The falling water is drawn in drawWaterfall.
-      var cleftTop = layer.ridge(fallX) + 4;
-      var cleftBottom = layers[2].ridge(fallX) + 6;
-      var cleft = ctx.createLinearGradient(fallX - 14, 0, fallX + 14, 0);
-      cleft.addColorStop(0, 'rgba(110, 122, 145, 0)');
-      cleft.addColorStop(0.5, 'rgba(110, 122, 145, 0.5)');
-      cleft.addColorStop(1, 'rgba(110, 122, 145, 0)');
-      ctx.fillStyle = cleft;
-      ctx.beginPath();
-      ctx.moveTo(fallX - 6, cleftTop);
-      ctx.lineTo(fallX + 6, cleftTop);
-      ctx.lineTo(fallX + 14, cleftBottom);
-      ctx.lineTo(fallX - 14, cleftBottom);
-      ctx.closePath();
-      ctx.fill();
-    }
   });
-  var fallTop = layers[1].ridge(fallX) + 6;
-  var fallBottom = layers[2].ridge(fallX) + 2;
 
   // Autumn trees along the near hills.
   var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
@@ -399,19 +372,12 @@ function buildScenery(width, height, top, ratio) {
     ctx.ellipse(tx, ty, r, r * 1.15, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  // Kobe's waterfront (11/17) on the far right shore, between the sign-in box and the
-  // waterfall: Sannomiya's towers, Hotel Okura, the Maritime Museum and Port Tower. The Ferris
+  // Kobe's waterfront (11/17) on the far right shore, right of the sign-in box: Sannomiya's towers, Hotel Okura, the Maritime Museum and Port Tower. The Ferris
   // wheel and the tower's light show move, so they are drawn each frame (drawHarborLights).
   var harbor = harborOf(width, top, tall);
   drawWaterfront(ctx, harbor, seeded(1117));
   drawPortTower(ctx, harbor.towerX, harbor.base, harbor.H);
-  return {
-    canvas: canvas,
-    fallX: fallX,
-    fallTop: fallTop,
-    fallBottom: fallBottom,
-    harbor: harbor,
-  };
+  return { canvas: canvas, harbor: harbor };
 }
 
 /** Where the waterfront stands; everything is placed in tower heights (H) around the tower. */
@@ -633,7 +599,7 @@ function drawHarborLights(ctx, harbor, t) {
   ctx.restore();
 }
 
-/** Where Kobe Port Tower stands: right of the centred sign-in box, left of the waterfall. */
+/** Where Kobe Port Tower stands: right of the centred sign-in box. */
 function towerXOf(width) {
   return width * (width < 760 ? 0.72 : 0.79);
 }
@@ -743,67 +709,6 @@ function drawScenery(ctx, scenery, width, height, top, below) {
   ctx.scale(1, -1);
   ctx.drawImage(scenery.canvas, 0, 0, width, height);
   ctx.restore();
-}
-
-/**
- * The far waterfall (11/17): a thin white ribbon down the middle range, a few streaks moving
- * down and soft mist where it disappears behind the near hills. Small and pale, as seen from
- * across the lake.
- */
-function drawWaterfall(ctx, scenery, top, t, falls) {
-  if (!scenery || !(scenery.fallBottom > scenery.fallTop + 8)) return;
-  var x = scenery.fallX;
-  var from = scenery.fallTop;
-  var to = scenery.fallBottom;
-  var ribbon = ctx.createLinearGradient(0, from, 0, to);
-  ribbon.addColorStop(0, 'rgba(245, 250, 253, 0.8)');
-  ribbon.addColorStop(1, 'rgba(235, 244, 250, 0.9)');
-  ctx.fillStyle = ribbon;
-  ctx.beginPath();
-  ctx.moveTo(x - 2, from);
-  ctx.lineTo(x + 2, from);
-  ctx.lineTo(x + 4, to);
-  ctx.lineTo(x - 4, to);
-  ctx.closePath();
-  ctx.fill();
-  var span = to - from;
-  ctx.lineCap = 'round';
-  for (var i = 0; i < falls.length; i++) {
-    var f = falls[i];
-    var y = from + ((f.offset + t * f.speed) % (span + f.length)) - f.length;
-    var y1 = Math.max(from, y);
-    var y2 = Math.min(to, y + f.length);
-    if (y2 <= y1) continue;
-    ctx.strokeStyle = 'rgba(255, 255, 255, ' + f.alpha.toFixed(2) + ')';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + f.lane * 2, y1);
-    ctx.lineTo(x + f.lane * 3, y2);
-    ctx.stroke();
-  }
-  var pulse = 0.5 + 0.5 * Math.sin(t * 1.8);
-  var mist = ctx.createRadialGradient(x, to, 1, x, to, 18);
-  mist.addColorStop(0, 'rgba(255, 255, 255, ' + (0.55 + 0.15 * pulse).toFixed(2) + ')');
-  mist.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  ctx.fillStyle = mist;
-  ctx.beginPath();
-  ctx.ellipse(x, to - 2, 18, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-/** Streaks on the far waterfall, each moving down at its own speed. */
-function makeFalls() {
-  var list = [];
-  for (var i = 0; i < 8; i++) {
-    list.push({
-      lane: Math.random() * 2 - 1,
-      offset: Math.random() * 200,
-      speed: 40 + Math.random() * 30,
-      length: 6 + Math.random() * 10,
-      alpha: 0.5 + Math.random() * 0.4,
-    });
-  }
-  return list;
 }
 
 /** Lake: where the water starts — about a quarter of the screen, never too thin or too tall. */
@@ -2044,7 +1949,6 @@ function startLeaves(canvas, options) {
       drawSun(ctx, moon, 0, -1);
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
-      drawWaterfall(ctx, scenery, top, 0, []);
       drawHarborLights(ctx, scenery && scenery.harbor, 0);
       drawTorii(ctx, toriiOf(w, h, top), 0);
       drawFisher(ctx, fisherOf(w, h), 0, 0);
@@ -2075,7 +1979,6 @@ function startLeaves(canvas, options) {
   var streaks = makeStreaks();
   var clock = 0;
   var scenery = null;
-  var falls = makeFalls();
   var fish = [];
   var croc = crocOf(0, 0);
   var look = { x: 0.6, y: -0.2 };
@@ -2312,7 +2215,6 @@ function startLeaves(canvas, options) {
       drawSun(ctx, sun, clock, clock - moonPokedAt);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
-      drawWaterfall(ctx, scenery, lakeTop, clock, falls);
       drawHarborLights(ctx, scenery && scenery.harbor, clock);
       drawTorii(ctx, torii, clock);
       swimFish(fish, dt, width, height, lakeTop);
