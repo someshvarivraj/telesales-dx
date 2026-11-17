@@ -17,9 +17,10 @@
  * low-saturation tones that tell areas apart without decorating them.
  */
 @theme {
+  /* The same type and depth in every theme (11/17: consistent with Teams風); only colours differ. */
   --font-sans:
-    'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', YuGothic, Meiryo,
-    system-ui, sans-serif;
+    'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI',
+    YuGothic, Meiryo, system-ui, sans-serif;
 
   /* One step lighter than browser bold, as on the skill sheet screens. */
   --font-weight-bold: 600;
@@ -80,8 +81,8 @@
 
   --radius-control: 0;
   --radius-card: 0;
-  --shadow-card: 0 1px 2px rgb(30 37 48 / 0.04);
-  --shadow-raised: 0 6px 16px rgb(30 37 48 / 0.1), 0 2px 4px rgb(30 37 48 / 0.05);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 2px rgb(0 0 0 / 0.06);
+  --shadow-raised: 0 4px 8px rgb(0 0 0 / 0.12), 0 0 2px rgb(0 0 0 / 0.1);
   /* Menus, pickers and peeks: a hairline plus a soft, long shadow. */
   --shadow-popover:
     0 0 0 1px rgb(30 37 48 / 0.07), 0 18px 40px -12px rgb(30 37 48 / 0.28),
@@ -294,7 +295,6 @@ html[data-theme='eyecare'] {
   --color-schedule-soft: #e6eef0;
   --color-saturday: #3b6a82;
 
-  --shadow-card: 0 1px 2px rgb(58 54 49 / 0.05);
   --shadow-popover:
     0 0 0 1px rgb(58 54 49 / 0.08), 0 18px 40px -12px rgb(58 54 49 / 0.22),
     0 4px 10px -4px rgb(58 54 49 / 0.08);
@@ -387,10 +387,6 @@ html[data-theme='dark'] {
  * softer grey text and Segoe UI first (Japanese falls back to the usual fonts).
  */
 html[data-theme='teams'] {
-  --font-sans:
-    'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI',
-    Meiryo, system-ui, sans-serif;
-
   --color-main: #5b5fc7;
   --color-main-hover: #4f52b2;
   --color-main-soft: #ebebfa;
@@ -414,9 +410,6 @@ html[data-theme='teams'] {
   --color-schedule: #5b5fc7;
   --color-schedule-soft: #ebebfa;
   --color-saturday: #4f52b2;
-
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 2px rgb(0 0 0 / 0.06);
-  --shadow-raised: 0 4px 8px rgb(0 0 0 / 0.12), 0 0 2px rgb(0 0 0 / 0.1);
 }
 
 html[data-theme='sakura'] {
@@ -445,7 +438,11 @@ html[data-sidebar='closed'] {
 @media (min-width: 768px) {
   .app-main {
     margin-left: var(--sidebar-w);
-    transition: margin-left 0.18s ease;
+    /* The docked 営業の予定 (11/17) takes the right side. */
+    margin-right: var(--split-room, 0px);
+    transition:
+      margin-left 0.18s ease,
+      margin-right 0.18s ease;
   }
 }
 .sidebar {

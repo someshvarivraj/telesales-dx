@@ -1,24 +1,15 @@
 import { isRole, Role } from '@telesales/shared';
-import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { LogOut } from 'lucide-react';
+import { useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
-import { type Theme, THEMES, useTheme } from '@/components/brand/theme';
+import { MoraBot } from '@/components/brand/MoraBot';
 import { cn } from '@/components/ui/cn';
-import { Select } from '@/components/ui/Select';
 import { useCurrentUser, useLogout } from '@/features/auth/hooks/useSession';
 import { FeedbackButton } from '@/features/feedback/FeedbackButton';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
-import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
-import { BrandMark } from './BrandMark';
-import { type NavItem, visibleNav } from './navItems';
-
-const SECTION_LABEL: Record<NavItem['group'], string | null> = {
-  main: null,
-  work: '業務',
-  settings: '設定',
-};
+import { isSalesOnly, type NavItem, visibleNav } from './navItems';
 
 /** Avatar colour follows the person's main role (same tones as the role badges). */
 const AVATAR_TONE: Record<Role, string> = {
@@ -42,30 +33,28 @@ function initialsOf(name: string): string {
 }
 
 /**
- * The left menu on tablets and wider. Brand at the top, the screens grouped by
- * section, and the signed-in person at the foot. It starts folded to icons on every screen
- * (11/17); the fold button (under the logo when folded) opens it.
+ * The left menu on tablets and wider, always the slim Teams-like rail (request 11/17: no wide
+ * menu, so the screen's content gets the room). MoraBot and the app's name at the top, the
+ * screens as icons with short labels, and feedback, the signed-in person and log out at the foot.
+ * Language and theme are in the top bar.
  */
 export function AppSidebar() {
   const user = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
-  const items = visibleNav(user.permissions);
-  // Folded to icons on every screen by default (request 11/17); it opens only when someone
-  // opens it, and stays open while they move between screens until they fold it again.
-  const [open, setOpen] = useState(false);
-  const folded = !open;
-  const toggle = () => setOpen((value) => !value);
+  const items = visibleNav(user.permissions).filter(
+    (item) => !(item.to === paths.calls && isSalesOnly(user.roles)),
+  );
   const mainRole = user.roles.find(isRole) ?? Role.Viewer;
 
+  // The rail styles hang on html[data-sidebar='closed'].
   useEffect(() => {
     const root = document.documentElement;
-    if (folded) root.dataset.sidebar = 'closed';
-    else delete root.dataset.sidebar;
+    root.dataset.sidebar = 'closed';
     return () => {
       delete root.dataset.sidebar;
     };
-  }, [folded]);
+  }, []);
 
   const handleLogout = () => {
     logout.mutate(undefined, { onSettled: () => navigate(paths.login, { replace: true }) });
@@ -77,106 +66,51 @@ export function AppSidebar() {
 
   return (
     <aside className="sidebar fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line bg-column max-md:hidden">
-      <div
-        className={cn(
-          'flex shrink-0 border-b border-line',
-          folded ? 'flex-col items-center gap-1 py-3' : 'h-16 items-center gap-1 pr-2',
-        )}
+      <Link
+        to={paths.home}
+        title={`${ja.app.name}（${ja.app.company}）`}
+        className="flex shrink-0 flex-col items-center gap-0.5 border-b border-line px-1 pt-2 pb-2 hover:bg-line/60"
       >
-        <Link
-          to={paths.home}
-          title={folded ? ja.app.name : undefined}
-          className={cn(
-            'flex min-w-0 items-center gap-3 hover:bg-line/60',
-            folded ? 'p-1' : 'h-full flex-1 pl-4',
-          )}
-        >
-          <BrandMark size={32} />
-          <span className="sidebar-full min-w-0">
-            <span className="block truncate text-[15px] leading-tight font-bold whitespace-nowrap text-ink">
-              {ja.app.name}
-            </span>
-            <span className="block truncate text-[11px] leading-tight text-ink-sub">
-              {ja.app.company}
-            </span>
-          </span>
-        </Link>
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={folded ? 'メニューを開く' : 'メニューをたたむ'}
-          title={folded ? 'メニューを開く' : 'メニューをたたむ'}
-          aria-expanded={!folded}
-          className="flex size-8 shrink-0 cursor-pointer items-center justify-center text-ink-sub hover:bg-line/60 hover:text-ink"
-        >
-          {folded ? (
-            <PanelLeftOpen aria-hidden="true" className="size-4.5" />
-          ) : (
-            <PanelLeftClose aria-hidden="true" className="size-4.5" />
-          )}
-        </button>
-      </div>
+        <MoraBot mood="happy" size={46} title="" />
+        <span className="text-center text-[9.5px] leading-tight font-bold text-ink">
+          テレマ
+          <br />
+          営業DX
+        </span>
+      </Link>
 
-      <nav aria-label="メインメニュー" className="flex flex-1 flex-col overflow-y-auto px-2.5 py-3">
+      <nav aria-label="メインメニュー" className="flex flex-1 flex-col overflow-y-auto px-1.5 py-2">
         {sections.map((section) => (
-          <div key={section.group} className="mb-3 flex flex-col gap-0.5">
-            {SECTION_LABEL[section.group] && (
-              <p className="sidebar-full px-2.5 pt-1 pb-1.5 text-[11px] font-bold tracking-wider text-ink-disabled">
-                {SECTION_LABEL[section.group]}
-              </p>
-            )}
+          <div key={section.group} className="mb-2 flex flex-col gap-0.5">
             {section.items.map((item) => (
-              <SideLink key={item.to} item={item} folded={folded} />
+              <SideLink key={item.to} item={item} />
             ))}
             {section.group === 'main' && <NotificationBell variant="menu" />}
           </div>
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-line p-2.5">
-        <FeedbackButton variant="menu" folded={folded} />
-        <div className="flex items-center gap-2.5 px-1.5 py-1.5">
-          <span
-            aria-hidden="true"
-            title={folded ? `${user.name}（${ja.role[mainRole]}）` : undefined}
-            className={cn(
-              'flex size-9 shrink-0 items-center justify-center rounded-full! text-xs font-bold',
-              AVATAR_TONE[mainRole],
-            )}
-          >
-            {initialsOf(user.name)}
-          </span>
-          <span className="sidebar-full min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-ink">{user.name}</span>
-            <span className="block truncate text-xs text-ink-sub">
-              {user.roles
-                .filter(isRole)
-                .map((role) => ja.role[role])
-                .join('・')}
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={logout.isPending}
-            aria-label={ja.auth.logout}
-            title={ja.auth.logout}
-            className="sidebar-full flex size-8 shrink-0 cursor-pointer items-center justify-center text-ink-sub hover:bg-line/60 hover:text-danger disabled:opacity-45"
-          >
-            <LogOut aria-hidden="true" className="size-4" />
-          </button>
-        </div>
-        <div className="sidebar-full mt-1.5 px-1.5">
-          <LanguageSwitch className="w-full" />
-          <ThemeSwitch />
-        </div>
+      <div className="flex shrink-0 flex-col items-center gap-1 border-t border-line px-1.5 py-2">
+        <FeedbackButton variant="menu" folded />
+        <span
+          title={`${user.name}（${user.roles
+            .filter(isRole)
+            .map((role) => ja.role[role])
+            .join('・')}）`}
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-full! text-xs font-bold',
+            AVATAR_TONE[mainRole],
+          )}
+        >
+          {initialsOf(user.name)}
+        </span>
         <button
           type="button"
           onClick={handleLogout}
           disabled={logout.isPending}
           aria-label={ja.auth.logout}
           title={ja.auth.logout}
-          className="sidebar-compact mt-1 h-9 w-full cursor-pointer items-center justify-center text-ink-sub hover:bg-line/60 hover:text-danger"
+          className="flex h-9 w-full cursor-pointer items-center justify-center text-ink-sub hover:bg-line/60 hover:text-danger disabled:opacity-45"
         >
           <LogOut aria-hidden="true" className="size-4.5" />
         </button>
@@ -185,12 +119,12 @@ export function AppSidebar() {
   );
 }
 
-function SideLink({ item, folded }: { item: NavItem; folded: boolean }) {
+function SideLink({ item }: { item: NavItem }) {
   return (
     <NavLink
       to={item.to}
       end={item.end}
-      title={folded ? item.sideLabel : undefined}
+      title={item.sideLabel}
       className={({ isActive }) =>
         cn(
           'nav-link relative flex h-9 items-center gap-3 px-2.5 text-[13.5px] transition-colors',
@@ -205,20 +139,5 @@ function SideLink({ item, folded }: { item: NavItem; folded: boolean }) {
       {/* Folded: a Teams-like rail, a short label under each icon (11/17). */}
       <span className="nav-rail-label">{item.label}</span>
     </NavLink>
-  );
-}
-
-/** 標準 / さくら (pink, girl MoraBot) / 目にやさしい; remembered per person in this browser. */
-function ThemeSwitch() {
-  const { theme, setTheme } = useTheme();
-  return (
-    <Select
-      size="sm"
-      className="mt-1.5 w-full"
-      aria-label="テーマ"
-      options={THEMES.map((option) => ({ value: option.value, label: `テーマ：${option.label}` }))}
-      value={theme}
-      onChange={(event) => setTheme(event.target.value as Theme)}
-    />
   );
 }

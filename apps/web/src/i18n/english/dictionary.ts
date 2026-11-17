@@ -4,6 +4,28 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Sales schedule panel, areas, users filter (11/17)
+  '該当するユーザーはいません。': 'No matching users.',
+  '名前・メール・社員番号で探す': 'Search by name, e-mail or employee no.',
+  営業の予定: 'Sales schedule',
+  すべてのエリア: 'All areas',
+  'エリア：すべて': 'Area: all',
+  '都道府県・市区町村で探す': 'Search prefecture or city',
+  小さくする: 'Minimise',
+  小窓で表示: 'Small window',
+  画面を分けて表示: 'Split screen',
+  大きく表示: 'Full screen',
+  '営業全員（1日）': 'All sales (1 day)',
+  'エリアの営業全員（1日）': 'All sales in the area (1 day)',
+  営業での絞り込みをやめる: 'Stop filtering by sales rep',
+  '営業の予定で営業を選ぶと、その人の担当エリアの企業だけになります。':
+    "Pick a sales rep in the sales schedule to see only companies in that rep's area.",
+  '空いている時間をなぞると、その枠を押さえてアポ登録へ進みます。':
+    'Drag over a free time to hold it and go on to booking.',
+  シフトを入力: 'Enter shift',
+  担当営業の予定を見る: "See the rep's schedule",
+  表示する営業: 'Sales rep shown',
+  'このエリアの架電対象はありません。': 'No call targets in this area.',
   // Schedule (request 10/29)
   全画面: 'Full screen',
   全画面を終了: 'Exit full screen',
@@ -1917,6 +1939,8 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['{0}さんの担当エリア（{1}）の企業を表示中', "Showing companies in {0}'s area ({1})"],
+  ['{0}さんの担当エリア（{1}）', "{0}'s area ({1})"],
   ['候補{0}を外す', 'Remove candidate {0}'],
   ['候補{0}の終了', 'Candidate {0} end'],
   ['候補{0}の開始', 'Candidate {0} start'],

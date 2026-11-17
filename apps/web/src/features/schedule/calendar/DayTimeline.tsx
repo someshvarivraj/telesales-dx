@@ -25,6 +25,8 @@ import { useNow } from './TimeGrid';
 const NAME_W = 184;
 
 interface DayTimelineProps {
+  /** Height of the scrolling area (the screen's room below its fixed top, 11/17). */
+  maxHeight?: string;
   date: string;
   people: UserRef[];
   events: CalendarEvent[];
@@ -56,6 +58,7 @@ export function DayTimeline({
   pxPerMin = 1,
   colorOrder,
   corner,
+  maxHeight = 'calc(100dvh - 15rem)',
 }: DayTimelineProps) {
   // 5:00–24:00 (request 11/11), opened scrolled to the morning.
   const { start: START, end: END } = visibleSpan(
@@ -85,7 +88,7 @@ export function DayTimeline({
       <div
         ref={scroller}
         className="schedule-scroll relative overflow-auto border border-line bg-surface"
-        style={{ maxHeight: 'calc(100dvh - 15rem)' }}
+        style={{ maxHeight }}
       >
         <div style={{ width: width + NAME_W }}>
           {/* Hour ruler */}

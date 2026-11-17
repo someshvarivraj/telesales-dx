@@ -1,12 +1,15 @@
 import { NavLink } from 'react-router';
 import { cn } from '@/components/ui/cn';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
-import { visibleNav } from './navItems';
+import { paths } from '@/app/paths';
+import { isSalesOnly, visibleNav } from './navItems';
 
 /** Bottom tab bar on phones (sales check plans and appointments while out). */
 export function MobileNav() {
-  const { permissions } = useCurrentUser();
-  const items = visibleNav(permissions).slice(0, 5);
+  const { permissions, roles } = useCurrentUser();
+  const items = visibleNav(permissions)
+    .filter((item) => !(item.to === paths.calls && isSalesOnly(roles)))
+    .slice(0, 5);
   return (
     <nav
       aria-label="メインメニュー"

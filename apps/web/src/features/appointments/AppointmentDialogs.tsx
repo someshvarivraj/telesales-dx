@@ -13,6 +13,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Dialog } from '@/components/ui/Dialog';
+import { showDone, useConfirm } from '@/components/ui/feedback';
 import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { FormField } from '@/components/ui/FormField';
 import { Textarea } from '@/components/ui/Textarea';
@@ -96,6 +97,7 @@ export function RescheduleDialog({
         onSuccess: () => {
           lock.forget();
           onClose();
+          showDone('日時・担当を変更しました');
         },
       },
     );
@@ -191,7 +193,13 @@ export function CancelDialog({ appointment, onClose }: DialogProps) {
                 {
                   onSuccess: () => {
                     draft.reset();
-                    navigate(paths.appointmentMail(appointment.id, 'cancellation'));
+                    // A rep's own appointment needs no mail (11/17): just say it is done.
+                    if (appointment.source === AppointmentSource.SalesBooked) {
+                      onClose();
+                      showDone('アポを取り消しました');
+                    } else {
+                      navigate(paths.appointmentMail(appointment.id, 'cancellation'));
+                    }
                   },
                 },
               )
@@ -223,6 +231,7 @@ export function CancelDialog({ appointment, onClose }: DialogProps) {
 /** Sales ask telemarketing to change the appointment (N7 to all telemarketers). */
 export function ChangeRequestDialog({ appointment, onClose }: DialogProps) {
   const request = useRequestChange(appointment.id);
+  const confirm = useConfirm();
   const draft = useDraft(`change-request:${appointment.id}`, '');
   const message = draft.value;
   const setMessage = draft.set;
@@ -240,14 +249,29 @@ export function ChangeRequestDialog({ appointment, onClose }: DialogProps) {
           <Button
             loading={request.isPending}
             disabled={!message.trim()}
-            onClick={() =>
+            onClick={async () => {
+              // Asked once more before it goes out (11/17), and told afterwards.
+              const ok = await confirm({
+                title: '変更依頼を送りますか？',
+                message: (
+                  <>
+                    <p>テレマ全員に届き、対応する人が日時を変えます。</p>
+                    <p className="mt-2 border-l-2 border-line-strong pl-3 whitespace-pre-wrap text-ink-sub">
+                      {message.trim()}
+                    </p>
+                  </>
+                ),
+                confirmLabel: '依頼を送る',
+              });
+              if (!ok) return;
               request.mutate(message.trim(), {
                 onSuccess: () => {
                   draft.reset();
                   onClose();
+                  showDone('変更を依頼しました');
                 },
-              })
-            }
+              });
+            }}
           >
             依頼する
           </Button>
@@ -305,6 +329,7 @@ export function EditDetailsDialog({
         onSuccess: () => {
           draft.reset();
           onSaved();
+          showDone('アポの内容を保存しました');
         },
       },
     );

@@ -24,6 +24,7 @@ import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useHomeSummary } from '@/features/dashboard/api';
 import { formatShortDate, todayJst } from '@/lib/format';
 import { ja } from '@/i18n/ja';
+import { isSalesOnly } from '@/components/layout/navItems';
 import { MenuCard } from './MenuCard';
 import { adminMenu, mainMenu, type MenuItem, visibleItems } from './menus';
 import { greetingAt, jstHour } from './greeting';
@@ -90,7 +91,9 @@ export function HomePage() {
   // Lunch answer: replays MoraBot's hop (key) and shows hearts when it was good.
   const [reaction, setReaction] = useState<{ n: number; happy: boolean }>({ n: 0, happy: false });
   const summary = useHomeSummary();
-  const main = visibleItems(mainMenu, permissions);
+  const main = visibleItems(mainMenu, permissions).filter(
+    (item) => !(item.key === 'calls' && isSalesOnly(roles)),
+  );
   const admin = visibleItems(adminMenu, permissions);
   const can = (permission: Permission) => permissions.includes(permission);
   const data = summary.data;

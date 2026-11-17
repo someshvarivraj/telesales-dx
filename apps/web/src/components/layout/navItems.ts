@@ -1,4 +1,4 @@
-import { Permission } from '@telesales/shared';
+import { Permission, Role } from '@telesales/shared';
 import {
   CalendarDays,
   ClipboardList,
@@ -82,11 +82,10 @@ export function visibleNav(permissions: readonly Permission[]): NavItem[] {
   );
 }
 
-/** Pages that spread across the whole screen; 架電状況 also folds the menu to icons. */
-export function isWidePage(pathname: string): boolean {
-  return pathname.startsWith(paths.schedule) || isCallsPage(pathname);
-}
-
-export function isCallsPage(pathname: string): boolean {
-  return pathname === paths.calls || pathname.startsWith(`${paths.calls}/`);
+/**
+ * 営業 only (no other role): they do not use the call lists or company pages (request 11/17),
+ * so 架電 is left out of their menus. Anyone with another role as well keeps it.
+ */
+export function isSalesOnly(roles: readonly string[]): boolean {
+  return roles.length > 0 && roles.every((role) => role === Role.Sales);
 }

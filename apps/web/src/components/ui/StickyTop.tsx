@@ -1,4 +1,11 @@
-import { createContext, type ReactNode, useContext, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from './cn';
 
@@ -25,10 +32,32 @@ export function StickyTopProvider({ children }: { children: ReactNode }) {
  */
 export function StickyTop({ children, className }: { children: ReactNode; className?: string }) {
   const shared = useContext(SlotContext);
+  const box = useRef<HTMLDivElement>(null);
+  // Where the fixed top ends, so table headers and calendars can stick right under it.
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const measure = () => {
+      const top = parseFloat(getComputedStyle(el).top) || 0;
+      root.style.setProperty('--page-top', `${top + el.offsetHeight}px`);
+    };
+    measure();
+    // Missing in some environments (the test runner): then it is measured on resize only.
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    observer?.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      root.style.removeProperty('--page-top');
+    };
+  }, []);
   return (
     <div
+      ref={box}
       className={cn(
-        'sticky-top sticky top-13 z-20 -mt-5 bg-canvas pt-5 md:top-0 md:-mt-7 md:pt-7',
+        'sticky-top sticky top-13 z-20 -mt-5 bg-canvas pt-5 md:top-11 md:-mt-4 md:pt-4',
         className,
       )}
     >

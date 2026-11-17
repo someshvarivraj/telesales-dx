@@ -10,7 +10,7 @@ import { cn } from './cn';
 
 /**
  * Table that scrolls sideways inside its container when it is wider than the screen.
- * `stickyHeader`: the page itself scrolls (no second scroll area inside it) and the header
+ * `stickyHeader` (on by default since 11/17): the page itself scrolls (no second scroll area inside it) and the header
  * row stays at the top of the window, so the column names are always in sight (request
  * 11/12). That needs the table to fit the width; when it does not (a phone), it falls back
  * to sideways scrolling with an ordinary header.
@@ -18,7 +18,7 @@ import { cn } from './cn';
 export function Table({
   children,
   className,
-  stickyHeader = false,
+  stickyHeader = true,
 }: {
   children: ReactNode;
   className?: string;
@@ -34,6 +34,7 @@ export function Table({
     const inner = table.current;
     const measure = () => setFits(inner.offsetWidth <= outer.clientWidth + 1);
     measure();
+    if (typeof ResizeObserver !== 'function') return;
     const observer = new ResizeObserver(measure);
     observer.observe(outer);
     observer.observe(inner);
@@ -46,8 +47,8 @@ export function Table({
       ref={box}
       className={cn(
         sticky
-          ? // Below the phone top bar; at the very top from tablets up.
-            '[&_th]:sticky [&_th]:top-13 [&_th]:z-10 md:[&_th]:top-0'
+          ? // Right under the screen's fixed top (its height is --page-top), or under the top bar.
+            '[&_th]:sticky [&_th]:top-[var(--page-top,3.25rem)] [&_th]:z-10 md:[&_th]:top-[var(--page-top,2.75rem)]'
           : 'overflow-x-auto',
       )}
     >

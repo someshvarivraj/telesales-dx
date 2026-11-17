@@ -13,6 +13,9 @@ import {
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { AreaPicker } from './AreaPicker';
+import { useCompanyFocus, useSalesPanel } from './SalesPanel';
+import { CalendarDays, X } from 'lucide-react';
 import { StickyExtra } from '@/components/ui/StickyTop';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -103,6 +106,8 @@ export function CallTargetsPage() {
       setPage(1);
     };
 
+  const areaPanel = useSalesPanel();
+  const focus = useCompanyFocus(areaPanel);
   const conditions = chips.map((chip) => ({
     field: chip.field,
     value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
@@ -115,6 +120,8 @@ export function CallTargetsPage() {
     callTargetsOnly: list === 'TARGETS',
     nonTargetsOnly: list === 'NON_TARGETS',
     assignedToMe: onlyMine,
+    // The area chosen beside the list (a prefecture or city of the 営業担当表, 11/17).
+    areas: focus.areas,
   };
   const query = useCompanySearch({ ...search, page, pageSize: 50 });
 
@@ -169,6 +176,38 @@ export function CallTargetsPage() {
           onOnlyMine={changed(setOnlyMine)}
           choicesOf={choicesOf}
         />
+        {areaPanel && areaPanel.mode !== 'closed' && (
+          <div className="mt-2 flex items-center gap-2">
+            <AreaPicker
+              area={areaPanel.area}
+              onArea={(next) => {
+                areaPanel.setArea(next);
+                setPage(1);
+              }}
+            />
+            {focus.repName ? (
+              <span className="flex min-w-0 items-center gap-1.5 border border-main-line bg-main-soft px-2 py-1 text-xs text-main">
+                <span className="truncate font-bold">{focus.label}の企業を表示中</span>
+                <button
+                  type="button"
+                  aria-label="営業での絞り込みをやめる"
+                  title="営業での絞り込みをやめる"
+                  onClick={() => {
+                    areaPanel.setRepId('');
+                    setPage(1);
+                  }}
+                  className="flex size-5 shrink-0 cursor-pointer items-center justify-center hover:bg-main-line/50"
+                >
+                  <X aria-hidden="true" className="size-3.5" />
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs text-ink-sub">
+                営業の予定で営業を選ぶと、その人の担当エリアの企業だけになります。
+              </span>
+            )}
+          </div>
+        )}
       </StickyExtra>
 
       <section
@@ -397,6 +436,7 @@ function CompanyRow({
   onPick: (on: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const panel = useSalesPanel();
   const today = todayJst();
   const due = company.nextCallDate !== null && company.nextCallDate <= today;
   const open = (event: React.MouseEvent) => {
@@ -422,12 +462,26 @@ function CompanyRow({
       )}
       <Td className={picked !== undefined ? undefined : 'pl-4'}>
         <div className="min-w-44">
-          <Link
-            to={paths.company(company.id)}
-            className="font-bold text-link underline-offset-2 hover:underline"
-          >
-            {company.name}
-          </Link>
+          <div className="flex items-start gap-1.5">
+            <Link
+              to={paths.company(company.id)}
+              className="font-bold text-link underline-offset-2 hover:underline"
+            >
+              {company.name}
+            </Link>
+            {/* Its rep's calendar beside the list, without leaving it (11/17). */}
+            {panel && panel.mode !== 'closed' && (
+              <button
+                type="button"
+                title="担当営業の予定を見る"
+                aria-label={`${company.name}の担当営業の予定を見る`}
+                onClick={() => panel.openFor({ id: company.id, name: company.name })}
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center text-ink-sub hover:bg-main-soft hover:text-main max-md:hidden"
+              >
+                <CalendarDays aria-hidden="true" className="size-4" />
+              </button>
+            )}
+          </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-sub">
             {company.office && <span>{company.office}</span>}
             {company.phone && (

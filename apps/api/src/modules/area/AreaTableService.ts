@@ -4,7 +4,9 @@ import {
   type CompanyGroupDto,
   type FindRepRequest,
   jstDate,
+  PREFECTURE_NAMES,
   type RepSuggestion,
+  type SalesAreaOption,
 } from '@telesales/shared';
 import { AuditAction, type AuditLogger } from '../../domain/audit/AuditLogger.js';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
@@ -91,6 +93,17 @@ const CONDITION_LABEL = { CURRENT: '現取', NOT_CURRENT: '現取以外' } as co
  * The sales area table (営業担当表): kept as data and edited by admins and the person
  * entrusted with it (spec §4, §10), and used to suggest the rep before calling (spec §7).
  */
+/**
+ * A rule's city as a place テレマ can pick: 「（全域）」 is the whole prefecture and 「その他（…以外）」
+ * and 「上記以外」 are not one place, so none is listed; 「上郡町（赤穂郡）」 is listed as 上郡町.
+ */
+export function placeOf(city: string | null): string | null {
+  if (!city) return null;
+  const trimmed = city.normalize('NFKC').trim();
+  if (/^(\(|その他|上記以外)/.test(trimmed)) return null;
+  return trimmed.replace(/\(.*?\)/g, '').trim() || null;
+}
+
 export class AreaTableService {
   constructor(
     private readonly prisma: PrismaClient,
@@ -104,6 +117,60 @@ export class AreaTableService {
       orderBy: [{ prefecture: 'asc' }, { city: 'asc' }, { validFrom: 'desc' }],
     });
     return rows.map(toDto);
+  }
+
+  /**
+   * The areas of today's 営業担当表 (11/17): each prefecture with its cities and the reps there,
+   * for テレマ to narrow the reps and the companies to one place.
+   */
+  async listAreas(): Promise<SalesAreaOption[]> {
+    const today = toDbDate(jstDate(this.clock.now()));
+    const rows = await this.prisma.salesAreaRule.findMany({
+      where: {
+        validFrom: { lte: today },
+        OR: [{ validTo: null }, { validTo: { gte: today } }],
+        salesRep: { status: 'ACTIVE' },
+      },
+      select: { prefecture: true, city: true, salesRepId: true, backupRepId: true },
+      orderBy: [{ prefecture: 'asc' }, { city: 'asc' }],
+    });
+    const byPrefecture = new Map<
+      string,
+      { reps: Set<string>; wide: Set<string>; cities: Map<string, Set<string>> }
+    >();
+    for (const row of rows) {
+      const entry = byPrefecture.get(row.prefecture) ?? {
+        reps: new Set(),
+        wide: new Set(),
+        cities: new Map(),
+      };
+      byPrefecture.set(row.prefecture, entry);
+      const reps = [row.salesRepId, row.backupRepId].filter((id): id is string => Boolean(id));
+      for (const id of reps) entry.reps.add(id);
+      const place = placeOf(row.city);
+      if (place) {
+        const city = entry.cities.get(place) ?? new Set<string>();
+        entry.cities.set(place, city);
+        for (const id of reps) city.add(id);
+      } else {
+        // （全域）, その他… or no city: the rep's area is the whole prefecture.
+        for (const id of reps) entry.wide.add(id);
+      }
+    }
+    const order = (name: string) => {
+      const index = PREFECTURE_NAMES.indexOf(name);
+      return index < 0 ? 99 : index;
+    };
+    return [...byPrefecture.entries()]
+      .sort(([a], [b]) => order(a) - order(b))
+      .map(([prefecture, entry]) => ({
+        prefecture,
+        repIds: [...entry.reps],
+        wideRepIds: [...entry.wide],
+        cities: [...entry.cities.entries()]
+          .sort(([a], [b]) => a.localeCompare(b, 'ja'))
+          .map(([city, reps]) => ({ city, repIds: [...reps] })),
+      }));
   }
 
   async createRule(actor: Actor, input: AreaRuleRequest): Promise<AreaRuleDto> {

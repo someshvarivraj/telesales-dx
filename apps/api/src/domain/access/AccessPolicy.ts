@@ -106,7 +106,8 @@ export class AccessPolicy {
       rebook: manage && cancelled,
       editDetails: manage && !cancelled,
       dayBeforeCheck: telema && scheduled && actor.can(Permission.WriteDayBeforeChecks),
-      sendBookingMail: manage && !cancelled,
+      // A rep's own appointment needs no 営業さんへの伝達事項 mail (request 11/17).
+      sendBookingMail: manage && !cancelled && telema,
       comment: actor.can(Permission.WriteComments),
     };
   }

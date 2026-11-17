@@ -7,6 +7,7 @@ import { Alert } from '@/components/ui/Alert';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { showDone, useConfirm } from '@/components/ui/feedback';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { QueryState } from '@/components/ui/QueryState';
 import { Spinner } from '@/components/ui/Spinner';
@@ -92,9 +93,24 @@ function MailPreview({
       { id: email.id, request },
       { onSuccess: () => navigate(appointmentPage, { state: { mailSaved: true } }) },
     );
+  const confirm = useConfirm();
   const send = async () => {
+    // Asked once more before the mail goes out, and told afterwards (11/17).
+    const ok = await confirm({
+      title: 'メールを送信しますか？',
+      message: (
+        <>
+          <p>宛先：{email.to.join(', ')}</p>
+          {email.cc.length > 0 && <p className="text-ink-sub">CC：{email.cc.length}人</p>}
+          <p className="mt-2 font-bold">{email.subject}</p>
+        </>
+      ),
+      confirmLabel: '送信する',
+    });
+    if (!ok) return;
     await actions.save.mutateAsync({ id: email.id, request });
     await actions.send.mutateAsync(email.id);
+    showDone('メールを送信しました');
   };
   const busy = actions.save.isPending || actions.send.isPending || actions.regenerate.isPending;
 

@@ -5,7 +5,7 @@ import { MoraBotPeek } from '@/components/brand/MoraBotPeek';
 import { FallingLeaves } from '@/components/brand/FallingLeaves';
 import { isOnMoon } from '../../../outage/leaves.js';
 import { LastThemeProvider } from '@/components/brand/theme';
-import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
+import { LanguageMenu } from './TopBarMenus';
 import { cn } from '@/components/ui/cn';
 import { ja } from '@/i18n/ja';
 
@@ -53,7 +53,9 @@ export function AuthLayout({
           <GridBackdrop />
         )}
         {leaves && <MoraBotPeek />}
-        <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
+        <div className="absolute top-3 right-3 z-10 bg-surface/80 backdrop-blur-sm">
+          <LanguageMenu />
+        </div>
 
         <div
           data-scene
