@@ -49,6 +49,8 @@ function clipAbove(ridge: (x: number) => number, left: number, top: number, widt
 
 /** Only clicks on the scenery itself (not on the sign-in box or the headline) count. */
 function onScenery(x: number, y: number) {
+  // Not every browser-like environment has it (the test runner's jsdom doesn't).
+  if (typeof document.elementFromPoint !== 'function') return false;
   return document.elementFromPoint(x, y)?.hasAttribute('data-scene') === true;
 }
 

@@ -44,7 +44,8 @@ export function AuthLayout({
             lines={false}
             skipClick={(x, y) =>
               isOnMoon(x, y, window.innerWidth) ||
-              Boolean(document.elementFromPoint(x, y)?.closest('[data-peek]'))
+              (typeof document.elementFromPoint === 'function' &&
+                Boolean(document.elementFromPoint(x, y)?.closest('[data-peek]')))
             }
             className="z-0 [mask-image:linear-gradient(to_bottom,black_45%,transparent_62%)]"
           />
