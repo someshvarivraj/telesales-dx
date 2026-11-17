@@ -47,7 +47,7 @@ interface PlanDialogProps {
   onClose: () => void;
   /** Editing an existing plan, or defaults for a new one. */
   plan?: PlanDto;
-  defaults?: { ownerId: string; date: string; time?: string; endTime?: string };
+  defaults?: { ownerId: string; date: string; time?: string; endTime?: string; title?: string };
 }
 
 /** Sales plans other than appointments (spec §6): own and other reps, attendees, repeats. */
@@ -64,7 +64,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       ownerId: plan?.owner.id ?? defaults?.ownerId ?? '',
       type: plan?.type ?? 'INTERNAL',
       // An old visit kept the company as its title: start with an empty 件名 then.
-      title: plan && plan.title !== plan.companyName ? plan.title : '',
+      title: plan && plan.title !== plan.companyName ? plan.title : (defaults?.title ?? ''),
       companyName: plan?.companyName ?? '',
       date: initialDate,
       endDate: plan ? jstDate(new Date(new Date(plan.endsAt).getTime() - 1)) : initialDate,

@@ -16,8 +16,10 @@ interface DayViewProps {
   onEvent: (event: CalendarEvent) => void;
   /** Clicking an empty slot (snapped to 15 minutes). */
   onSlot?: (personId: string, time: string) => void;
-  /** Dragging over empty time: start and end. */
-  onRange?: (personId: string, start: string, end: string) => void;
+  /** Dragging over empty time: start and end (and, from the type-in box, what was typed). */
+  onRange?: (personId: string, start: string, end: string, title?: string) => void;
+  /** Type a plan straight into the grid (11/17). */
+  onQuickAdd?: (personId: string, start: string, end: string, title: string) => Promise<unknown>;
   /** Highlight the slot being booked. */
   selection?: { personId: string; start: string; end: string } | null;
   peek?: PeekBinder;
@@ -40,6 +42,7 @@ export function DayView({
   onEvent,
   onSlot,
   onRange,
+  onQuickAdd,
   selection,
   peek,
   showFree,
@@ -78,10 +81,15 @@ export function DayView({
         }
         onRange={
           onRange || onSlot
-            ? (column, start, end) => {
-                if (onRange) onRange(column.personId, start, end);
+            ? (column, start, end, title) => {
+                if (onRange) onRange(column.personId, start, end, title);
                 else onSlot?.(column.personId, start);
               }
+            : undefined
+        }
+        onQuickAdd={
+          onQuickAdd
+            ? (column, start, end, title) => onQuickAdd(column.personId, start, end, title)
             : undefined
         }
         columns={people.map((person) => {
@@ -96,7 +104,8 @@ export function DayView({
             key: person.id,
             date,
             personId: person.id,
-            off: closed,
+            off,
+            dayOff: dayOff && !off,
             events: personEvents,
             header: (
               <div className="flex items-center gap-2">

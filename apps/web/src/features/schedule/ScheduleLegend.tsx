@@ -25,6 +25,10 @@ export function ScheduleLegend() {
         土日祝・会社の休日（予定は入れられません）
       </li>
       <li className="flex items-center gap-1.5">
+        <span className="inline-block size-3 rounded-sm bg-dayoff ring-1 ring-line" />
+        休み（終日・予定は入れられません）
+      </li>
+      <li className="flex items-center gap-1.5">
         <span className="inline-block size-3 rounded-sm bg-lunch ring-1 ring-line" />
         昼休み（12:00–13:00）
       </li>
