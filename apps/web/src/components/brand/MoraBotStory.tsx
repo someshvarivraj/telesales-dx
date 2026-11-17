@@ -8,7 +8,6 @@ import { type Theme, useTheme } from './theme';
 
 export interface StoryStep {
   title: string;
-  text: string;
   /** What MoraBot says while this step is shown. */
   line: string;
   mood: MoraBotMood;
@@ -26,11 +25,11 @@ function prefersStill() {
 }
 
 /**
- * MoraBot acting out the work, one step after another: the pose changes, a speech
- * bubble says what happened and the matching step lights up with a filling bar.
- * All poses are loaded once and stacked, so a change is only a fade and a hop — no
- * new image to fetch or decode mid-animation. Clicking a step shows it (the timer
- * restarts from there); the pause button stops it. No auto-play for reduced motion.
+ * MoraBot acting out the work, one step after another: the pose changes and a speech
+ * bubble says what happened. The list of steps under it was removed on 11/17 to keep the
+ * sign-in screen simple. All poses are loaded once and stacked, so a change is only a fade
+ * and a hop — no new image to fetch or decode mid-animation. The pause button stops it.
+ * No auto-play for reduced motion.
  */
 export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
   const [index, setIndex] = useState(0);
@@ -128,52 +127,6 @@ export function MoraBotStory({ steps }: { steps: StoryStep[] }) {
           {reaction?.line ?? step.line}
         </p>
       </div>
-
-      {/* Every step is a solid card, so it stays readable over the lake scenery (11/13). */}
-      <ol className="mt-6 flex flex-col gap-2">
-        {steps.map((item, i) => {
-          const on = i === index;
-          return (
-            <li key={item.title}>
-              <button
-                type="button"
-                aria-current={on ? 'step' : undefined}
-                onClick={() => setIndex(i)}
-                className={cn(
-                  'relative flex w-full cursor-pointer items-start gap-3 overflow-hidden border border-l-4 border-line bg-surface px-3 py-2 text-left transition-[border-color,box-shadow]',
-                  on
-                    ? 'border-l-main shadow-(--shadow-raised)'
-                    : 'border-l-line-strong shadow-(--shadow-card) hover:border-l-main-line',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex size-7 shrink-0 items-center justify-center rounded-full! text-xs font-bold transition-colors',
-                    on ? 'bg-main text-white' : 'bg-line text-ink-sub',
-                  )}
-                >
-                  {i + 1}
-                </span>
-                <span className="text-sm">
-                  <span className="font-bold text-ink">{item.title}</span>
-                  <span className="block text-ink-sub">{item.text}</span>
-                </span>
-                {on && (
-                  <span
-                    key={index}
-                    aria-hidden="true"
-                    className="morabot-step-timer absolute bottom-0 left-0 h-0.5 bg-main"
-                    style={{
-                      animationDuration: `${STEP_MS}ms`,
-                      animationPlayState: playing ? 'running' : 'paused',
-                    }}
-                  />
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
     </div>
   );
 }
