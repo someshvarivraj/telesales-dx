@@ -251,8 +251,8 @@ function rangesOf(top, tall, rand) {
 }
 
 /**
- * Which mountain is at this point of the screen (11/17), the front-most first: `near`, `mid`,
- * `fuji` or `far`, with the screen y of its ridge right there — or null (sky or lake). The
+ * Which mountain is at this point of the screen (11/17), the front-most first: `mid`, `fuji`
+ * or `far` (the near hills are no longer drawn), with the screen y of its ridge right there — or null (sky or lake). The
  * sign-in screen uses it to let MoraBot peek out from behind the mountain that was clicked.
  */
 function mountainAt(x, y, width, height) {
@@ -262,7 +262,6 @@ function mountainAt(x, y, width, height) {
   var ranges = rangesOf(top, tall, seeded(1113));
   var fuji = fujiOf(width, height);
   var order = [
-    ['near', ranges.near],
     ['mid', ranges.mid],
     ['fuji', fuji.ridge],
     ['far', ranges.far],
@@ -306,15 +305,9 @@ function ridgeOf(base, amp, freq, rand) {
   };
 }
 
-/** Where the waterfall comes down: right of the sign-in box on wide screens. */
-function fallXOf(width) {
-  // Clear of the sign-in box, which sits in the middle (right of centre on wide screens).
-  return width * (width < 760 ? 0.88 : 0.91);
-}
-
 /**
- * Lake scenery (11/13): distant blue mountains, a nearer range with a cliff and autumn hills
- * with red, orange and amber trees along the shore. Drawn once per size onto its own canvas.
+ * Lake scenery: distant blue mountains, Fuji, and Kobe's waterfront on the right shore (11/17).
+ * Drawn once per size onto its own canvas.
  */
 function buildScenery(width, height, top, ratio) {
   var canvas = document.createElement('canvas');
@@ -336,12 +329,12 @@ function buildScenery(width, height, top, ratio) {
     ctx.fillRect(0, 0, width, top + 4);
   }
   var ranges = rangesOf(top, tall, rand);
+  // Only the far blue ranges (11/17): the near brown hills with their autumn trees are gone, so
+  // the city reads as standing at the water's edge.
   var layers = [
     { ridge: ranges.far, from: '#dfe6ee', to: '#c9d4df' },
     { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
-    { ridge: ranges.near, from: '#a5705e', to: '#7e5446' },
   ];
-  var fallX = fallXOf(width);
   layers.forEach(function (layer, index) {
     var highest = top - (index === 0 ? tall : index === 1 ? tall * 0.68 : tall * 0.22);
     var fill = ctx.createLinearGradient(0, highest, 0, top);
@@ -364,47 +357,339 @@ function buildScenery(width, height, top, ratio) {
       // Mt. Fuji rises from the far range, behind the torii (11/16).
       drawFuji(ctx, toriiOf(width, height, top).x + 30, top, tall);
     }
-    if (index === 1) {
-      // A far waterfall (11/17): a hazy rocky cleft in the middle range; its foot is hidden by
-      // the near hills, so it reads as distant. The falling water is drawn in drawWaterfall.
-      var cleftTop = layer.ridge(fallX) + 4;
-      var cleftBottom = layers[2].ridge(fallX) + 6;
-      var cleft = ctx.createLinearGradient(fallX - 14, 0, fallX + 14, 0);
-      cleft.addColorStop(0, 'rgba(110, 122, 145, 0)');
-      cleft.addColorStop(0.5, 'rgba(110, 122, 145, 0.5)');
-      cleft.addColorStop(1, 'rgba(110, 122, 145, 0)');
-      ctx.fillStyle = cleft;
-      ctx.beginPath();
-      ctx.moveTo(fallX - 6, cleftTop);
-      ctx.lineTo(fallX + 6, cleftTop);
-      ctx.lineTo(fallX + 14, cleftBottom);
-      ctx.lineTo(fallX - 14, cleftBottom);
-      ctx.closePath();
-      ctx.fill();
-    }
   });
-  var fallTop = layers[1].ridge(fallX) + 6;
-  var fallBottom = layers[2].ridge(fallX) + 2;
 
-  // Autumn trees along the near hills.
-  var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
-  var near = layers[2].ridge;
-  for (var t = 0; t < width / 7; t++) {
-    var tx = rand() * width;
-    var ground = near(tx);
-    var ty = ground + rand() * (top - ground) * 0.85;
-    var r = 3 + rand() * 4;
-    ctx.fillStyle = trees[Math.floor(rand() * trees.length)];
-    ctx.beginPath();
-    ctx.ellipse(tx, ty, r, r * 1.15, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  // Kobe Port Tower (11/17) on the far right shore, between the sign-in box and the waterfall.
-  drawPortTower(ctx, towerXOf(width), top - 1, Math.min(118, tall * 0.66));
-  return { canvas: canvas, fallX: fallX, fallTop: fallTop, fallBottom: fallBottom };
+  // Kobe's waterfront (11/17) on the far right shore, right of the sign-in box: Sannomiya's towers, Hotel Okura, the Maritime Museum and Port Tower. The Ferris
+  // wheel and the tower's light show move, so they are drawn each frame (drawHarborLights).
+  var harbor = harborOf(width, top, tall);
+  drawWaterfront(ctx, harbor, seeded(1117));
+  drawPortTower(ctx, harbor.towerX, harbor.base, harbor.H);
+  return { canvas: canvas, harbor: harbor };
 }
 
-/** Where Kobe Port Tower stands: right of the centred sign-in box, left of the waterfall. */
+/** Where the waterfront stands; everything is placed in tower heights (H) around the tower. */
+function harborOf(width, top, tall) {
+  var H = Math.min(118, tall * 0.66);
+  var towerX = towerXOf(width);
+  return {
+    H: H,
+    towerX: towerX,
+    base: top - 1,
+    // East of the low blocks, in the open (11/17): west of the tower it hid behind Sannomiya
+    // and, on most screens, behind the sign-in box.
+    wheel: { x: towerX + H * 1.92, y: top - 1 - H * 0.47, r: H * 0.38 },
+  };
+}
+
+/** Lit and dark windows in rows over a building's face. */
+function drawWindows(ctx, x, y, w, h, rand, lit) {
+  var cell = Math.max(2.4, w / 6);
+  for (var wy = y + cell * 0.8; wy < y + h - cell * 0.6; wy += cell) {
+    for (var wx = x + cell * 0.5; wx < x + w - cell * 0.6; wx += cell) {
+      ctx.fillStyle = rand() < lit ? 'rgba(255, 214, 128, 0.95)' : 'rgba(70, 78, 100, 0.35)';
+      ctx.fillRect(wx, wy, cell * 0.5, cell * 0.42);
+    }
+  }
+}
+
+/**
+ * The still part of the waterfront: Sannomiya's high-rises behind (hazy blue, warm windows), a
+ * few lower blocks east of the tower, Hotel Okura's round white tower, the Maritime Museum's
+ * white wave of a roof, and the quay along the water.
+ */
+function drawWaterfront(ctx, harbor, rand) {
+  var H = harbor.H;
+  var X = harbor.towerX;
+  var base = harbor.base;
+  if (!(H > 30)) return;
+  ctx.save();
+  // The city's warm glow on the horizon behind the buildings (evening), fading out on all sides.
+  ctx.save();
+  ctx.translate(X - H * 0.2, base);
+  ctx.scale(3.4, 1);
+  var glow = ctx.createRadialGradient(0, 0, 0, 0, 0, H * 1.15);
+  glow.addColorStop(0, 'rgba(255, 196, 140, 0.5)');
+  glow.addColorStop(1, 'rgba(255, 196, 140, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(-H * 1.15, -H * 1.15, H * 2.3, H * 1.15);
+  ctx.restore();
+  // A back row of hazy towers, so it reads as a city and not a few buildings.
+  for (var bx = X - H * 3.2; bx < X + H * 1.5; bx += H * (0.13 + rand() * 0.07)) {
+    var bw = H * (0.09 + rand() * 0.08);
+    var bh = H * (0.32 + rand() * 0.55);
+    ctx.fillStyle = 'rgba(160, 170, 192, 0.9)';
+    ctx.fillRect(bx, base - bh, bw, bh);
+    drawWindows(ctx, bx, base - bh, bw, bh, rand, 0.3);
+  }
+  // Sannomiya: the tall ones behind, west of the tower; lower blocks to the east.
+  var blocks = [
+    [-2.75, 0.17, 0.42],
+    [-2.55, 0.2, 0.62],
+    [-2.33, 0.15, 0.5],
+    [-2.15, 0.22, 0.86],
+    [-1.9, 0.16, 0.58],
+    [-1.72, 0.2, 0.74],
+    [-1.5, 0.15, 0.46],
+    [-1.06, 0.18, 0.68],
+    [-0.86, 0.15, 0.5],
+    [0.62, 0.18, 0.4],
+    [0.82, 0.22, 0.52],
+    [1.05, 0.16, 0.34],
+    [1.22, 0.2, 0.44],
+  ];
+  blocks.forEach(function (b) {
+    var w = b[1] * H;
+    var h = b[2] * H;
+    var x = X + b[0] * H;
+    var face = ctx.createLinearGradient(x, 0, x + w, 0);
+    face.addColorStop(0, '#9aa3b8');
+    face.addColorStop(1, '#7f88a0');
+    ctx.fillStyle = face;
+    ctx.fillRect(x, base - h, w, h);
+    drawWindows(ctx, x, base - h, w, h, rand, 0.42);
+  });
+  // A red light on top of the tallest one.
+  ctx.fillStyle = '#ff4a3a';
+  ctx.beginPath();
+  ctx.arc(X - 2.15 * H + 0.11 * H, base - 0.86 * H - 2, Math.max(1.2, H / 70), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hotel Okura Kobe beside Port Tower (11/17: drawn so it reads as a hotel): a low lobby wing,
+  // a round white tower shaded like a cylinder with a grid of lit rooms, and a crown on top.
+  var ow = H * 0.22;
+  var oh = H * 0.78;
+  var ox = X + H * 0.3;
+  var ocx = ox + ow / 2;
+  ctx.fillStyle = '#d9d7df';
+  ctx.fillRect(ocx - H * 0.24, base - H * 0.11, H * 0.48, H * 0.11);
+  drawWindows(ctx, ocx - H * 0.24, base - H * 0.11, H * 0.48, H * 0.11, rand, 0.7);
+  var body = ctx.createLinearGradient(ox, 0, ox + ow, 0);
+  body.addColorStop(0, '#b4b3c2');
+  body.addColorStop(0.35, '#f6f4f8');
+  body.addColorStop(0.7, '#dedce5');
+  body.addColorStop(1, '#a6a5b6');
+  ctx.fillStyle = body;
+  ctx.fillRect(ox, base - oh, ow, oh - H * 0.11);
+  // Rooms: columns squeezed towards the edges, as on a round wall.
+  var cols = 6;
+  for (var row = base - oh + H * 0.07; row < base - H * 0.14; row += H * 0.034) {
+    for (var col = 0; col < cols; col++) {
+      var angle = -1.25 + (2.5 * (col + 0.5)) / cols;
+      var wxc = ocx + Math.sin(angle) * ow * 0.42;
+      var ww = Math.max(0.6, ow * 0.09 * Math.cos(angle));
+      ctx.fillStyle = rand() < 0.55 ? 'rgba(255, 210, 120, 0.95)' : 'rgba(84, 92, 118, 0.45)';
+      ctx.fillRect(wxc - ww / 2, row, ww, H * 0.016);
+    }
+  }
+  // The crown: a slightly wider ring, a small roof box and a red light.
+  ctx.fillStyle = '#c9c7d3';
+  ctx.fillRect(ox - ow * 0.06, base - oh - H * 0.03, ow * 1.12, H * 0.035);
+  ctx.fillStyle = '#e8e6ee';
+  ctx.fillRect(ocx - ow * 0.22, base - oh - H * 0.07, ow * 0.44, H * 0.04);
+  ctx.fillStyle = '#ff4a3a';
+  ctx.beginPath();
+  ctx.arc(ocx, base - oh - H * 0.08, Math.max(1.1, H / 75), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Kobe Maritime Museum: a low white frame like a wave or a sail, west of the tower.
+  var mx = X - H * 0.72;
+  var mw = H * 0.52;
+  ctx.fillStyle = '#e9edf3';
+  ctx.fillRect(mx, base - H * 0.08, mw, H * 0.08);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.lineWidth = Math.max(0.8, H / 110);
+  for (var r = 0; r <= 8; r++) {
+    var u = r / 8;
+    var peak = H * (0.12 + 0.16 * Math.sin(Math.PI * u * 0.9 + 0.2));
+    ctx.beginPath();
+    ctx.moveTo(mx + u * mw, base - H * 0.08);
+    ctx.lineTo(mx + u * mw + H * 0.05, base - peak);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  for (var q = 0; q <= 16; q++) {
+    var v = q / 16;
+    var yTop = base - H * (0.12 + 0.16 * Math.sin(Math.PI * v * 0.9 + 0.2));
+    if (q === 0) ctx.moveTo(mx + v * mw + H * 0.05, yTop);
+    else ctx.lineTo(mx + v * mw + H * 0.05, yTop);
+  }
+  ctx.stroke();
+
+  // A dense low row along the water, leaving the tower, the hotel and the museum clear.
+  for (var lx = X - H * 3.3; lx < X + H * 3.2; lx += H * (0.1 + rand() * 0.06)) {
+    var rel = (lx - X) / H;
+    if (rel > -0.85 && rel < 0.6) continue;
+    var lw = H * (0.08 + rand() * 0.07);
+    var lh = H * (0.1 + rand() * 0.17);
+    ctx.fillStyle = rand() < 0.5 ? '#8a92a8' : '#7a8299';
+    ctx.fillRect(lx, base - lh, lw, lh);
+    drawWindows(ctx, lx, base - lh, lw, lh, rand, 0.55);
+  }
+  // Port cranes at the east end of the quay.
+  [2.62, 2.98].forEach(function (at) {
+    var cx = X + H * at;
+    var ch = H * 0.42;
+    ctx.strokeStyle = '#5d6b85';
+    ctx.lineWidth = Math.max(1, H / 75);
+    ctx.beginPath();
+    ctx.moveTo(cx - H * 0.06, base);
+    ctx.lineTo(cx - H * 0.04, base - ch);
+    ctx.moveTo(cx + H * 0.06, base);
+    ctx.lineTo(cx + H * 0.04, base - ch);
+    ctx.moveTo(cx - H * 0.12, base - ch);
+    ctx.lineTo(cx + H * 0.22, base - ch);
+    ctx.moveTo(cx - H * 0.04, base - ch);
+    ctx.lineTo(cx, base - ch - H * 0.1);
+    ctx.lineTo(cx + H * 0.04, base - ch);
+    ctx.stroke();
+    ctx.fillStyle = '#ff4a3a';
+    ctx.beginPath();
+    ctx.arc(cx, base - ch - H * 0.1, Math.max(1, H / 85), 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // The quay along the water.
+  ctx.fillStyle = '#8c8f99';
+  ctx.fillRect(X - H * 3.4, base - 2, H * 6.7, 3);
+  ctx.restore();
+}
+
+/** The shared outline of Port Tower: a twisted hyperboloid of straight pipes. */
+function towerGeom(cx, base, H) {
+  var latticeTop = base - H * 0.84;
+  var bottomR = H * 0.17;
+  var topR = H * 0.14;
+  var twist = 2.45;
+  return {
+    cx: cx,
+    base: base,
+    H: H,
+    latticeTop: latticeTop,
+    bottomR: bottomR,
+    topR: topR,
+    twist: twist,
+    radius: function (v) {
+      return Math.sqrt(
+        (1 - v) * (1 - v) * bottomR * bottomR +
+          v * v * topR * topR +
+          2 * v * (1 - v) * bottomR * topR * Math.cos(twist),
+      );
+    },
+    yAt: function (v) {
+      return base - (base - latticeTop) * v;
+    },
+  };
+}
+
+/**
+ * What moves on the waterfront (11/17): Harborland's big Ferris wheel turning slowly with its
+ * rim lights running through the colours, and Port Tower's light show, bands of coloured light
+ * rising up the pipes.
+ */
+function drawHarborLights(ctx, harbor, t) {
+  if (!harbor || !(harbor.H > 30)) return;
+  var H = harbor.H;
+  var wheel = harbor.wheel;
+  ctx.save();
+  // The wheel's legs.
+  ctx.strokeStyle = '#8e95a8';
+  ctx.lineWidth = Math.max(1.2, H / 70);
+  ctx.beginPath();
+  ctx.moveTo(wheel.x - wheel.r * 0.55, harbor.base);
+  ctx.lineTo(wheel.x, wheel.y);
+  ctx.lineTo(wheel.x + wheel.r * 0.55, harbor.base);
+  ctx.stroke();
+  // It turns about once every 18 s (11/17: at once a minute it looked still).
+  var turn = t * 0.35;
+  var dot = Math.max(1, H / 90);
+  // Spokes.
+  ctx.strokeStyle = 'rgba(240, 242, 248, 0.9)';
+  ctx.lineWidth = Math.max(0.7, H / 150);
+  for (var s = 0; s < 12; s++) {
+    var a = turn + (s / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(wheel.x, wheel.y);
+    ctx.lineTo(wheel.x + Math.cos(a) * wheel.r, wheel.y + Math.sin(a) * wheel.r);
+    ctx.stroke();
+  }
+  // A deep red rim, so the wheel stands out against the hills.
+  ctx.strokeStyle = '#a3201a';
+  ctx.lineWidth = Math.max(1.6, H / 55);
+  ctx.beginPath();
+  ctx.arc(wheel.x, wheel.y, wheel.r, 0, Math.PI * 2);
+  ctx.stroke();
+  // Rim lights, and one bright light chasing round with a short tail: the turning is easy to see.
+  var dots = 36;
+  for (var d = 0; d < dots; d++) {
+    var b = turn + (d / dots) * Math.PI * 2;
+    ctx.fillStyle = 'hsl(' + ((d * 10 + t * 60) % 360) + ', 95%, 60%)';
+    ctx.beginPath();
+    ctx.arc(
+      wheel.x + Math.cos(b) * wheel.r,
+      wheel.y + Math.sin(b) * wheel.r,
+      dot * 0.8,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  for (var tail = 0; tail < 6; tail++) {
+    var e = turn * 2.2 - tail * 0.09;
+    ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.95 - tail * 0.15) + ')';
+    ctx.beginPath();
+    ctx.arc(
+      wheel.x + Math.cos(e) * wheel.r,
+      wheel.y + Math.sin(e) * wheel.r,
+      dot * (1.5 - tail * 0.15),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  // Gondolas in turn red, blue, yellow and green, hanging under the rim and kept upright.
+  var colours = ['#d23a2e', '#3366cc', '#f2b632', '#3d9b5a'];
+  for (var g = 0; g < 16; g++) {
+    var c = turn + (g / 16) * Math.PI * 2 + 0.1;
+    var gx = wheel.x + Math.cos(c) * wheel.r;
+    var gy = wheel.y + Math.sin(c) * wheel.r;
+    ctx.fillStyle = colours[g % colours.length];
+    ctx.fillRect(gx - dot * 1.3, gy + dot * 0.5, dot * 2.6, dot * 2.2);
+    ctx.fillStyle = 'rgba(255, 236, 190, 0.95)';
+    ctx.fillRect(gx - dot * 0.8, gy + dot * 0.9, dot * 1.6, dot * 0.8);
+  }
+  // The hub.
+  ctx.fillStyle = '#a3201a';
+  ctx.beginPath();
+  ctx.arc(wheel.x, wheel.y, dot * 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(wheel.x, wheel.y, dot * 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Port Tower's light show: two soft bands of colour rising up the lattice.
+  var tower = towerGeom(harbor.towerX, harbor.base, H);
+  ctx.beginPath();
+  for (var i = 0; i <= 24; i++) ctx.lineTo(tower.cx - tower.radius(i / 24), tower.yAt(i / 24));
+  for (var j = 24; j >= 0; j--) ctx.lineTo(tower.cx + tower.radius(j / 24), tower.yAt(j / 24));
+  ctx.closePath();
+  ctx.clip();
+  for (var k = 0; k < 2; k++) {
+    var v = (t * 0.16 + k * 0.5) % 1;
+    var y = tower.yAt(v);
+    var band = (tower.base - tower.latticeTop) * 0.16;
+    var hue = (t * 35 + k * 140) % 360;
+    var glow = ctx.createLinearGradient(0, y - band, 0, y + band);
+    glow.addColorStop(0, 'hsla(' + hue + ', 95%, 62%, 0)');
+    glow.addColorStop(0.5, 'hsla(' + hue + ', 95%, 62%, 0.6)');
+    glow.addColorStop(1, 'hsla(' + hue + ', 95%, 62%, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(tower.cx - tower.bottomR, y - band, tower.bottomR * 2, band * 2);
+  }
+  ctx.restore();
+}
+
+/** Where Kobe Port Tower stands: right of the centred sign-in box. */
 function towerXOf(width) {
   return width * (width < 760 ? 0.72 : 0.79);
 }
@@ -418,20 +703,13 @@ function towerXOf(width) {
  */
 function drawPortTower(ctx, cx, base, H) {
   if (!(H > 30)) return;
-  var latticeTop = base - H * 0.84;
-  var bottomR = H * 0.17;
-  var topR = H * 0.14;
-  var twist = 2.45;
-  var radius = function (v) {
-    return Math.sqrt(
-      (1 - v) * (1 - v) * bottomR * bottomR +
-        v * v * topR * topR +
-        2 * v * (1 - v) * bottomR * topR * Math.cos(twist),
-    );
-  };
-  var yAt = function (v) {
-    return base - (base - latticeTop) * v;
-  };
+  var geom = towerGeom(cx, base, H);
+  var latticeTop = geom.latticeTop;
+  var bottomR = geom.bottomR;
+  var topR = geom.topR;
+  var twist = geom.twist;
+  var radius = geom.radius;
+  var yAt = geom.yAt;
   ctx.save();
   ctx.globalAlpha = 0.94;
 
@@ -521,67 +799,6 @@ function drawScenery(ctx, scenery, width, height, top, below) {
   ctx.scale(1, -1);
   ctx.drawImage(scenery.canvas, 0, 0, width, height);
   ctx.restore();
-}
-
-/**
- * The far waterfall (11/17): a thin white ribbon down the middle range, a few streaks moving
- * down and soft mist where it disappears behind the near hills. Small and pale, as seen from
- * across the lake.
- */
-function drawWaterfall(ctx, scenery, top, t, falls) {
-  if (!scenery || !(scenery.fallBottom > scenery.fallTop + 8)) return;
-  var x = scenery.fallX;
-  var from = scenery.fallTop;
-  var to = scenery.fallBottom;
-  var ribbon = ctx.createLinearGradient(0, from, 0, to);
-  ribbon.addColorStop(0, 'rgba(245, 250, 253, 0.8)');
-  ribbon.addColorStop(1, 'rgba(235, 244, 250, 0.9)');
-  ctx.fillStyle = ribbon;
-  ctx.beginPath();
-  ctx.moveTo(x - 2, from);
-  ctx.lineTo(x + 2, from);
-  ctx.lineTo(x + 4, to);
-  ctx.lineTo(x - 4, to);
-  ctx.closePath();
-  ctx.fill();
-  var span = to - from;
-  ctx.lineCap = 'round';
-  for (var i = 0; i < falls.length; i++) {
-    var f = falls[i];
-    var y = from + ((f.offset + t * f.speed) % (span + f.length)) - f.length;
-    var y1 = Math.max(from, y);
-    var y2 = Math.min(to, y + f.length);
-    if (y2 <= y1) continue;
-    ctx.strokeStyle = 'rgba(255, 255, 255, ' + f.alpha.toFixed(2) + ')';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + f.lane * 2, y1);
-    ctx.lineTo(x + f.lane * 3, y2);
-    ctx.stroke();
-  }
-  var pulse = 0.5 + 0.5 * Math.sin(t * 1.8);
-  var mist = ctx.createRadialGradient(x, to, 1, x, to, 18);
-  mist.addColorStop(0, 'rgba(255, 255, 255, ' + (0.55 + 0.15 * pulse).toFixed(2) + ')');
-  mist.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  ctx.fillStyle = mist;
-  ctx.beginPath();
-  ctx.ellipse(x, to - 2, 18, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-/** Streaks on the far waterfall, each moving down at its own speed. */
-function makeFalls() {
-  var list = [];
-  for (var i = 0; i < 8; i++) {
-    list.push({
-      lane: Math.random() * 2 - 1,
-      offset: Math.random() * 200,
-      speed: 40 + Math.random() * 30,
-      length: 6 + Math.random() * 10,
-      alpha: 0.5 + Math.random() * 0.4,
-    });
-  }
-  return list;
 }
 
 /** Lake: where the water starts — about a quarter of the screen, never too thin or too tall. */
@@ -1165,8 +1382,9 @@ function drawSun(ctx, sun, t, poked) {
   var breath = 0.5 + 0.5 * Math.sin(t * 0.8);
   var flash = p >= 0 ? 1 - p : 0;
   var glow = ctx.createRadialGradient(0, 0, r * 0.8, 0, 0, r * (2 + 0.15 * breath + 0.4 * flash));
-  glow.addColorStop(0, 'rgba(255, 250, 225, ' + (0.55 + 0.3 * flash).toFixed(3) + ')');
-  glow.addColorStop(1, 'rgba(255, 250, 225, 0)');
+  // A cool silver glow (11/17: the お月見 moon, not a gold one).
+  glow.addColorStop(0, 'rgba(244, 247, 255, ' + (0.6 + 0.3 * flash).toFixed(3) + ')');
+  glow.addColorStop(1, 'rgba(244, 247, 255, 0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
@@ -1178,13 +1396,7 @@ function drawSun(ctx, sun, t, poked) {
       var a = (i / 12) * Math.PI * 2 + 0.3;
       var dist = r * (1.05 + 0.9 * Math.sqrt(p) + (i % 3) * 0.08);
       ctx.fillStyle =
-        'rgba(255, ' +
-        (i % 2 ? 236 : 250) +
-        ', ' +
-        (i % 2 ? 150 : 225) +
-        ', ' +
-        (1 - p).toFixed(3) +
-        ')';
+        'rgba(' + (i % 2 ? '226, 234, 255' : '255, 255, 255') + ', ' + (1 - p).toFixed(3) + ')';
       sparkle(
         ctx,
         Math.cos(a) * dist,
@@ -1198,9 +1410,10 @@ function drawSun(ctx, sun, t, poked) {
   var bounce = p >= 0 ? 1 + 0.08 * Math.sin(p * Math.PI * 3) * (1 - p) : 1;
   ctx.scale(bounce, bounce);
   var disc = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-  disc.addColorStop(0, '#fffbe6');
-  disc.addColorStop(0.6, '#fbefc0');
-  disc.addColorStop(1, '#f1dc98');
+  // Pale silvery white with a breath of cream, as the moon is drawn for お月見.
+  disc.addColorStop(0, '#ffffff');
+  disc.addColorStop(0.55, '#f6f4ec');
+  disc.addColorStop(1, '#dcdde6');
   ctx.fillStyle = disc;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -1211,18 +1424,19 @@ function drawSun(ctx, sun, t, poked) {
   ctx.arc(0, 0, r * 0.98, 0, Math.PI * 2);
   ctx.clip();
   ctx.scale(r, r);
-  ctx.fillStyle = 'rgba(232, 196, 110, 0.28)';
+  ctx.fillStyle = 'rgba(160, 168, 190, 0.2)';
   CRATERS.forEach(function (c) {
     ctx.beginPath();
     ctx.ellipse(c[0], c[1], c[2], c[3], 0, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // Rabbits and mortar: soft amber shapes; where they overlap they look a little deeper.
+  // Rabbits and mortar: soft blue-grey shadows on the silver, the 月のうさぎ people see in the
+  // real moon; where they overlap they look a little deeper.
   ctx.save();
   ctx.translate(0, -0.04);
   ctx.scale(1.14, 1.14);
-  var mark = 'rgba(214, 150, 60, 0.5)';
+  var mark = 'rgba(122, 132, 160, 0.5)';
   ctx.fillStyle = mark;
   ctx.strokeStyle = mark;
   ctx.lineCap = 'round';
@@ -1248,7 +1462,7 @@ function drawSun(ctx, sun, t, poked) {
   ctx.beginPath();
   ctx.ellipse(0, 0.12, 0.22, 0.05, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255, 253, 240, 0.95)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.98)';
   ctx.beginPath();
   ctx.ellipse(0, 0.09 + hit * 0.01, 0.14 + hit * 0.03, 0.05 - hit * 0.012, 0, Math.PI, 0);
   ctx.fill();
@@ -1291,7 +1505,7 @@ function drawSun(ctx, sun, t, poked) {
 
   // A small puff of flour at each strike.
   if (hit) {
-    ctx.fillStyle = 'rgba(255, 253, 240, 0.9)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     [
       [-0.16, 0.0],
       [0.15, -0.02],
@@ -1306,11 +1520,72 @@ function drawSun(ctx, sun, t, poked) {
   ctx.restore();
 
   // A thin bright rim.
-  ctx.strokeStyle = 'rgba(255, 252, 235, 0.8)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.lineWidth = Math.max(1, r * 0.03);
   ctx.beginPath();
   ctx.arc(0, 0, r * 0.99, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.restore();
+  drawSusuki(ctx, sun, t);
+}
+
+/**
+ * すすき (11/17): pampas grass in front of the lower right of the moon, as in every お月見
+ * picture with the moon, the rabbits and the mochi. A few stalks with feathery plumes, swaying
+ * a little in the evening air. Soft dark silhouettes, so the moon stays the bright thing.
+ */
+function drawSusuki(ctx, sun, t) {
+  var r = sun.r;
+  ctx.save();
+  ctx.translate(sun.x + r * 0.95, sun.y + r * 1.25);
+  ctx.lineCap = 'round';
+  // Off to the lower right of the moon, so the rabbits stay in view; only the plumes cross its edge.
+  var stalks = [
+    [-0.15, 1.35, -0.3, 0],
+    [0.08, 1.55, -0.16, 1.3],
+    [0.3, 1.3, -0.02, 2.1],
+    [0.5, 1.05, 0.14, 3.4],
+  ];
+  stalks.forEach(function (s) {
+    var sway = Math.sin(t * 0.9 + s[3]) * 0.06;
+    var baseX = s[0] * r;
+    var tall = s[1] * r;
+    var lean = s[2] + sway;
+    var tipX = baseX + Math.sin(lean) * tall;
+    var tipY = -Math.cos(lean) * tall;
+    // The stalk, curving a little.
+    ctx.strokeStyle = 'rgba(92, 84, 104, 0.75)';
+    ctx.lineWidth = Math.max(1, r * 0.025);
+    ctx.beginPath();
+    ctx.moveTo(baseX, 0);
+    ctx.quadraticCurveTo(baseX + (tipX - baseX) * 0.2, tipY * 0.55, tipX, tipY);
+    ctx.stroke();
+    // The plume: soft feathers drooping from the top, pale against the sky.
+    for (var f = 0; f < 7; f++) {
+      var u = f / 6;
+      var fx = tipX - Math.sin(lean) * u * r * 0.32;
+      var fy = tipY + Math.cos(lean) * u * r * 0.32;
+      var side = f % 2 ? 1 : -1;
+      ctx.strokeStyle = 'rgba(214, 196, 176, ' + (0.85 - u * 0.3).toFixed(3) + ')';
+      ctx.lineWidth = Math.max(1, r * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.quadraticCurveTo(
+        fx + side * r * 0.1,
+        fy + r * 0.02,
+        fx + side * r * (0.12 + sway),
+        fy + r * 0.12,
+      );
+      ctx.stroke();
+    }
+    // One long leaf from the foot.
+    ctx.strokeStyle = 'rgba(92, 84, 104, 0.55)';
+    ctx.lineWidth = Math.max(1, r * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(baseX, 0);
+    ctx.quadraticCurveTo(baseX + r * 0.15, -tall * 0.35, baseX + r * (0.45 + sway), -tall * 0.25);
+    ctx.stroke();
+  });
   ctx.restore();
 }
 
@@ -1795,8 +2070,9 @@ function drawShootingStar(ctx, star) {
  * Nothing moves for people who prefer reduced motion; it pauses while the tab is hidden.
  *
  * `lake: true` (sign-in screen, request 11/13): instead of a pile, a calm lake along the bottom.
- * Leaves land on the water with a small ripple, float and drift, then fade; a click or tap on
- * the water sends a ripple that pushes the floating leaves away.
+ * Leaves land on the water with a small ripple and sink within two seconds (11/17), so the lake
+ * stays clean; a click or tap on the water sends a ripple that pushes the nearby leaves away and
+ * keeps them a few seconds more.
  */
 function startLeaves(canvas, options) {
   var opts = options || {};
@@ -1822,7 +2098,7 @@ function startLeaves(canvas, options) {
       drawSun(ctx, moon, 0, -1);
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
-      drawWaterfall(ctx, scenery, top, 0, []);
+      drawHarborLights(ctx, scenery && scenery.harbor, 0);
       drawTorii(ctx, toriiOf(w, h, top), 0);
       drawFisher(ctx, fisherOf(w, h), 0, 0);
       drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
@@ -1852,7 +2128,6 @@ function startLeaves(canvas, options) {
   var streaks = makeStreaks();
   var clock = 0;
   var scenery = null;
-  var falls = makeFalls();
   var fish = [];
   var croc = crocOf(0, 0);
   var look = { x: 0.6, y: -0.2 };
@@ -1941,12 +2216,16 @@ function startLeaves(canvas, options) {
       y0: leaf.y,
       vx: (Math.random() - 0.5) * 8,
       vy: 0,
-      drift: 3 + Math.random() * 5,
+      drift: 1.5 + Math.random() * 2.5,
       bob: Math.random() * Math.PI * 2,
       angle: leaf.angle,
       spin: (Math.random() - 0.5) * 0.25,
-      squash: 0.42 + Math.random() * 0.14,
-      life: 26 + Math.random() * 18,
+      // Lying flat, seen across the water: smaller and flatter than in the air (11/17).
+      scale: 0.7,
+      squash: 0.34 + Math.random() * 0.08,
+      // It only touches the water and sinks in under two seconds, so the lake stays clean
+      // (11/17: leaves floating for half a minute piled up and made the water look untidy).
+      life: 1.6 + Math.random() * 0.4,
       age: 0,
     });
     if (floating.length > 36) floating[0].life = Math.min(floating[0].life, floating[0].age + 2);
@@ -2004,6 +2283,8 @@ function startLeaves(canvas, options) {
         leaf.vx += (dx / d) * 90 * push;
         leaf.vy += (dy / d) * 14 * push;
         leaf.spin += (Math.random() - 0.5) * 1.6 * push;
+        // Pushed by a click, it stays a few seconds more to be seen drifting away.
+        leaf.life = Math.max(leaf.life, leaf.age + 4);
       }
     });
   }
@@ -2063,6 +2344,21 @@ function startLeaves(canvas, options) {
     ctx.restore();
   }
 
+  /**
+   * A leaf lying on the water: turned in its own plane first, then flattened in screen terms,
+   * as seen from the shore (squashing after the turn made a sideways leaf look full size).
+   */
+  function drawFlat(sprite, x, y, angle, size, squash, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.scale(size, size * squash);
+    ctx.rotate(angle);
+    var w = sprite.image.width / ratio;
+    ctx.drawImage(sprite.image, -w / 2, -w / 2, w, w);
+    ctx.restore();
+  }
+
   function frame(now) {
     var dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
     last = now;
@@ -2089,7 +2385,7 @@ function startLeaves(canvas, options) {
       drawSun(ctx, sun, clock, clock - moonPokedAt);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
-      drawWaterfall(ctx, scenery, lakeTop, clock, falls);
+      drawHarborLights(ctx, scenery && scenery.harbor, clock);
       drawTorii(ctx, torii, clock);
       swimFish(fish, dt, width, height, lakeTop);
       fish.sort(function (a, b) {
@@ -2147,23 +2443,26 @@ function startLeaves(canvas, options) {
         fl.vy *= Math.pow(0.2, dt);
         fl.spin *= Math.pow(0.5, dt);
         fl.angle += fl.spin * dt;
-        var alpha = Math.min(1, (fl.life - fl.age) / 3);
+        // Sinking: over its last second it shrinks a little and fades into the water.
+        var left = fl.life - fl.age;
+        var alpha = Math.max(0, Math.min(1, left / 1.1));
         if (alpha <= 0 || fl.x > width + 40 || fl.x < -40) {
           floating.splice(m, 1);
           continue;
         }
-        var fy = fl.y0 + Math.sin(fl.bob) * 1.2;
-        // Its reflection, then the leaf lying on the water.
-        draw(
+        var size = fl.scale * (0.75 + 0.25 * alpha);
+        var fy = fl.y0 + Math.sin(fl.bob) * 0.8;
+        // Its faint reflection, then the leaf lying flat on the water.
+        drawFlat(
           fl.sprite,
           fl.x,
-          fy + fl.sprite.size * 0.32,
+          fy + fl.sprite.size * 0.18,
           fl.angle,
-          1,
-          -fl.squash * 0.7,
-          alpha * 0.16,
+          size,
+          -fl.squash,
+          alpha * 0.14,
         );
-        draw(fl.sprite, fl.x, fy, fl.angle, 1, fl.squash, alpha);
+        drawFlat(fl.sprite, fl.x, fy, fl.angle, size, fl.squash, alpha);
       }
     }
 

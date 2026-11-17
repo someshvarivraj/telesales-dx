@@ -62,7 +62,7 @@ export function AuthLayout({
           className={cn(
             'relative z-10 flex w-full items-center justify-center',
             // With the lake (11/17): one centred column, the headline over the sign-in box, so
-            // the scene frames it evenly (moon and Fuji on the left, the waterfall on the right)
+            // the scene frames it evenly (moon and Fuji on the left, Kobe's waterfront on the right)
             // and MoraBot peeks out from behind Fuji clear of both.
             leaves ? 'max-w-[540px] flex-col gap-6' : 'max-w-[960px] gap-16',
           )}

@@ -26,7 +26,7 @@ export function mountainAt(
   y: number,
   width: number,
   height: number,
-): { kind: 'near' | 'mid' | 'fuji' | 'far'; ridge: number } | null;
+): { kind: 'mid' | 'fuji' | 'far'; ridge: number } | null;
 
 /** The ridge line of one of the three ranges at screen x, for a screen of this size. */
 export function rangeRidge(
