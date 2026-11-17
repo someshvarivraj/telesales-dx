@@ -1,9 +1,9 @@
-import { Sparkles } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
 import { MoraBotStory, type StoryStep } from '@/components/brand/MoraBotStory';
 import { FallingLeaves } from '@/components/brand/FallingLeaves';
+import { isOnMoon } from '../../../outage/leaves.js';
 import { LastThemeProvider } from '@/components/brand/theme';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -56,28 +56,16 @@ export function AuthLayout({
   mood = 'default',
   leaves = false,
 }: AuthLayoutProps) {
-  // 「星をつなぐ」 (11/16): join the stars in the sky into the map of Japan.
-  const [connected, setConnected] = useState(false);
   return (
     <LastThemeProvider>
       <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
         {/* Leaves fall behind the sign-in box onto a lake under an evening sky (11/13). No grid
             here: only its click ripple, over the sky, fading out above the mountains. */}
-        {leaves && <FallingLeaves className="z-0" lake connectStars={connected} />}
-        {leaves && (
-          <button
-            type="button"
-            aria-pressed={connected}
-            onClick={() => setConnected((on) => !on)}
-            className="absolute top-44 left-6 z-10 flex h-8 cursor-pointer items-center gap-1.5 border border-white/70 bg-white/45 px-3 text-xs font-bold text-ink shadow-(--shadow-card) backdrop-blur-sm transition-colors hover:bg-white/75 max-lg:hidden"
-          >
-            <Sparkles className="size-3.5 text-[#d6a21f]" aria-hidden="true" />
-            {connected ? '線を消す' : '星をつなぐ'}
-          </button>
-        )}
+        {leaves && <FallingLeaves className="z-0" lake />}
         {leaves ? (
           <GridBackdrop
             lines={false}
+            skipClick={(x, y) => isOnMoon(x, y, window.innerWidth)}
             className="z-0 [mask-image:linear-gradient(to_bottom,black_45%,transparent_62%)]"
           />
         ) : (

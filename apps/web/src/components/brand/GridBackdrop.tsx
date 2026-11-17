@@ -42,8 +42,11 @@ interface LiveCell {
 export function GridBackdrop({
   className,
   lines = true,
+  skipClick,
 }: {
   className?: string;
+  /** Clicks where this is true send no ripple (sign-in: the moon has its own animation). */
+  skipClick?: (x: number, y: number) => boolean;
   /**
    * `false` (sign-in screen over the evening sky, 11/13): no grid lines and no slowly fading
    * cells — only the ring of lit cells that spreads from a click.
@@ -51,6 +54,10 @@ export function GridBackdrop({
   lines?: boolean;
 } = {}) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const skipRef = useRef(skipClick);
+  useEffect(() => {
+    skipRef.current = skipClick;
+  }, [skipClick]);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -148,6 +155,7 @@ export function GridBackdrop({
     };
 
     const press = (event: PointerEvent) => {
+      if (skipRef.current?.(event.clientX, event.clientY)) return;
       // At most a few rings at once, so fast clicking stays light.
       ripples = [
         ...ripples.slice(-3),
