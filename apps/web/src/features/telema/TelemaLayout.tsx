@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router';
 import { paths } from '@/app/paths';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { StickyTop } from '@/components/ui/StickyTop';
 import { type TabItem, Tabs } from '@/components/ui/Tabs';
 import { useHomeSummary } from '@/features/dashboard/api';
 import { ja } from '@/i18n/ja';
@@ -23,8 +24,10 @@ export function TelemaLayout() {
   ];
   return (
     <>
-      <PageHeader title={ja.module.telema} />
-      <Tabs items={tabs} />
+      <StickyTop>
+        <PageHeader title={ja.module.telema} />
+        <Tabs items={tabs} />
+      </StickyTop>
       <Outlet />
     </>
   );

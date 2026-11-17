@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
@@ -149,23 +150,26 @@ export function CallTargetsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <CallTargetFilters
-        name={name}
-        onName={setName}
-        chips={chips}
-        onChips={changed(setChips)}
-        match={match}
-        onMatch={changed(setMatch)}
-        list={list}
-        onList={(value) => {
-          setList(value);
-          setPicked(new Set());
-          setPage(1);
-        }}
-        onlyMine={onlyMine}
-        onOnlyMine={changed(setOnlyMine)}
-        choicesOf={choicesOf}
-      />
+      {/* Stays in the section's fixed top while the list scrolls (11/17). */}
+      <StickyExtra>
+        <CallTargetFilters
+          name={name}
+          onName={setName}
+          chips={chips}
+          onChips={changed(setChips)}
+          match={match}
+          onMatch={changed(setMatch)}
+          list={list}
+          onList={(value) => {
+            setList(value);
+            setPicked(new Set());
+            setPage(1);
+          }}
+          onlyMine={onlyMine}
+          onOnlyMine={changed(setOnlyMine)}
+          choicesOf={choicesOf}
+        />
+      </StickyExtra>
 
       <section
         aria-label="企業一覧"

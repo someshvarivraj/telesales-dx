@@ -147,7 +147,9 @@ export function WeekView({
                 </th>
                 {days.map((date) => {
                   const dayEvents = eventsOn(events, date, person.id);
-                  const off = isWeekend(date) || Boolean(holidayName(date)) || isDayOff(dayEvents);
+                  const closedDay = isWeekend(date) || Boolean(holidayName(date));
+                  const dayOff = !closedDay && isDayOff(dayEvents);
+                  const off = closedDay || dayOff;
                   const free = off ? 0 : freeMinutes(dayEvents, date);
                   const span = WORK_END - WORK_START;
                   return (
@@ -159,7 +161,7 @@ export function WeekView({
                       }}
                       className={cn(
                         'group/cell relative border-b border-l border-line p-1.5 align-top transition-colors',
-                        off ? 'bg-off' : 'hover:bg-hover',
+                        closedDay ? 'bg-off' : dayOff ? 'bg-dayoff' : 'hover:bg-hover',
                         showFree && !off && free >= 60 && 'bg-free/60',
                       )}
                     >

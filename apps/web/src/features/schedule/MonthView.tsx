@@ -4,7 +4,7 @@ import { cn } from '@/components/ui/cn';
 import { formatTime, monthRange, startOfWeek, todayJst } from '@/lib/format';
 import type { PeekBinder } from './calendar/EventPeek';
 import { personColor } from './calendar/people';
-import { type CalendarEvent, EVENT_STYLE, eventsOn } from './events';
+import { type CalendarEvent, EVENT_STYLE, eventsOn, isDayOff } from './events';
 
 const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
 const SHOWN = 3;
@@ -66,6 +66,12 @@ export function MonthView({
             const inMonth = date >= from && date <= to;
             const dayEvents = eventsOn(events, date).filter((event) => ids.has(event.personId));
             const dow = dayOfWeek(date);
+            // Everyone shown has the whole day off: the day is shaded in the 休み grey (11/17).
+            const dayOff =
+              !isWeekend(date) &&
+              !holiday &&
+              ids.size > 0 &&
+              [...ids].every((id) => isDayOff(eventsOn(events, date, id)));
             return (
               <div
                 key={date}
@@ -79,6 +85,7 @@ export function MonthView({
                 className={cn(
                   'group min-h-28 cursor-pointer border-t border-l border-line p-1.5 transition-colors first:border-l-0 hover:bg-hover',
                   (isWeekend(date) || holiday) && 'bg-off',
+                  dayOff && 'bg-dayoff',
                   !inMonth && 'bg-canvas/70',
                 )}
               >

@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { StickyTop } from '@/components/ui/StickyTop';
 import { type TabItem, Tabs } from '@/components/ui/Tabs';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { adminMenu, visibleItems } from '@/features/home/menus';
@@ -13,8 +14,10 @@ export function AdminLayout() {
   }));
   return (
     <>
-      <PageHeader title={ja.admin.title} />
-      <Tabs items={tabs} />
+      <StickyTop>
+        <PageHeader title={ja.admin.title} />
+        <Tabs items={tabs} />
+      </StickyTop>
       <Outlet />
     </>
   );

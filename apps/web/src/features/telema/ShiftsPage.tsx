@@ -2,6 +2,7 @@ import { dayOfWeek, type ShiftDto, ShiftKind, type TelemarketerDto } from '@tele
 import { CalendarPlus, ChevronLeft, ChevronRight, Plus, Users, Wand2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -68,59 +69,62 @@ export function ShiftsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="secondary"
-          aria-label="前の月"
-          icon={<ChevronLeft className="size-4" aria-hidden="true" />}
-          onClick={() => go(shiftMonth(month, -1))}
-        />
-        <h2 className="min-w-32 text-center text-lg font-bold tabular-nums">
-          {month.replace('-', '年')}月
-        </h2>
-        <Button
-          variant="secondary"
-          aria-label="次の月"
-          icon={<ChevronRight className="size-4" aria-hidden="true" />}
-          onClick={() => go(shiftMonth(month, 1))}
-        />
-        <Button variant="text" onClick={() => go(today.slice(0, 7))}>
-          今月
-        </Button>
+      {/* Stays in the section's fixed top while the list scrolls (11/17). */}
+      <StickyExtra>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            aria-label="前の月"
+            icon={<ChevronLeft className="size-4" aria-hidden="true" />}
+            onClick={() => go(shiftMonth(month, -1))}
+          />
+          <h2 className="min-w-32 text-center text-lg font-bold tabular-nums">
+            {month.replace('-', '年')}月
+          </h2>
+          <Button
+            variant="secondary"
+            aria-label="次の月"
+            icon={<ChevronRight className="size-4" aria-hidden="true" />}
+            onClick={() => go(shiftMonth(month, 1))}
+          />
+          <Button variant="text" onClick={() => go(today.slice(0, 7))}>
+            今月
+          </Button>
 
-        {access.writesShifts && (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {me && (
-              <Button
-                icon={<Wand2 className="size-4" aria-hidden="true" />}
-                disabled={!meReady}
-                title={meReady ? undefined : 'テレマ情報で「いつもの勤務」を先に入れてください'}
-                onClick={() => setConfirmFill('mine')}
-              >
-                自分のシフトを埋める
-              </Button>
-            )}
-            {bulkPeople.length > 0 && (
-              <Button
-                variant="secondary"
-                icon={<CalendarPlus className="size-4" aria-hidden="true" />}
-                onClick={() => setBulk(true)}
-              >
-                まとめて入力
-              </Button>
-            )}
-            {access.manages && (
-              <Button
-                variant="secondary"
-                icon={<Users className="size-4" aria-hidden="true" />}
-                onClick={() => setConfirmFill('all')}
-              >
-                全員分を埋める
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+          {access.writesShifts && (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {me && (
+                <Button
+                  icon={<Wand2 className="size-4" aria-hidden="true" />}
+                  disabled={!meReady}
+                  title={meReady ? undefined : 'テレマ情報で「いつもの勤務」を先に入れてください'}
+                  onClick={() => setConfirmFill('mine')}
+                >
+                  自分のシフトを埋める
+                </Button>
+              )}
+              {bulkPeople.length > 0 && (
+                <Button
+                  variant="secondary"
+                  icon={<CalendarPlus className="size-4" aria-hidden="true" />}
+                  onClick={() => setBulk(true)}
+                >
+                  まとめて入力
+                </Button>
+              )}
+              {access.manages && (
+                <Button
+                  variant="secondary"
+                  icon={<Users className="size-4" aria-hidden="true" />}
+                  onClick={() => setConfirmFill('all')}
+                >
+                  全員分を埋める
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </StickyExtra>
 
       {me && !meReady && access.writesShifts && (
         <Alert tone="info">
@@ -281,7 +285,8 @@ export function ShiftsPage() {
                                     editable
                                       ? 'cursor-pointer hover:outline-2 hover:outline-main hover:-outline-offset-2'
                                       : 'cursor-default',
-                                    shift?.kind === ShiftKind.Off && 'bg-danger-soft text-danger',
+                                    // 休み in the same grey hatching as in the schedule (11/17).
+                                    shift?.kind === ShiftKind.Off && 'bg-dayoff text-dayoff-ink',
                                     shift?.kind === ShiftKind.Work && 'bg-calls-soft text-calls',
                                     shift && past && !isToday && 'opacity-55',
                                     !shift &&
@@ -293,7 +298,7 @@ export function ShiftsPage() {
                                   )}
                                 >
                                   {shift?.kind === ShiftKind.Off && (
-                                    <span className="font-bold">休</span>
+                                    <span className="bg-surface/90 px-1 font-bold">休み</span>
                                   )}
                                   {shift?.kind === ShiftKind.Work && (
                                     <>
@@ -407,7 +412,7 @@ function Legend() {
         出勤
       </span>
       <span className={item}>
-        <span className={cn(swatch, 'border border-danger bg-danger-soft')} />
+        <span className={cn(swatch, 'border border-line-strong bg-dayoff')} />
         休み
       </span>
       <span className={item}>

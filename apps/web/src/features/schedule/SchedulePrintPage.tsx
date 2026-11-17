@@ -329,7 +329,7 @@ export function SchedulePrintPage() {
                         key={date}
                         className={cn(
                           'h-16 border border-ink-sub px-1 py-1 align-top',
-                          allDayOff && 'bg-column',
+                          allDayOff && 'bg-dayoff',
                         )}
                       >
                         <DayBar events={list} date={date} />

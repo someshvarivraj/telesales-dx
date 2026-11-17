@@ -32,6 +32,7 @@ import { cn } from '@/components/ui/cn';
 import { Dialog } from '@/components/ui/Dialog';
 import { QueryState } from '@/components/ui/QueryState';
 import { Segmented } from '@/components/ui/Segmented';
+import { StickyTop } from '@/components/ui/StickyTop';
 import { Select } from '@/components/ui/Select';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
@@ -395,214 +396,217 @@ export function SchedulePage() {
 
   return (
     <div ref={pageRef} className="schedule-page">
-      {/* Page head: the place and the actions people come here for. */}
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-ink-sub">{ja.module.schedule}</p>
-          <h1 className="text-2xl font-bold tracking-tight tabular-nums">
-            {title}
-            <span className="ml-2 text-base font-medium text-ink-sub">{year}年</span>
-          </h1>
+      {/* The title, its buttons and the toolbar stay at the top while the page scrolls (11/17). */}
+      <StickyTop className="mb-3">
+        {/* Page head: the place and the actions people come here for. */}
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-ink-sub">{ja.module.schedule}</p>
+            <h1 className="text-2xl font-bold tracking-tight tabular-nums">
+              {title}
+              <span className="ml-2 text-base font-medium text-ink-sub">{year}年</span>
+            </h1>
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {canTimeOff && (
+              <Button
+                variant="secondary"
+                icon={<CalendarOff className="size-4" aria-hidden="true" />}
+                onClick={() => setTimeOffDialog({ userId: chosen[0] ?? user.id, date })}
+              >
+                休みを入力
+              </Button>
+            )}
+            {canTelemaBook && (
+              <Link to={existingListBookingHref(date, chosen[0])} className={bookingLink}>
+                <FileUp className="size-4" aria-hidden="true" />
+                既存リストのアポを登録
+              </Link>
+            )}
+            {canSalesBook && (
+              <Link
+                to={`${paths.book}?source=SALES_BOOKED&repId=${user.id}&date=${date}`}
+                className={bookingLink}
+              >
+                <UserPlus className="size-4" aria-hidden="true" />
+                自分で取ったアポを登録
+              </Link>
+            )}
+            {canWritePlans && (
+              <Button
+                icon={<Plus className="size-4" aria-hidden="true" />}
+                onClick={() => setPlanDialog({ defaults: { ownerId: chosen[0] ?? user.id, date } })}
+              >
+                予定を追加
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {canTimeOff && (
-            <Button
-              variant="secondary"
-              icon={<CalendarOff className="size-4" aria-hidden="true" />}
-              onClick={() => setTimeOffDialog({ userId: chosen[0] ?? user.id, date })}
-            >
-              休みを入力
-            </Button>
-          )}
-          {canTelemaBook && (
-            <Link to={existingListBookingHref(date, chosen[0])} className={bookingLink}>
-              <FileUp className="size-4" aria-hidden="true" />
-              既存リストのアポを登録
-            </Link>
-          )}
-          {canSalesBook && (
-            <Link
-              to={`${paths.book}?source=SALES_BOOKED&repId=${user.id}&date=${date}`}
-              className={bookingLink}
-            >
-              <UserPlus className="size-4" aria-hidden="true" />
-              自分で取ったアポを登録
-            </Link>
-          )}
-          {canWritePlans && (
-            <Button
-              icon={<Plus className="size-4" aria-hidden="true" />}
-              onClick={() => setPlanDialog({ defaults: { ownerId: chosen[0] ?? user.id, date } })}
-            >
-              予定を追加
-            </Button>
-          )}
-        </div>
-      </div>
 
-      {/* Toolbar */}
-      <div className="sticky top-0 z-30 -mx-1 mb-3 flex flex-wrap items-center gap-2 bg-canvas/90 px-1 py-1.5 backdrop-blur-sm">
-        <button
-          type="button"
-          aria-label={railOpen ? 'サイドを閉じる' : 'サイドを開く'}
-          aria-pressed={railOpen}
-          onClick={() => setRailOpen(!railOpen)}
-          className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink lg:flex"
-        >
-          <PanelLeft aria-hidden="true" className="size-4" />
-        </button>
-        <div className="flex items-center border border-line-strong bg-surface">
+        {/* Toolbar */}
+        <div className="-mx-1 flex flex-wrap items-center gap-2 px-1 py-1.5">
           <button
             type="button"
-            aria-label="前へ"
-            onClick={() => step(-1)}
-            className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
+            aria-label={railOpen ? 'サイドを閉じる' : 'サイドを開く'}
+            aria-pressed={railOpen}
+            onClick={() => setRailOpen(!railOpen)}
+            className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink lg:flex"
           >
-            <ChevronLeft aria-hidden="true" className="size-4" />
+            <PanelLeft aria-hidden="true" className="size-4" />
           </button>
-          <button
-            type="button"
-            onClick={() => update({ date: todayJst() })}
-            className="h-10 cursor-pointer border-x border-line px-4 text-sm font-bold hover:bg-column"
-          >
-            今日
-          </button>
-          <button
-            type="button"
-            aria-label="次へ"
-            onClick={() => step(1)}
-            className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
-          >
-            <ChevronRight aria-hidden="true" className="size-4" />
-          </button>
-        </div>
-        <Segmented
-          aria-label="表示"
-          value={view}
-          onChange={(value) => update({ view: value })}
-          options={VIEWS}
-        />
-        {fullScreen.supported && (
-          <Button
-            variant="secondary"
-            icon={
-              fullScreen.on ? (
-                <Minimize2 className="size-4" aria-hidden="true" />
-              ) : (
-                <Maximize2 className="size-4" aria-hidden="true" />
-              )
-            }
-            onClick={fullScreen.toggle}
-          >
-            {fullScreen.on ? '全画面を終了' : '全画面'}
-          </Button>
-        )}
-        <Button
-          variant="secondary"
-          icon={<Printer className="size-4" aria-hidden="true" />}
-          onClick={() => window.open(printHref, '_blank')}
-        >
-          週間予定を印刷
-        </Button>
-        <div className="relative min-w-44 flex-1 sm:max-w-72">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-sub"
-          />
-          <input
-            ref={search}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setQuery('');
-                event.currentTarget.blur();
-              }
-            }}
-            placeholder="会社名・予定を検索"
-            aria-label="会社名・予定を検索"
-            className="h-10 w-full border border-line-strong bg-surface pr-8 pl-9 text-sm placeholder:text-ink-disabled focus:border-main-focus focus:ring-3 focus:ring-main-focus/20 focus:outline-none"
-          />
-          {query ? (
+          <div className="flex items-center border border-line-strong bg-surface">
             <button
               type="button"
-              aria-label="検索を消す"
-              onClick={() => setQuery('')}
-              className="absolute top-1/2 right-1.5 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center text-ink-sub hover:text-ink"
+              aria-label="前へ"
+              onClick={() => step(-1)}
+              className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
             >
-              <X aria-hidden="true" className="size-3.5" />
+              <ChevronLeft aria-hidden="true" className="size-4" />
             </button>
-          ) : (
-            <kbd className="absolute top-1/2 right-2 -translate-y-1/2 border border-line px-1.5 text-[10px] text-ink-sub max-sm:hidden">
-              /
-            </kbd>
-          )}
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          {(view === 'week' || view === 'day') && people.length > 1 && (
-            <Select
-              aria-label="並び順"
-              size="sm"
-              className="w-36"
-              value={sort}
-              options={[
-                { value: 'name', label: '並び：名前順' },
-                { value: 'free', label: '並び：空きが多い順' },
-                { value: 'busy', label: '並び：アポが多い順' },
-              ]}
-              onChange={(e) => setSort(e.target.value as 'name' | 'free' | 'busy')}
-            />
-          )}
-          <button
-            type="button"
-            aria-pressed={showFree}
-            onClick={() => setShowFree(!showFree)}
-            title="空き時間を表示（F）"
-            className={cn(
-              'inline-flex h-10 cursor-pointer items-center gap-1.5 border px-3 text-sm font-bold transition-colors',
-              showFree
-                ? 'border-free-ink/40 bg-free text-free-ink'
-                : 'border-line-strong bg-surface text-ink-sub hover:text-ink',
-            )}
-          >
-            <Sparkles aria-hidden="true" className="size-4" />
-            空き時間
-          </button>
-          {(view === 'day' || (view === 'week' && people.length === 1)) && (
-            <div
-              className="flex items-center border border-line-strong bg-surface"
-              title="時間の幅（+ / −）"
+            <button
+              type="button"
+              onClick={() => update({ date: todayJst() })}
+              className="h-10 cursor-pointer border-x border-line px-4 text-sm font-bold hover:bg-column"
             >
-              <button
-                type="button"
-                aria-label="時間の幅を狭める"
-                onClick={() => zoomBy(-1)}
-                disabled={zoom <= (ZOOMS[0] ?? 0)}
-                className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:text-ink disabled:opacity-30"
-              >
-                <Minus aria-hidden="true" className="size-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="時間の幅を広げる"
-                onClick={() => zoomBy(1)}
-                disabled={zoom >= (ZOOMS[ZOOMS.length - 1] ?? 9)}
-                className="flex size-10 cursor-pointer items-center justify-center border-l border-line text-ink-sub hover:text-ink disabled:opacity-30"
-              >
-                <Plus aria-hidden="true" className="size-4" />
-              </button>
-            </div>
+              今日
+            </button>
+            <button
+              type="button"
+              aria-label="次へ"
+              onClick={() => step(1)}
+              className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
+            >
+              <ChevronRight aria-hidden="true" className="size-4" />
+            </button>
+          </div>
+          <Segmented
+            aria-label="表示"
+            value={view}
+            onChange={(value) => update({ view: value })}
+            options={VIEWS}
+          />
+          {fullScreen.supported && (
+            <Button
+              variant="secondary"
+              icon={
+                fullScreen.on ? (
+                  <Minimize2 className="size-4" aria-hidden="true" />
+                ) : (
+                  <Maximize2 className="size-4" aria-hidden="true" />
+                )
+              }
+              onClick={fullScreen.toggle}
+            >
+              {fullScreen.on ? '全画面を終了' : '全画面'}
+            </Button>
           )}
-          <button
-            type="button"
-            aria-label="ショートカット一覧"
-            onClick={() => setHelp(true)}
-            className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink md:flex"
+          <Button
+            variant="secondary"
+            icon={<Printer className="size-4" aria-hidden="true" />}
+            onClick={() => window.open(printHref, '_blank')}
           >
-            <Keyboard aria-hidden="true" className="size-4" />
-          </button>
+            週間予定を印刷
+          </Button>
+          <div className="relative min-w-44 flex-1 sm:max-w-72">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-sub"
+            />
+            <input
+              ref={search}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  setQuery('');
+                  event.currentTarget.blur();
+                }
+              }}
+              placeholder="会社名・予定を検索"
+              aria-label="会社名・予定を検索"
+              className="h-10 w-full border border-line-strong bg-surface pr-8 pl-9 text-sm placeholder:text-ink-disabled focus:border-main-focus focus:ring-3 focus:ring-main-focus/20 focus:outline-none"
+            />
+            {query ? (
+              <button
+                type="button"
+                aria-label="検索を消す"
+                onClick={() => setQuery('')}
+                className="absolute top-1/2 right-1.5 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center text-ink-sub hover:text-ink"
+              >
+                <X aria-hidden="true" className="size-3.5" />
+              </button>
+            ) : (
+              <kbd className="absolute top-1/2 right-2 -translate-y-1/2 border border-line px-1.5 text-[10px] text-ink-sub max-sm:hidden">
+                /
+              </kbd>
+            )}
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            {(view === 'week' || view === 'day') && people.length > 1 && (
+              <Select
+                aria-label="並び順"
+                size="sm"
+                className="w-36"
+                value={sort}
+                options={[
+                  { value: 'name', label: '並び：名前順' },
+                  { value: 'free', label: '並び：空きが多い順' },
+                  { value: 'busy', label: '並び：アポが多い順' },
+                ]}
+                onChange={(e) => setSort(e.target.value as 'name' | 'free' | 'busy')}
+              />
+            )}
+            <button
+              type="button"
+              aria-pressed={showFree}
+              onClick={() => setShowFree(!showFree)}
+              title="空き時間を表示（F）"
+              className={cn(
+                'inline-flex h-10 cursor-pointer items-center gap-1.5 border px-3 text-sm font-bold transition-colors',
+                showFree
+                  ? 'border-free-ink/40 bg-free text-free-ink'
+                  : 'border-line-strong bg-surface text-ink-sub hover:text-ink',
+              )}
+            >
+              <Sparkles aria-hidden="true" className="size-4" />
+              空き時間
+            </button>
+            {(view === 'day' || (view === 'week' && people.length === 1)) && (
+              <div
+                className="flex items-center border border-line-strong bg-surface"
+                title="時間の幅（+ / −）"
+              >
+                <button
+                  type="button"
+                  aria-label="時間の幅を狭める"
+                  onClick={() => zoomBy(-1)}
+                  disabled={zoom <= (ZOOMS[0] ?? 0)}
+                  className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:text-ink disabled:opacity-30"
+                >
+                  <Minus aria-hidden="true" className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="時間の幅を広げる"
+                  onClick={() => zoomBy(1)}
+                  disabled={zoom >= (ZOOMS[ZOOMS.length - 1] ?? 9)}
+                  className="flex size-10 cursor-pointer items-center justify-center border-l border-line text-ink-sub hover:text-ink disabled:opacity-30"
+                >
+                  <Plus aria-hidden="true" className="size-4" />
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              aria-label="ショートカット一覧"
+              onClick={() => setHelp(true)}
+              className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink md:flex"
+            >
+              <Keyboard aria-hidden="true" className="size-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      </StickyTop>
 
       <div className={cn('grid gap-4', railOpen && 'lg:grid-cols-[15.5rem_minmax(0,1fr)]')}>
         {/* Side rail */}

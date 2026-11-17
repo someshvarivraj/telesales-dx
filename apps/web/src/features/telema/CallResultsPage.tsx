@@ -7,6 +7,7 @@ import {
 } from '@telesales/shared';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'react-router';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/components/ui/cn';
@@ -76,34 +77,37 @@ export function CallResultsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="secondary"
-          aria-label={span === 'month' ? '前の月' : '前の週'}
-          icon={<ChevronLeft className="size-4" aria-hidden="true" />}
-          onClick={() => step(-1)}
-        />
-        <h2 className="min-w-40 text-center text-lg font-bold tabular-nums">{title}</h2>
-        <Button
-          variant="secondary"
-          aria-label={span === 'month' ? '次の月' : '次の週'}
-          icon={<ChevronRight className="size-4" aria-hidden="true" />}
-          onClick={() => step(1)}
-        />
-        <Button variant="text" onClick={() => go({ date: today })}>
-          {span === 'month' ? '今月' : '今週'}
-        </Button>
-        <Segmented
-          className="ml-auto"
-          aria-label="期間"
-          value={span}
-          onChange={(next) => go({ span: next })}
-          options={[
-            { value: 'week', label: '週' },
-            { value: 'month', label: '月' },
-          ]}
-        />
-      </div>
+      {/* Stays in the section's fixed top while the list scrolls (11/17). */}
+      <StickyExtra>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            aria-label={span === 'month' ? '前の月' : '前の週'}
+            icon={<ChevronLeft className="size-4" aria-hidden="true" />}
+            onClick={() => step(-1)}
+          />
+          <h2 className="min-w-40 text-center text-lg font-bold tabular-nums">{title}</h2>
+          <Button
+            variant="secondary"
+            aria-label={span === 'month' ? '次の月' : '次の週'}
+            icon={<ChevronRight className="size-4" aria-hidden="true" />}
+            onClick={() => step(1)}
+          />
+          <Button variant="text" onClick={() => go({ date: today })}>
+            {span === 'month' ? '今月' : '今週'}
+          </Button>
+          <Segmented
+            className="ml-auto"
+            aria-label="期間"
+            value={span}
+            onChange={(next) => go({ span: next })}
+            options={[
+              { value: 'week', label: '週' },
+              { value: 'month', label: '月' },
+            ]}
+          />
+        </div>
+      </StickyExtra>
 
       <QueryState query={query}>{(data) => <Results data={data} today={today} />}</QueryState>
 

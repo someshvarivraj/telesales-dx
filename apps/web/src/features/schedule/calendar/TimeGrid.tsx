@@ -28,7 +28,7 @@ export interface GridColumn {
   header: ReactNode;
   /** Weekend, holiday or company day off: tinted. */
   off: boolean;
-  /** The person's whole day of 休み (11/17): its own lavender hatching, labelled, closed. */
+  /** The person's whole day of 休み (11/17): hatched in the 休み grey, closed to new plans. */
   dayOff?: boolean;
   events: CalendarEvent[];
 }
@@ -198,7 +198,10 @@ export function TimeGrid({
                 {columns.map((column) => (
                   <div
                     key={column.key}
-                    className="flex flex-1 flex-col gap-0.5 border-l border-line p-1"
+                    className={cn(
+                      'flex flex-1 flex-col gap-0.5 border-l border-line p-1',
+                      column.dayOff && !column.off && 'bg-dayoff',
+                    )}
                     style={{ minWidth: minColumnWidth }}
                   >
                     {column.events
@@ -265,7 +268,7 @@ export function TimeGrid({
               </div>
             </div>
 
-            {columns.map((column) => {
+            {columns.map((column, columnIndex) => {
               const placed = placeEvents(column.events, column.date).filter(
                 (item) => item.end > dayStart && item.start < dayEnd,
               );
@@ -346,25 +349,6 @@ export function TimeGrid({
                     className="pointer-events-none absolute inset-x-0 bottom-0 bg-canvas/80"
                     style={{ top: y(WORK_END) }}
                   />
-                  {/* A whole day of 休み: labelled every 3 hours, so a label shows wherever the
-                      grid is scrolled (11/17). */}
-                  {column.dayOff &&
-                    !column.off &&
-                    hours
-                      .filter(
-                        (hour) => hour % 3 === 0 && hour * 60 > dayStart && hour * 60 < dayEnd,
-                      )
-                      .map((hour) => (
-                        <span
-                          key={`off${hour}`}
-                          className="pointer-events-none absolute inset-x-0 flex justify-center"
-                          style={{ top: y(hour * 60) + 8 }}
-                        >
-                          <span className="border border-dayoff-line bg-surface/90 px-3 py-0.5 text-xs font-bold text-dayoff-ink">
-                            休み
-                          </span>
-                        </span>
-                      ))}
                   {/* Lunch break, in its own grey */}
                   {!closed && (
                     <div
@@ -526,20 +510,28 @@ export function TimeGrid({
                     <div
                       data-event
                       data-quick
-                      className="absolute inset-x-1 z-[10] flex flex-col gap-1 border-2 border-main bg-surface p-1.5 shadow-(--shadow-raised)"
+                      // A comfortable fixed width even in narrow columns; it may reach past the column.
+                      className={cn(
+                        'absolute z-[10] flex w-60 flex-col gap-1.5 border-2 border-main bg-surface p-2 shadow-(--shadow-raised)',
+                        // Columns on the right open it towards the left, so it stays on screen.
+                        columns.length > 1 && columnIndex >= columns.length / 2
+                          ? 'right-1'
+                          : 'left-1',
+                      )}
                       style={{
                         top: y(quick.start),
                         minHeight: Math.max(76, y(quick.end) - y(quick.start)),
                       }}
                       onPointerDown={(event) => event.stopPropagation()}
                     >
-                      <span className="text-[11px] font-bold text-main tabular-nums">
+                      <span className="flex items-baseline justify-between text-[11px] font-bold text-main tabular-nums">
                         {hhmm(quick.start)}–{hhmm(quick.end)}
+                        <span className="font-normal text-ink-sub">Enterで保存</span>
                       </span>
                       <input
                         autoFocus
                         aria-label="件名"
-                        placeholder="件名を入力してEnter"
+                        placeholder="件名"
                         value={quick.title}
                         disabled={quick.saving}
                         maxLength={100}
@@ -559,7 +551,7 @@ export function TimeGrid({
                           type="button"
                           disabled={!quick.title.trim() || quick.saving}
                           onClick={() => saveQuick(column)}
-                          className="h-7 cursor-pointer bg-main px-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                          className="h-7 shrink-0 cursor-pointer bg-main px-3 text-xs font-bold whitespace-nowrap text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {quick.saving ? '保存中…' : '保存'}
                         </button>
@@ -569,7 +561,7 @@ export function TimeGrid({
                             onRange?.(column, hhmm(quick.start), hhmm(quick.end), quick.title);
                             setQuick(null);
                           }}
-                          className="h-7 cursor-pointer border border-line-strong px-2 text-xs font-bold text-ink hover:bg-column"
+                          className="h-7 shrink-0 cursor-pointer border border-line-strong px-2 text-xs font-bold whitespace-nowrap text-ink hover:bg-column"
                         >
                           ＋詳細
                         </button>

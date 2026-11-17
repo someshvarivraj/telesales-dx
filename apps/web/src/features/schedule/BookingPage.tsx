@@ -463,6 +463,7 @@ function BookingForm(props: BookingFormProps) {
     return (
       <>
         <PageHeader
+          sticky
           eyebrow={ja.module.schedule}
           back={<BackLink onClick={() => navigate(-1)}>{ja.common.back}</BackLink>}
           title="自分で取ったアポの登録"
@@ -640,6 +641,7 @@ function BookingForm(props: BookingFormProps) {
   return (
     <>
       <PageHeader
+        sticky
         eyebrow={ja.module.schedule}
         back={<BackLink onClick={() => navigate(-1)}>{ja.common.back}</BackLink>}
         title={rebookOf ? '再アポの登録' : salesBooked ? '自分で取ったアポの登録' : 'アポの登録'}

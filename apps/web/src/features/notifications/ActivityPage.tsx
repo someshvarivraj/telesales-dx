@@ -13,6 +13,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { MoraBot } from '@/components/brand/MoraBot';
+import { StickyTop } from '@/components/ui/StickyTop';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 import { Spinner } from '@/components/ui/Spinner';
@@ -122,39 +123,41 @@ export function ActivityPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <p className="text-xs font-medium text-ink-sub">アクティビティ</p>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {ja.nav.notifications}
-            {unreadCount > 0 && (
-              <span className="ml-2 align-middle text-sm font-bold text-schedule">
-                未読 {unreadCount}件
-              </span>
-            )}
-          </h1>
-        </div>
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            icon={<CheckCheck className="size-4" aria-hidden="true" />}
-            disabled={unreadCount === 0}
-            onClick={() => markRead.mutate('all')}
-          >
-            すべて既読にする
-          </Button>
-          {box !== 'archived' && (
+      <StickyTop>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <p className="text-xs font-medium text-ink-sub">アクティビティ</p>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {ja.nav.notifications}
+              {unreadCount > 0 && (
+                <span className="ml-2 align-middle text-sm font-bold text-schedule">
+                  未読 {unreadCount}件
+                </span>
+              )}
+            </h1>
+          </div>
+          <div className="ml-auto flex flex-wrap gap-2">
             <Button
               variant="secondary"
-              icon={<Archive className="size-4" aria-hidden="true" />}
-              onClick={() => archive.mutate({ ids: 'read', archived: true })}
-              loading={archive.isPending}
+              icon={<CheckCheck className="size-4" aria-hidden="true" />}
+              disabled={unreadCount === 0}
+              onClick={() => markRead.mutate('all')}
             >
-              既読をまとめてアーカイブ
+              すべて既読にする
             </Button>
-          )}
+            {box !== 'archived' && (
+              <Button
+                variant="secondary"
+                icon={<Archive className="size-4" aria-hidden="true" />}
+                onClick={() => archive.mutate({ ids: 'read', archived: true })}
+                loading={archive.isPending}
+              >
+                既読をまとめてアーカイブ
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      </StickyTop>
 
       <div className="grid min-h-[calc(100dvh-12rem)] border border-line bg-surface shadow-(--shadow-card) lg:grid-cols-[minmax(22rem,28rem)_1fr]">
         {/* Feed */}

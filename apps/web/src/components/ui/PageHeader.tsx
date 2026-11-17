@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { StickyTop } from './StickyTop';
 
 interface PageHeaderProps {
   title: ReactNode;
@@ -8,10 +9,19 @@ interface PageHeaderProps {
   back?: ReactNode;
   actions?: ReactNode;
   children?: ReactNode;
+  /** Stays at the top while the page scrolls (11/17); a section layout wraps its own instead. */
+  sticky?: boolean;
 }
 
-export function PageHeader({ title, eyebrow, back, actions, children }: PageHeaderProps) {
-  return (
+export function PageHeader({
+  title,
+  eyebrow,
+  back,
+  actions,
+  children,
+  sticky = false,
+}: PageHeaderProps) {
+  const header = (
     <div className="mb-6 flex flex-col gap-3">
       {back && <div className="mb-1 flex">{back}</div>}
       <div className="flex flex-wrap items-end gap-3">
@@ -24,4 +34,5 @@ export function PageHeader({ title, eyebrow, back, actions, children }: PageHead
       {children}
     </div>
   );
+  return sticky ? <StickyTop>{header}</StickyTop> : header;
 }

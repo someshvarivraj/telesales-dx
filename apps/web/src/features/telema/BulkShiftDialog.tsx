@@ -203,6 +203,7 @@ export function BulkShiftDialog({
                     !on && !day.businessDay && can && 'bg-off',
                     day.date === today && !on && 'border-2 border-main',
                     past && !on && can && 'bg-column text-ink-sub',
+                    !on && shift?.kind === ShiftKind.Off && 'bg-dayoff',
                   )}
                 >
                   <span className={cn('text-sm font-bold', past && !on && 'font-normal')}>
@@ -218,7 +219,7 @@ export function BulkShiftDialog({
                       ? '今日'
                       : shift
                         ? shift.kind === ShiftKind.Off
-                          ? '休'
+                          ? '休み'
                           : shift.startTime
                         : (day.holidayName ?? '')}
                   </span>

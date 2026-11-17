@@ -5,6 +5,7 @@ import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
 import { Alert } from '@/components/ui/Alert';
+import { StickyTopProvider } from '@/components/ui/StickyTop';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
 import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
@@ -58,7 +59,9 @@ export function AppLayout() {
                 で終えられます）。
               </Alert>
             )}
-            <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
+            <StickyTopProvider>
+              <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
+            </StickyTopProvider>
           </main>
         </div>
         <MobileNav />

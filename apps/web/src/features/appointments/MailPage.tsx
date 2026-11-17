@@ -34,7 +34,7 @@ export function MailPage() {
   const draft = useMailDraft(id, mailKind);
   return (
     <>
-      <PageHeader title={TITLE[mailKind]} />
+      <PageHeader sticky title={TITLE[mailKind]} />
       <QueryState query={draft}>
         {(email) => (
           <MailPreview
