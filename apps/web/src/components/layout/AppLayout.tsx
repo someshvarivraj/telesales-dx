@@ -10,6 +10,13 @@ import { StickyTopProvider } from '@/components/ui/StickyTop';
 import { paths } from '@/app/paths';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
+import {
+  onCallsScreen,
+  SalesPanel,
+  SalesPanelProvider,
+  SPLIT_WIDTH,
+  useSalesPanel,
+} from '@/features/calls/SalesPanel';
 import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
 import { NoticeToaster } from '@/features/notifications/NoticeToaster';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
@@ -42,46 +49,50 @@ export function AppLayout() {
   return (
     <ThemeProvider userId={id} roles={roles}>
       <FeedbackProvider>
-        <div className="min-h-dvh">
-          <GridBackdrop />
-          <AppSidebar />
-          <div className="app-main flex min-h-dvh min-w-0 flex-col">
-            <AppHeader />
-            {/* A thin Teams-like top bar (11/17): language and theme as icons at the right. */}
-            <div className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex">
-              <TopBarMenus />
-            </div>
-            <PlannedOutageBanner
-              outage={status.data?.plannedOutage}
-              className="sticky top-0 z-20"
-            />
-            {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
+        <SalesPanelProvider>
+          <div className="min-h-dvh">
+            <GridBackdrop />
+            <AppSidebar />
+            <div className="app-main flex min-h-dvh min-w-0 flex-col">
+              <AppHeader />
+              {/* A thin Teams-like top bar (11/17): language and theme as icons at the right. */}
+              <div className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex">
+                <TopBarMenus />
+              </div>
+              <PlannedOutageBanner
+                outage={status.data?.plannedOutage}
+                className="sticky top-0 z-20"
+              />
+              {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
               MoraBot launcher in the corner. */}
-            <main
-              className={cn(
-                // Full width on every screen (11/17): content takes the room, little empty margin.
-                'w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:px-6 md:pt-4',
-                // The schedule fills the screen with one scroll inside the calendar (11/17).
-                pathname.startsWith(paths.schedule) ? 'md:pb-4' : 'md:pb-28',
-              )}
-            >
-              {maintenance && admin && (
-                <Alert tone="warning" className="mb-5">
-                  メンテナンス中です。いまは管理者だけが使えます（管理 ＞ {ja.admin.apps}{' '}
-                  で終えられます）。
-                </Alert>
-              )}
-              <StickyTopProvider>
-                <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
-              </StickyTopProvider>
-            </main>
+              <SplitRoom />
+              <main
+                className={cn(
+                  // Full width on every screen (11/17): content takes the room, little empty margin.
+                  'w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:px-6 md:pt-4',
+                  // The schedule fills the screen with one scroll inside the calendar (11/17).
+                  pathname.startsWith(paths.schedule) ? 'md:pb-4' : 'md:pb-28',
+                )}
+              >
+                {maintenance && admin && (
+                  <Alert tone="warning" className="mb-5">
+                    メンテナンス中です。いまは管理者だけが使えます（管理 ＞ {ja.admin.apps}{' '}
+                    で終えられます）。
+                  </Alert>
+                )}
+                <StickyTopProvider>
+                  <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
+                </StickyTopProvider>
+              </main>
+            </div>
+            <MobileNav />
+            <AssistantWidget />
+            <SessionExpiryWarning />
+            <NoticeToaster />
+            <OutageOverlay />
           </div>
-          <MobileNav />
-          <AssistantWidget />
-          <SessionExpiryWarning />
-          <NoticeToaster />
-          <OutageOverlay />
-        </div>
+          <SalesPanel />
+        </SalesPanelProvider>
       </FeedbackProvider>
     </ThemeProvider>
   );
@@ -97,4 +108,17 @@ function MaintenanceNotice() {
       </p>
     </section>
   );
+}
+
+/** The docked 営業の予定 takes the right side; the page gets narrower instead of hiding under it. */
+function SplitRoom() {
+  const panel = useSalesPanel();
+  const { pathname } = useLocation();
+  const split = panel?.mode === 'split' && onCallsScreen(pathname);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (split) root.style.setProperty('--split-room', SPLIT_WIDTH);
+    else root.style.removeProperty('--split-room');
+  }, [split]);
+  return null;
 }

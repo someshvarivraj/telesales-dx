@@ -438,7 +438,11 @@ html[data-sidebar='closed'] {
 @media (min-width: 768px) {
   .app-main {
     margin-left: var(--sidebar-w);
-    transition: margin-left 0.18s ease;
+    /* The docked 営業の予定 (11/17) takes the right side. */
+    margin-right: var(--split-room, 0px);
+    transition:
+      margin-left 0.18s ease,
+      margin-right 0.18s ease;
   }
 }
 .sidebar {

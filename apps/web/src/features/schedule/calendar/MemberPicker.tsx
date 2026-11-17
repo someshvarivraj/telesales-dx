@@ -20,7 +20,6 @@ interface MemberPickerProps {
   onGroups: (groups: SavedGroup[]) => void;
 }
 
-
 /**
  * Who the calendar shows: everyone as a checkbox list (narrowed by the search above it),
  * presets and saved groups (マイグループ).

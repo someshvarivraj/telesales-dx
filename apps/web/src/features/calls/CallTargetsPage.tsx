@@ -13,6 +13,8 @@ import {
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { useSalesPanel } from './SalesPanel';
+import { CalendarDays } from 'lucide-react';
 import { StickyExtra } from '@/components/ui/StickyTop';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -397,6 +399,7 @@ function CompanyRow({
   onPick: (on: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const panel = useSalesPanel();
   const today = todayJst();
   const due = company.nextCallDate !== null && company.nextCallDate <= today;
   const open = (event: React.MouseEvent) => {
@@ -422,12 +425,26 @@ function CompanyRow({
       )}
       <Td className={picked !== undefined ? undefined : 'pl-4'}>
         <div className="min-w-44">
-          <Link
-            to={paths.company(company.id)}
-            className="font-bold text-link underline-offset-2 hover:underline"
-          >
-            {company.name}
-          </Link>
+          <div className="flex items-start gap-1.5">
+            <Link
+              to={paths.company(company.id)}
+              className="font-bold text-link underline-offset-2 hover:underline"
+            >
+              {company.name}
+            </Link>
+            {/* Its rep's calendar beside the list, without leaving it (11/17). */}
+            {panel && panel.mode !== 'closed' && (
+              <button
+                type="button"
+                title="担当営業の予定を見る"
+                aria-label={`${company.name}の担当営業の予定を見る`}
+                onClick={() => panel.openFor({ id: company.id, name: company.name })}
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center text-ink-sub hover:bg-main-soft hover:text-main max-md:hidden"
+              >
+                <CalendarDays aria-hidden="true" className="size-4" />
+              </button>
+            )}
+          </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-sub">
             {company.office && <span>{company.office}</span>}
             {company.phone && (

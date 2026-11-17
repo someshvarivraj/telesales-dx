@@ -10,7 +10,7 @@ import {
   Permission,
 } from '@telesales/shared';
 import { Building2, CalendarPlus, MessageSquare, Pencil, Plus } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -38,6 +38,7 @@ import { CallRecordForm } from './CallRecordForm';
 import { CompanyEditDialog } from './CompanyEditDialog';
 import { CompanyGroupCard } from './CompanyGroup';
 import { FindRepDialog } from './FindRepDialog';
+import { useSalesPanel } from './SalesPanel';
 import { OfficeCreatedNotice, OfficeDialog } from './OfficeDialog';
 import { BackBar, BackLink } from '@/components/ui/BackLink';
 
@@ -152,6 +153,22 @@ export function CompanyPage() {
 
   const companyAppointments = appointments.data?.items ?? [];
 
+  // On wide screens the rep's calendar opens beside the company (11/17), not on another page.
+  const panel = useSalesPanel();
+  const panelOn = panel !== null && panel.mode !== 'closed' && window.innerWidth >= 768;
+  const findRep = () => {
+    if (!panelOn || !company.data) return setRepOpen(true);
+    const latest = justSavedA ?? records.data?.find((record) => record.grade === 'A') ?? null;
+    panel.openFor({ id, name: company.data.name, callRecordId: latest?.id ?? null });
+  };
+  // Already open beside the page: it follows to the company being called.
+  const follow = panel?.openFor;
+  const shown = panel?.company?.id;
+  const open = panel !== null && ['float', 'split', 'max'].includes(panel.mode);
+  const name = company.data?.name;
+  useEffect(() => {
+    if (open && follow && name && shown !== id) follow({ id, name });
+  }, [open, follow, name, shown, id]);
   const openSchedule = (repId: string, webOnly: boolean) => {
     const latest = justSavedA ?? records.data?.find((record) => record.grade === 'A') ?? null;
     const params = new URLSearchParams({
@@ -192,7 +209,7 @@ export function CompanyPage() {
                 {canBook && (
                   <Button
                     icon={<CalendarPlus className="size-4" aria-hidden="true" />}
-                    onClick={() => setRepOpen(true)}
+                    onClick={findRep}
                   >
                     担当営業を判定して予定を開く
                   </Button>
@@ -235,7 +252,7 @@ export function CompanyPage() {
               <Alert
                 tone="success"
                 action={
-                  <Button size="sm" onClick={() => setRepOpen(true)}>
+                  <Button size="sm" onClick={findRep}>
                     担当営業を判定してアポを登録する
                   </Button>
                 }
