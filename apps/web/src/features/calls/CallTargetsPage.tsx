@@ -8,12 +8,13 @@ import {
   INDUSTRIES,
   OptionCategory,
   Permission,
+  prefecturesOfArea,
   Role,
 } from '@telesales/shared';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
-import { useSalesPanel } from './SalesPanel';
+import { AreaChips, useSalesPanel } from './SalesPanel';
 import { CalendarDays } from 'lucide-react';
 import { StickyExtra } from '@/components/ui/StickyTop';
 import { Button } from '@/components/ui/Button';
@@ -105,6 +106,8 @@ export function CallTargetsPage() {
       setPage(1);
     };
 
+  const areaPanel = useSalesPanel();
+  const salesArea = areaPanel && areaPanel.mode !== 'closed' ? areaPanel.area : null;
   const conditions = chips.map((chip) => ({
     field: chip.field,
     value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
@@ -117,6 +120,8 @@ export function CallTargetsPage() {
     callTargetsOnly: list === 'TARGETS',
     nonTargetsOnly: list === 'NON_TARGETS',
     assignedToMe: onlyMine,
+    // The area chosen beside the list (A 大阪・B 神戸・C 京都・奈良, 11/17).
+    prefectures: prefecturesOfArea(salesArea),
   };
   const query = useCompanySearch({ ...search, page, pageSize: 50 });
 
@@ -171,6 +176,18 @@ export function CallTargetsPage() {
           onOnlyMine={changed(setOnlyMine)}
           choicesOf={choicesOf}
         />
+        {areaPanel && areaPanel.mode !== 'closed' && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-ink-sub">
+            エリア
+            <AreaChips
+              area={areaPanel.area}
+              onArea={(next) => {
+                areaPanel.setArea(next);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
       </StickyExtra>
 
       <section

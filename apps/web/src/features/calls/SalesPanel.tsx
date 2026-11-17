@@ -4,7 +4,10 @@ import {
   dayOfWeek,
   isWeekend,
   Permission,
+  prefecturesOfArea,
   Role,
+  SALES_AREAS,
+  type SalesAreaKey,
   weekdayJa,
 } from '@telesales/shared';
 import {
@@ -41,6 +44,7 @@ import { TimeGrid } from '@/features/schedule/calendar/TimeGrid';
 import { buildEvents, eventsOn, isDayOff } from '@/features/schedule/events';
 import { formatShortDate, todayJst } from '@/lib/format';
 import { isSalesOnly } from '@/components/layout/navItems';
+import { useCompanySearch } from '@/features/calls/api';
 
 /**
  * 営業の予定 beside the call list (request 11/17): テレマ call while looking at the sales reps'
@@ -63,10 +67,23 @@ interface PanelContext {
   company: PanelCompany | null;
   /** Show the panel for this company (suggests its rep). */
   openFor: (company: PanelCompany) => void;
+  /** The chosen sales area: narrows the reps here and the companies in the call list (11/17). */
+  area: SalesAreaKey | null;
+  setArea: (area: SalesAreaKey | null) => void;
 }
 
 const Ctx = createContext<PanelContext | null>(null);
 const STORE = 'sales-panel-mode';
+const AREA_STORE = 'sales-panel-area';
+
+function storedArea(): SalesAreaKey | null {
+  try {
+    const value = window.localStorage.getItem(AREA_STORE);
+    return SALES_AREAS.some((area) => area.key === value) ? (value as SalesAreaKey) : null;
+  } catch {
+    return null;
+  }
+}
 
 function storedMode(): PanelMode | null {
   try {
@@ -99,6 +116,16 @@ export function SalesPanelProvider({ children }: { children: ReactNode }) {
     () => storedMode() ?? (plainTelema ? 'split' : 'min'),
   );
   const [company, setCompany] = useState<PanelCompany | null>(null);
+  const [area, setAreaState] = useState<SalesAreaKey | null>(storedArea);
+  const setArea = useCallback((next: SalesAreaKey | null) => {
+    setAreaState(next);
+    try {
+      if (next) window.localStorage.setItem(AREA_STORE, next);
+      else window.localStorage.removeItem(AREA_STORE);
+    } catch {
+      // Not remembered in private windows.
+    }
+  }, []);
   const setMode = useCallback((next: PanelMode) => {
     setModeState(next);
     try {
@@ -117,8 +144,10 @@ export function SalesPanelProvider({ children }: { children: ReactNode }) {
       setMode,
       company,
       openFor,
+      area,
+      setArea,
     }),
-    [canBook, user.roles, mode, setMode, company, openFor],
+    [canBook, user.roles, mode, setMode, company, openFor, area, setArea],
   );
   return <Ctx.Provider value={value as PanelContext}>{children}</Ctx.Provider>;
 }
@@ -138,7 +167,7 @@ export function SalesPanel() {
 }
 
 function PanelBody({ panel }: { panel: PanelContext }) {
-  const { mode, setMode, company } = panel;
+  const { mode, setMode, company, area, setArea } = panel;
   const navigate = useNavigate();
   const reps = usePeople(Role.Sales);
   const find = useFindRep();
@@ -161,9 +190,17 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const to = repId ? addDays(monday, 4) : date;
   const schedule = useSchedule(from, to, []);
   const events = useMemo(() => (schedule.data ? buildEvents(schedule.data) : []), [schedule.data]);
-  const people = reps.data ?? [];
-  const order = people.map((person) => person.id);
-  const rep = people.find((person) => person.id === repId);
+  // Reps of the chosen area: those the 営業担当表 puts in one of its prefectures.
+  const areaPrefectures = prefecturesOfArea(area);
+  const inArea = new Set(
+    (schedule.data?.people ?? [])
+      .filter((person) => person.prefectures.some((p) => areaPrefectures.includes(p)))
+      .map((person) => person.id),
+  );
+  const allReps = reps.data ?? [];
+  const people = area ? allReps.filter((person) => inArea.has(person.id)) : allReps;
+  const order = allReps.map((person) => person.id);
+  const rep = allReps.find((person) => person.id === repId);
   const suggestion = find.data;
 
   const book = (day: string, start: string, end: string) => {
@@ -252,14 +289,15 @@ function PanelBody({ panel }: { panel: PanelContext }) {
       </header>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+        <AreaChips area={area} onArea={setArea} />
         <select
           aria-label="表示する営業"
           value={repId}
           onChange={(event) => setRepId(event.target.value)}
           className="h-8 min-w-40 border border-line-strong bg-surface px-2 text-sm"
         >
-          <option value="">営業全員（1日）</option>
-          {people.map((person) => (
+          <option value="">{area ? 'エリアの営業全員（1日）' : '営業全員（1日）'}</option>
+          {(rep && !people.includes(rep) ? [rep, ...people] : people).map((person) => (
             <option key={person.id} value={person.id}>
               {person.name}
               {suggestion?.rep?.id === person.id ? '（担当表）' : ''}
@@ -288,7 +326,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
         <span className="text-sm font-bold tabular-nums">
           {repId
             ? `${formatShortDate(monday)} – ${formatShortDate(addDays(monday, 4))}`
-            : `${formatShortDate(date)}（${weekdayJa(date)}）`}
+            : formatShortDate(date)}
         </span>
       </div>
 
@@ -315,7 +353,10 @@ function PanelBody({ panel }: { panel: PanelContext }) {
         </p>
       )}
 
-      <div className="min-h-0 flex-1 overflow-hidden p-2">
+      <div className="relative min-h-0 flex-1 overflow-hidden p-2">
+        {mode === 'max' && (
+          <AreaCompanies area={area} onPick={panel.openFor} current={company?.id} />
+        )}
         {repId && rep ? (
           <TimeGrid
             maxHeight="100%"
@@ -410,5 +451,119 @@ function ModeButton({
     >
       <Icon aria-hidden="true" className="size-4" />
     </button>
+  );
+}
+
+/** すべて ・ A 大阪 ・ B 神戸 ・ C 京都・奈良: one choice for the reps and the companies. */
+export function AreaChips({
+  area,
+  onArea,
+}: {
+  area: SalesAreaKey | null;
+  onArea: (area: SalesAreaKey | null) => void;
+}) {
+  const chip = (active: boolean) =>
+    cn(
+      'h-8 cursor-pointer border px-2.5 text-xs font-bold whitespace-nowrap transition-colors',
+      active
+        ? 'border-main bg-main text-white'
+        : 'border-line-strong bg-surface text-ink-sub hover:bg-hover hover:text-ink',
+    );
+  return (
+    <div role="group" aria-label="エリア" className="flex items-center gap-1">
+      <button
+        type="button"
+        aria-pressed={area === null}
+        onClick={() => onArea(null)}
+        className={chip(area === null)}
+      >
+        すべて
+      </button>
+      {SALES_AREAS.map((option) => (
+        <button
+          key={option.key}
+          type="button"
+          aria-pressed={area === option.key}
+          title={option.prefectures.join('・')}
+          onClick={() => onArea(option.key)}
+          className={chip(area === option.key)}
+        >
+          {option.key} {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The area's companies floating over the full-screen calendar (sketch 11/17): pick one and its
+ * 担当営業 and their week come up; its name opens the company page.
+ */
+function AreaCompanies({
+  area,
+  onPick,
+  current,
+}: {
+  area: SalesAreaKey | null;
+  onPick: (company: PanelCompany) => void;
+  current?: string;
+}) {
+  const [folded, setFolded] = useState(false);
+  const query = useCompanySearch({
+    prefectures: prefecturesOfArea(area),
+    callTargetsOnly: true,
+    page: 1,
+    pageSize: 50,
+  });
+  const items = query.data?.items ?? [];
+  const label = area ? SALES_AREAS.find((a) => a.key === area)?.label : 'すべてのエリア';
+  return (
+    <aside
+      aria-label="エリアの企業"
+      className="absolute top-3 right-5 z-40 flex max-h-[calc(100%-1.5rem)] w-72 flex-col border border-line bg-surface shadow-(--shadow-raised)"
+    >
+      <button
+        type="button"
+        onClick={() => setFolded(!folded)}
+        className="flex h-9 shrink-0 cursor-pointer items-center gap-2 border-b border-line bg-column px-3 text-left text-sm font-bold"
+      >
+        企業名
+        <span className="text-xs font-normal text-ink-sub">
+          {label}・{query.data?.total ?? 0}件
+        </span>
+        <ChevronRight
+          aria-hidden="true"
+          className={cn('ml-auto size-4 transition-transform', !folded && 'rotate-90')}
+        />
+      </button>
+      {!folded && (
+        <ul className="min-h-0 flex-1 overflow-y-auto">
+          {items.length === 0 && (
+            <li className="px-3 py-4 text-xs text-ink-sub">
+              {query.isPending ? '読み込み中…' : 'このエリアの架電対象はありません。'}
+            </li>
+          )}
+          {items.map((item) => (
+            <li key={item.id} className="border-b border-line last:border-b-0">
+              <button
+                type="button"
+                onClick={() => onPick({ id: item.id, name: item.name })}
+                className={cn(
+                  'flex w-full cursor-pointer flex-col px-3 py-2 text-left hover:bg-hover',
+                  current === item.id && 'bg-main-soft',
+                )}
+              >
+                <span className="truncate text-sm font-bold">{item.name}</span>
+                <span className="truncate text-[11px] text-ink-sub">
+                  {item.prefecture}
+                  {item.city ?? ''}
+                  {item.phone && <span className="ml-2 tabular-nums">{item.phone}</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </aside>
   );
 }

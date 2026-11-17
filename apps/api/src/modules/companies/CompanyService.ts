@@ -267,6 +267,8 @@ export class CompanyService {
               },
             }
           : {},
+        // The area (A 大阪・B 神戸・C 京都・奈良, 11/17) always narrows, whatever the match.
+        request.prefectures.length > 0 ? { prefecture: { in: request.prefectures } } : {},
         filters.length === 0 ? {} : request.match === 'AND' ? { AND: filters } : { OR: filters },
         keywordWhere(request.keyword) ?? {},
       ],

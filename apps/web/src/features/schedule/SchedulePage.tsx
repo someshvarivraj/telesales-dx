@@ -4,6 +4,7 @@ import {
   jstMinutesOfDay,
   Permission,
   PlanStatus,
+  prefecturesOfArea,
   Role,
   weekdayJa,
 } from '@telesales/shared';
@@ -40,6 +41,7 @@ import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { formatTime, monthRange, startOfWeek, todayJst, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { AgendaView } from './AgendaView';
+import { AreaChips, useSalesPanel } from '@/features/calls/SalesPanel';
 import { useSavePlan, useSchedule } from './api';
 import { existingListBookingHref } from './bookingLinks';
 import { useEventPeek } from './calendar/EventPeek';
@@ -259,7 +261,16 @@ export function SchedulePage() {
   );
   const allPeople = schedule.data?.people ?? [];
   const order = allPeople.map((person) => person.id);
-  const picked = chosen.length ? allPeople.filter((p) => chosen.includes(p.id)) : allPeople;
+  // テレマ narrow the reps to one area (A 大阪・B 神戸・C 京都・奈良, 11/17), shared with the call list.
+  const areaPanel = useSalesPanel();
+  const salesArea = canTelemaBook ? (areaPanel?.area ?? null) : null;
+  const areaPrefectures = prefecturesOfArea(salesArea);
+  const chosenPeople = chosen.length ? allPeople.filter((p) => chosen.includes(p.id)) : allPeople;
+  const picked = salesArea
+    ? chosenPeople.filter(
+        (p) => p.isSales && p.prefectures.some((pref) => areaPrefectures.includes(pref)),
+      )
+    : chosenPeople;
   // Sort by free time or appointments in the shown range, so a big team still reads well.
   const rangeDays = Array.from(
     { length: Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1 },
@@ -431,6 +442,15 @@ export function SchedulePage() {
               <span className="ml-2 text-base font-medium text-ink-sub">{year}年</span>
             </h1>
           </div>
+          {canTelemaBook && areaPanel && (
+            <AreaChips
+              area={areaPanel.area}
+              onArea={(next) => {
+                areaPanel.setArea(next);
+                setPage(0);
+              }}
+            />
+          )}
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {canTimeOff && (
               <Button
