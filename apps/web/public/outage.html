@@ -2070,8 +2070,9 @@ function drawShootingStar(ctx, star) {
  * Nothing moves for people who prefer reduced motion; it pauses while the tab is hidden.
  *
  * `lake: true` (sign-in screen, request 11/13): instead of a pile, a calm lake along the bottom.
- * Leaves land on the water with a small ripple, float and drift, then fade; a click or tap on
- * the water sends a ripple that pushes the floating leaves away.
+ * Leaves land on the water with a small ripple and sink within two seconds (11/17), so the lake
+ * stays clean; a click or tap on the water sends a ripple that pushes the nearby leaves away and
+ * keeps them a few seconds more.
  */
 function startLeaves(canvas, options) {
   var opts = options || {};
@@ -2215,12 +2216,16 @@ function startLeaves(canvas, options) {
       y0: leaf.y,
       vx: (Math.random() - 0.5) * 8,
       vy: 0,
-      drift: 3 + Math.random() * 5,
+      drift: 1.5 + Math.random() * 2.5,
       bob: Math.random() * Math.PI * 2,
       angle: leaf.angle,
       spin: (Math.random() - 0.5) * 0.25,
-      squash: 0.42 + Math.random() * 0.14,
-      life: 26 + Math.random() * 18,
+      // Lying flat, seen across the water: smaller and flatter than in the air (11/17).
+      scale: 0.7,
+      squash: 0.34 + Math.random() * 0.08,
+      // It only touches the water and sinks in under two seconds, so the lake stays clean
+      // (11/17: leaves floating for half a minute piled up and made the water look untidy).
+      life: 1.6 + Math.random() * 0.4,
       age: 0,
     });
     if (floating.length > 36) floating[0].life = Math.min(floating[0].life, floating[0].age + 2);
@@ -2278,6 +2283,8 @@ function startLeaves(canvas, options) {
         leaf.vx += (dx / d) * 90 * push;
         leaf.vy += (dy / d) * 14 * push;
         leaf.spin += (Math.random() - 0.5) * 1.6 * push;
+        // Pushed by a click, it stays a few seconds more to be seen drifting away.
+        leaf.life = Math.max(leaf.life, leaf.age + 4);
       }
     });
   }
@@ -2332,6 +2339,21 @@ function startLeaves(canvas, options) {
     ctx.translate(x, y);
     ctx.rotate(angle);
     ctx.scale(scaleX, scaleY);
+    var w = sprite.image.width / ratio;
+    ctx.drawImage(sprite.image, -w / 2, -w / 2, w, w);
+    ctx.restore();
+  }
+
+  /**
+   * A leaf lying on the water: turned in its own plane first, then flattened in screen terms,
+   * as seen from the shore (squashing after the turn made a sideways leaf look full size).
+   */
+  function drawFlat(sprite, x, y, angle, size, squash, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.scale(size, size * squash);
+    ctx.rotate(angle);
     var w = sprite.image.width / ratio;
     ctx.drawImage(sprite.image, -w / 2, -w / 2, w, w);
     ctx.restore();
@@ -2421,23 +2443,26 @@ function startLeaves(canvas, options) {
         fl.vy *= Math.pow(0.2, dt);
         fl.spin *= Math.pow(0.5, dt);
         fl.angle += fl.spin * dt;
-        var alpha = Math.min(1, (fl.life - fl.age) / 3);
+        // Sinking: over its last second it shrinks a little and fades into the water.
+        var left = fl.life - fl.age;
+        var alpha = Math.max(0, Math.min(1, left / 1.1));
         if (alpha <= 0 || fl.x > width + 40 || fl.x < -40) {
           floating.splice(m, 1);
           continue;
         }
-        var fy = fl.y0 + Math.sin(fl.bob) * 1.2;
-        // Its reflection, then the leaf lying on the water.
-        draw(
+        var size = fl.scale * (0.75 + 0.25 * alpha);
+        var fy = fl.y0 + Math.sin(fl.bob) * 0.8;
+        // Its faint reflection, then the leaf lying flat on the water.
+        drawFlat(
           fl.sprite,
           fl.x,
-          fy + fl.sprite.size * 0.32,
+          fy + fl.sprite.size * 0.18,
           fl.angle,
-          1,
-          -fl.squash * 0.7,
-          alpha * 0.16,
+          size,
+          -fl.squash,
+          alpha * 0.14,
         );
-        draw(fl.sprite, fl.x, fy, fl.angle, 1, fl.squash, alpha);
+        drawFlat(fl.sprite, fl.x, fy, fl.angle, size, fl.squash, alpha);
       }
     }
 
