@@ -4,10 +4,10 @@ import {
   dayOfWeek,
   isWeekend,
   Permission,
-  prefecturesOfArea,
+  areaLabel,
+  repIdsOfArea,
   Role,
-  SALES_AREAS,
-  type SalesAreaKey,
+  type SalesAreaPick,
   weekdayJa,
 } from '@telesales/shared';
 import {
@@ -45,6 +45,7 @@ import { buildEvents, eventsOn, isDayOff } from '@/features/schedule/events';
 import { formatShortDate, todayJst } from '@/lib/format';
 import { isSalesOnly } from '@/components/layout/navItems';
 import { useCompanySearch } from '@/features/calls/api';
+import { AreaPicker, useSalesAreas } from './AreaPicker';
 
 /**
  * 営業の予定 beside the call list (request 11/17): テレマ call while looking at the sales reps'
@@ -68,18 +69,24 @@ interface PanelContext {
   /** Show the panel for this company (suggests its rep). */
   openFor: (company: PanelCompany) => void;
   /** The chosen sales area: narrows the reps here and the companies in the call list (11/17). */
-  area: SalesAreaKey | null;
-  setArea: (area: SalesAreaKey | null) => void;
+  area: SalesAreaPick | null;
+  setArea: (area: SalesAreaPick | null) => void;
 }
 
 const Ctx = createContext<PanelContext | null>(null);
 const STORE = 'sales-panel-mode';
 const AREA_STORE = 'sales-panel-area';
 
-function storedArea(): SalesAreaKey | null {
+function storedArea(): SalesAreaPick | null {
   try {
-    const value = window.localStorage.getItem(AREA_STORE);
-    return SALES_AREAS.some((area) => area.key === value) ? (value as SalesAreaKey) : null;
+    const value = JSON.parse(window.localStorage.getItem(AREA_STORE) ?? 'null') as unknown;
+    if (value && typeof value === 'object' && 'prefecture' in value) {
+      const pick = value as SalesAreaPick;
+      return typeof pick.prefecture === 'string'
+        ? { prefecture: pick.prefecture, city: typeof pick.city === 'string' ? pick.city : null }
+        : null;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -116,11 +123,11 @@ export function SalesPanelProvider({ children }: { children: ReactNode }) {
     () => storedMode() ?? (plainTelema ? 'split' : 'min'),
   );
   const [company, setCompany] = useState<PanelCompany | null>(null);
-  const [area, setAreaState] = useState<SalesAreaKey | null>(storedArea);
-  const setArea = useCallback((next: SalesAreaKey | null) => {
+  const [area, setAreaState] = useState<SalesAreaPick | null>(storedArea);
+  const setArea = useCallback((next: SalesAreaPick | null) => {
     setAreaState(next);
     try {
-      if (next) window.localStorage.setItem(AREA_STORE, next);
+      if (next) window.localStorage.setItem(AREA_STORE, JSON.stringify(next));
       else window.localStorage.removeItem(AREA_STORE);
     } catch {
       // Not remembered in private windows.
@@ -190,15 +197,11 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const to = repId ? addDays(monday, 4) : date;
   const schedule = useSchedule(from, to, []);
   const events = useMemo(() => (schedule.data ? buildEvents(schedule.data) : []), [schedule.data]);
-  // Reps of the chosen area: those the 営業担当表 puts in one of its prefectures.
-  const areaPrefectures = prefecturesOfArea(area);
-  const inArea = new Set(
-    (schedule.data?.people ?? [])
-      .filter((person) => person.prefectures.some((p) => areaPrefectures.includes(p)))
-      .map((person) => person.id),
-  );
+  // Reps the 営業担当表 puts in the chosen area (11/17).
+  const areas = useSalesAreas();
+  const inArea = repIdsOfArea(areas.data ?? [], area);
   const allReps = reps.data ?? [];
-  const people = area ? allReps.filter((person) => inArea.has(person.id)) : allReps;
+  const people = inArea ? allReps.filter((person) => inArea.has(person.id)) : allReps;
   const order = allReps.map((person) => person.id);
   const rep = allReps.find((person) => person.id === repId);
   const suggestion = find.data;
@@ -289,7 +292,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
       </header>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2">
-        <AreaChips area={area} onArea={setArea} />
+        <AreaPicker area={area} onArea={setArea} />
         <select
           aria-label="表示する営業"
           value={repId}
@@ -454,47 +457,6 @@ function ModeButton({
   );
 }
 
-/** すべて ・ A 大阪 ・ B 神戸 ・ C 京都・奈良: one choice for the reps and the companies. */
-export function AreaChips({
-  area,
-  onArea,
-}: {
-  area: SalesAreaKey | null;
-  onArea: (area: SalesAreaKey | null) => void;
-}) {
-  const chip = (active: boolean) =>
-    cn(
-      'h-8 cursor-pointer border px-2.5 text-xs font-bold whitespace-nowrap transition-colors',
-      active
-        ? 'border-main bg-main text-white'
-        : 'border-line-strong bg-surface text-ink-sub hover:bg-hover hover:text-ink',
-    );
-  return (
-    <div role="group" aria-label="エリア" className="flex items-center gap-1">
-      <button
-        type="button"
-        aria-pressed={area === null}
-        onClick={() => onArea(null)}
-        className={chip(area === null)}
-      >
-        すべて
-      </button>
-      {SALES_AREAS.map((option) => (
-        <button
-          key={option.key}
-          type="button"
-          aria-pressed={area === option.key}
-          title={option.prefectures.join('・')}
-          onClick={() => onArea(option.key)}
-          className={chip(area === option.key)}
-        >
-          {option.key} {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /**
  * The area's companies floating over the full-screen calendar (sketch 11/17): pick one and its
  * 担当営業 and their week come up; its name opens the company page.
@@ -504,19 +466,19 @@ function AreaCompanies({
   onPick,
   current,
 }: {
-  area: SalesAreaKey | null;
+  area: SalesAreaPick | null;
   onPick: (company: PanelCompany) => void;
   current?: string;
 }) {
   const [folded, setFolded] = useState(false);
   const query = useCompanySearch({
-    prefectures: prefecturesOfArea(area),
+    areas: area ? [area] : [],
     callTargetsOnly: true,
     page: 1,
     pageSize: 50,
   });
   const items = query.data?.items ?? [];
-  const label = area ? SALES_AREAS.find((a) => a.key === area)?.label : 'すべてのエリア';
+  const label = areaLabel(area);
   return (
     <aside
       aria-label="エリアの企業"

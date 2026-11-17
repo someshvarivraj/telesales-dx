@@ -203,8 +203,16 @@ export const companySearchRequestSchema = z.object({
   nonTargetsOnly: z.boolean().default(false),
   /** Only companies allocated to me today (confirmed allocation). */
   assignedToMe: z.boolean().default(false),
-  /** Only companies in these prefectures (the chosen sales area, 11/17). */
-  prefectures: z.array(z.string().max(10)).max(20).default([]),
+  /** Only companies in the chosen sales area (a prefecture, or a city of it; 11/17). */
+  areas: z
+    .array(
+      z.object({
+        prefecture: z.string().trim().max(10),
+        city: z.string().trim().max(50).nullable().default(null),
+      }),
+    )
+    .max(20)
+    .default([]),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(200).default(50),
 });

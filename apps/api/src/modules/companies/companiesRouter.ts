@@ -93,6 +93,10 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
       res.json(await deps.companies.listFlagged());
     },
   );
+  // The areas of the 営業担当表, to narrow reps and companies to one place (11/17).
+  router.get('/companies/sales-areas', view, async (_req, res) => {
+    res.json(await deps.area.listAreas());
+  });
   router.post('/companies/find-rep', view, async (req, res) => {
     res.json(await deps.area.findRep(parseWith(findRepRequestSchema, req.body)));
   });

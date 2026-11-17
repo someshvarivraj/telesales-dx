@@ -267,8 +267,17 @@ export class CompanyService {
               },
             }
           : {},
-        // The area (A 大阪・B 神戸・C 京都・奈良, 11/17) always narrows, whatever the match.
-        request.prefectures.length > 0 ? { prefecture: { in: request.prefectures } } : {},
+        // The chosen sales area (11/17) always narrows, whatever the match. A city matches when
+        // the company's city contains it (神戸市北区; 上郡町 in 赤穂郡上郡町).
+        request.areas.length > 0
+          ? {
+              OR: request.areas.map((area) =>
+                area.city
+                  ? { prefecture: area.prefecture, city: { contains: area.city } }
+                  : { prefecture: area.prefecture },
+              ),
+            }
+          : {},
         filters.length === 0 ? {} : request.match === 'AND' ? { AND: filters } : { OR: filters },
         keywordWhere(request.keyword) ?? {},
       ],

@@ -1,16 +1,30 @@
 /**
- * The sales areas テレマ pick in the call list and the sales schedule (11/17): A 大阪, B 神戸,
- * C 京都・奈良. Each follows its team in the 営業担当表 (大阪・和歌山 / 兵庫 / 京都・滋賀・奈良),
- * so the reps and companies shown together are the ones that belong together.
+ * The sales areas テレマ pick to see the right reps and companies together (11/17). They come
+ * from the 営業担当表 itself: every prefecture in it, with its cities and wards, and the reps the
+ * table puts there. Nothing is fixed in the code, so a new area appears once its rule is added.
  */
-export const SALES_AREAS = [
-  { key: 'A', label: '大阪', prefectures: ['大阪府', '和歌山県'] },
-  { key: 'B', label: '神戸', prefectures: ['兵庫県'] },
-  { key: 'C', label: '京都・奈良', prefectures: ['京都府', '奈良県', '滋賀県'] },
-] as const;
+export interface SalesAreaOption {
+  prefecture: string;
+  /** Reps of any rule in the prefecture (its cities included). */
+  repIds: string[];
+  cities: { city: string; repIds: string[] }[];
+}
 
-export type SalesAreaKey = (typeof SALES_AREAS)[number]['key'];
+/** One chosen area: a whole prefecture, or one city or ward of it. */
+export interface SalesAreaPick {
+  prefecture: string;
+  city: string | null;
+}
 
-export function prefecturesOfArea(key: SalesAreaKey | null): string[] {
-  return key ? [...(SALES_AREAS.find((area) => area.key === key)?.prefectures ?? [])] : [];
+export function areaLabel(pick: SalesAreaPick | null): string {
+  return pick ? [pick.prefecture, pick.city].filter(Boolean).join(' ') : 'すべてのエリア';
+}
+
+/** The reps the 営業担当表 puts in the chosen area. */
+export function repIdsOfArea(options: readonly SalesAreaOption[], pick: SalesAreaPick | null) {
+  if (!pick) return null;
+  const prefecture = options.find((option) => option.prefecture === pick.prefecture);
+  if (!prefecture) return new Set<string>();
+  if (!pick.city) return new Set(prefecture.repIds);
+  return new Set(prefecture.cities.find((c) => c.city === pick.city)?.repIds ?? []);
 }
