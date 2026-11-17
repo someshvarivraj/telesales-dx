@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fujiOf, mountainAt, rangeRidge } from '../../../outage/leaves.js';
 import { MoraBot, type MoraBotMood } from './MoraBot';
+import { ART, poseUrl } from './morabotArt';
 import { LookProvider, type Theme } from './theme';
 
 /**
@@ -71,6 +72,37 @@ export function MoraBotPeek() {
   const [still] = useState(stillPreferred);
   const [turn, setTurn] = useState(0);
   const [phase, setPhase] = useState<Phase>(still ? 'peek' : 'hidden');
+  // Every pose it can show is loaded and decoded first (11/17): a pose fetched while MoraBot was
+  // already rising appeared late, so it looked stuck and then popped out.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let done = false;
+    const finish = () => {
+      if (!done) setReady(true);
+      done = true;
+    };
+    const files = new Set<string>();
+    for (const peek of PEEKS) {
+      const art = ART[peek.mood];
+      if (art) files.add(poseUrl(art, peek.look));
+    }
+    const happy = ART.happy;
+    if (happy)
+      for (const look of ['sakura', 'standard'] as Theme[]) files.add(poseUrl(happy, look));
+    void Promise.all(
+      [...files].map((src) => {
+        const image = new Image();
+        image.src = src;
+        return image.decode().catch(() => undefined);
+      }),
+    ).then(finish);
+    // Never wait long on a slow network: start anyway after 4 s.
+    const fallback = window.setTimeout(finish, 4000);
+    return () => {
+      done = true;
+      window.clearTimeout(fallback);
+    };
+  }, []);
   const [found, setFound] = useState(false);
   /** Where on Fuji it peeks when someone clicked the mountain. */
   const [clickedX, setClickedX] = useState<number | null>(null);
@@ -83,7 +115,7 @@ export function MoraBotPeek() {
   }, []);
 
   useEffect(() => {
-    if (still) return;
+    if (still || !ready) return;
     const wait =
       phase === 'hidden'
         ? HIDDEN_MS
@@ -101,7 +133,7 @@ export function MoraBotPeek() {
       }
     }, wait);
     return () => window.clearTimeout(timer);
-  }, [phase, found, still, turn]);
+  }, [phase, found, still, turn, ready]);
 
   // Clicks on the mountains.
   useEffect(() => {
@@ -174,10 +206,12 @@ export function MoraBotPeek() {
           onClick={() => {
             if (shown && !found) setFound(true);
           }}
-          className="morabot-peek pointer-events-auto absolute left-1/2 block cursor-pointer"
+          className="morabot-peek pointer-events-auto absolute left-1/2 block -translate-x-1/2 cursor-pointer"
           style={{
             top: 0,
-            transform: `translate(-50%, ${lift}px)`,
+            // Centred with `translate`, so the transition only moves it up and down (11/17: the -50%
+            // changed with each pose's width and kept restarting the rise, which then looked stuck).
+            transform: `translateY(${lift}px)`,
             transitionDuration: `${shown ? RISE_MS : DUCK_MS}ms`,
           }}
         >
