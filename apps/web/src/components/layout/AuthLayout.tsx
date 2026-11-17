@@ -53,24 +53,37 @@ export function AuthLayout({
           <GridBackdrop />
         )}
         {leaves && <MoraBotPeek />}
-        <div className="absolute top-3 right-3 z-10 bg-surface/80 backdrop-blur-sm">
-          <LanguageMenu />
+        <div className="absolute top-4 right-4 z-10">
+          <LanguageMenu floating />
         </div>
 
         <div
           data-scene
-          className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16"
+          className={cn(
+            'relative z-10 flex w-full items-center justify-center',
+            // With the lake (11/17): one centred column, the headline over the sign-in box, so
+            // the scene frames it evenly (moon and Fuji on the left, the waterfall on the right)
+            // and MoraBot peeks out from behind Fuji clear of both.
+            leaves ? 'max-w-[540px] flex-col gap-6' : 'max-w-[960px] gap-16',
+          )}
         >
-          {/* With the lake, the headline sits at the top so MoraBot can peek out from behind
-              Fuji below it. */}
           <section
             data-scene
-            className={cn('max-w-md flex-1 max-lg:hidden', leaves && 'self-start')}
+            className={cn(
+              leaves ? 'w-full text-center max-sm:hidden' : 'max-w-md flex-1 max-lg:hidden',
+            )}
           >
-            <p className="text-2xl leading-snug font-bold text-ink">
+            <p
+              className={cn(
+                'leading-snug font-bold text-ink',
+                leaves ? 'text-[1.6rem] [text-shadow:0_1px_12px_rgb(255_255_255/0.7)]' : 'text-2xl',
+              )}
+            >
               架電からアポ、打ち合わせの結果まで。
             </p>
-            <p className="mt-1 mb-4 text-sm text-ink-sub">テレマと営業が、同じ情報で動けます。</p>
+            <p className={cn('mt-1 text-sm text-ink-sub', !leaves && 'mb-4')}>
+              テレマと営業が、同じ情報で動けます。
+            </p>
             {!leaves && <MoraBot mood="happy" size={180} title="" className="mt-6" />}
           </section>
 

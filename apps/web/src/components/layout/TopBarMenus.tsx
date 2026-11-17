@@ -8,10 +8,16 @@ import { type Language, switchLanguage, useLanguage } from '@/i18n/english/langu
 function IconMenu({
   label,
   icon,
+  badge,
+  floating = false,
   children,
 }: {
   label: string;
   icon: ReactNode;
+  /** A tiny mark on the icon: the language code, the theme's swatch. */
+  badge?: ReactNode;
+  /** Over a picture (sign-in): a frosted chip instead of a flat button. */
+  floating?: boolean;
   children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -38,11 +44,18 @@ function IconMenu({
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'flex size-8 cursor-pointer items-center justify-center text-ink-sub hover:bg-hover hover:text-ink',
-          open && 'bg-hover text-ink',
+          // A symbol in the theme's colour with a tiny mark (11/17), not a plain grey icon.
+          'relative flex size-9 cursor-pointer items-center justify-center text-main transition-colors hover:bg-main-soft',
+          open && 'bg-main-soft',
+          floating && 'border border-line bg-surface/85 shadow-(--shadow-card) backdrop-blur-sm',
         )}
       >
         {icon}
+        {badge && (
+          <span className="pointer-events-none absolute right-0.5 bottom-0.5 flex items-center justify-center">
+            {badge}
+          </span>
+        )}
       </button>
       {open && (
         <div
@@ -94,15 +107,24 @@ const SWATCH: Record<Theme, [string, string]> = {
   dark: ['#d4561c', '#171c23'],
 };
 
-/** Language as a small globe icon with a short menu (11/17). */
-export function LanguageMenu() {
+/** Language as a globe with the current language's code on it, and a short menu (11/17). */
+export function LanguageMenu({ floating = false }: { floating?: boolean }) {
   const language = useLanguage();
   const languages: { value: Language; label: string }[] = [
     { value: 'ja', label: '日本語' },
     { value: 'en', label: 'English' },
   ];
   return (
-    <IconMenu label="言語 / Language" icon={<Globe aria-hidden="true" className="size-4.5" />}>
+    <IconMenu
+      label="言語 / Language"
+      floating={floating}
+      icon={<Globe aria-hidden="true" className="size-[18px]" strokeWidth={1.9} />}
+      badge={
+        <span className="bg-main px-[3px] text-[8px] leading-[11px] font-bold tracking-wide text-white">
+          {language === 'en' ? 'EN' : 'JA'}
+        </span>
+      }
+    >
       {(close) =>
         languages.map((option) => (
           <MenuItem
@@ -125,7 +147,19 @@ export function LanguageMenu() {
 export function ThemeMenu() {
   const { theme, setTheme } = useTheme();
   return (
-    <IconMenu label="テーマ" icon={<Palette aria-hidden="true" className="size-4.5" />}>
+    <IconMenu
+      label="テーマ"
+      icon={<Palette aria-hidden="true" className="size-[18px]" strokeWidth={1.9} />}
+      badge={
+        <span
+          aria-hidden="true"
+          className="size-2.5 border border-surface"
+          style={{
+            background: `linear-gradient(135deg, ${SWATCH[theme][0]} 50%, ${SWATCH[theme][1]} 50%)`,
+          }}
+        />
+      }
+    >
       {(close) =>
         THEMES.map((option) => {
           const [main, page] = SWATCH[option.value];
