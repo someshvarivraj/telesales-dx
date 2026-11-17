@@ -50,7 +50,12 @@ export function AppLayout() {
             <div className="app-main flex min-h-dvh min-w-0 flex-col">
               <AppHeader />
               {/* A thin Teams-like top bar (11/17): language and theme as icons at the right. */}
-              <div className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex">
+              {/* Always the full width (11/17): it reaches over the docked 営業の予定 too, so the
+                icons stay in the corner. */}
+              <div
+                style={{ marginRight: 'calc(-1 * var(--split-room, 0px))' }}
+                className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex"
+              >
                 <TopBarMenus />
               </div>
               <PlannedOutageBanner

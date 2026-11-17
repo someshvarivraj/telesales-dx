@@ -38,6 +38,7 @@ import {
 import { useLocation, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
 import { cn } from '@/components/ui/cn';
+import { Select } from '@/components/ui/Select';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useFindRep } from '@/features/calls/api';
@@ -191,6 +192,21 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const { repId, setRepId } = panel;
   const [date, setDate] = useState(todayJst);
   const { box: panelBox, pos: panelPos, start: startDrag } = useDragPosition();
+  // The calendar scrolls inside the room the panel really has (11/17: "100%" had nothing to be a
+  // percentage of, so it grew to full height and was cut off at about 16:00 with no scrollbar).
+  const calendarBox = useRef<HTMLDivElement>(null);
+  const [calendarHeight, setCalendarHeight] = useState('400px');
+  useEffect(() => {
+    const box = calendarBox.current;
+    if (!box) return;
+    const measure = () => setCalendarHeight(`${Math.max(200, box.clientHeight - 16)}px`);
+    measure();
+    // Not every environment has it (the test runner's jsdom doesn't).
+    if (typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [mode]);
   // Docked, it takes the right side and the page gets narrower (11/17). Set here, while the
   // panel is really on screen, so the room is never left behind on another screen.
   useEffect(() => {
@@ -332,24 +348,26 @@ function PanelBody({ panel }: { panel: PanelContext }) {
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2">
         <AreaPicker area={area} onArea={setArea} />
-        <select
+        {/* The app's own dropdown, as everywhere else (11/17): search box for long lists. */}
+        <Select
+          size="sm"
           aria-label="表示する営業"
+          className="w-64 max-w-full"
           value={repId}
           onChange={(event) => setRepId(event.target.value)}
-          className="h-8 min-w-40 border border-line-strong bg-surface px-2 text-sm"
-        >
-          <option value="">{area ? 'エリアの営業全員（1日）' : '営業全員（1日）'}</option>
-          {(rep && !people.includes(rep) ? [rep, ...people] : people).map((person) => {
-            const where = areasSummary(areasOfRep(areas.data ?? [], person.id));
-            return (
-              <option key={person.id} value={person.id}>
-                {person.name}
-                {where ? `｜${where}` : ''}
-                {suggestion?.rep?.id === person.id ? '（担当表）' : ''}
-              </option>
-            );
-          })}
-        </select>
+          options={[
+            { value: '', label: area ? 'エリアの営業全員（1日）' : '営業全員（1日）' },
+            ...(rep && !people.includes(rep) ? [rep, ...people] : people).map((person) => {
+              const where = areasSummary(areasOfRep(areas.data ?? [], person.id));
+              return {
+                value: person.id,
+                label: `${person.name}${where ? `｜${where}` : ''}${
+                  suggestion?.rep?.id === person.id ? '（担当表）' : ''
+                }`,
+              };
+            }),
+          ]}
+        />
         <div className="flex items-center">
           <ModeButton
             label={repId ? '前の週' : '前の日'}
@@ -399,13 +417,13 @@ function PanelBody({ panel }: { panel: PanelContext }) {
         </p>
       )}
 
-      <div className="relative min-h-0 flex-1 overflow-hidden p-2">
+      <div ref={calendarBox} className="relative min-h-0 flex-1 overflow-hidden p-2">
         {mode === 'max' && (
           <AreaCompanies focus={focus} onPick={panel.openFor} current={company?.id} />
         )}
         {repId && rep ? (
           <TimeGrid
-            maxHeight="100%"
+            maxHeight={calendarHeight}
             minColumnWidth={mode === 'float' ? 90 : 110}
             onEvent={() => undefined}
             columnLabel={(column) => `${column.date}の空き時間を選ぶ`}
@@ -447,7 +465,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
           />
         ) : (
           <DayTimeline
-            maxHeight="100%"
+            maxHeight={calendarHeight}
             date={date}
             people={people}
             events={events}
