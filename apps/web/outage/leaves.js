@@ -255,7 +255,9 @@ function harborOf(width, top, tall) {
     H: H,
     towerX: towerX,
     base: top - 1,
-    wheel: { x: towerX - H * 1.3, y: top - 1 - H * 0.47, r: H * 0.36 },
+    // East of the low blocks, in the open (11/17): west of the tower it hid behind Sannomiya
+    // and, on most screens, behind the sign-in box.
+    wheel: { x: towerX + H * 1.92, y: top - 1 - H * 0.47, r: H * 0.38 },
   };
 }
 
@@ -358,7 +360,7 @@ function drawWaterfront(ctx, harbor, rand) {
 
   // The quay along the water.
   ctx.fillStyle = '#8c8f99';
-  ctx.fillRect(X - H * 2.9, base - 2, H * 4.35, 3);
+  ctx.fillRect(X - H * 2.9, base - 2, H * 5.3, 3);
   ctx.restore();
 }
 
@@ -400,17 +402,19 @@ function drawHarborLights(ctx, harbor, t) {
   var wheel = harbor.wheel;
   ctx.save();
   // The wheel's legs.
-  ctx.strokeStyle = '#a7adbd';
-  ctx.lineWidth = Math.max(1, H / 80);
+  ctx.strokeStyle = '#8e95a8';
+  ctx.lineWidth = Math.max(1.2, H / 70);
   ctx.beginPath();
   ctx.moveTo(wheel.x - wheel.r * 0.55, harbor.base);
   ctx.lineTo(wheel.x, wheel.y);
   ctx.lineTo(wheel.x + wheel.r * 0.55, harbor.base);
   ctx.stroke();
-  // Spokes and rim.
-  var turn = t * 0.12;
-  ctx.strokeStyle = 'rgba(236, 240, 248, 0.85)';
-  ctx.lineWidth = Math.max(0.6, H / 160);
+  // It turns about once every 18 s (11/17: at once a minute it looked still).
+  var turn = t * 0.35;
+  var dot = Math.max(1, H / 90);
+  // Spokes.
+  ctx.strokeStyle = 'rgba(240, 242, 248, 0.9)';
+  ctx.lineWidth = Math.max(0.7, H / 150);
   for (var s = 0; s < 12; s++) {
     var a = turn + (s / 12) * Math.PI * 2;
     ctx.beginPath();
@@ -418,30 +422,59 @@ function drawHarborLights(ctx, harbor, t) {
     ctx.lineTo(wheel.x + Math.cos(a) * wheel.r, wheel.y + Math.sin(a) * wheel.r);
     ctx.stroke();
   }
+  // A deep red rim, so the wheel stands out against the hills.
+  ctx.strokeStyle = '#a3201a';
+  ctx.lineWidth = Math.max(1.6, H / 55);
   ctx.beginPath();
   ctx.arc(wheel.x, wheel.y, wheel.r, 0, Math.PI * 2);
   ctx.stroke();
-  // Rim lights, a wave of colour running round.
-  var dots = 40;
-  var dot = Math.max(0.9, H / 95);
+  // Rim lights, and one bright light chasing round with a short tail: the turning is easy to see.
+  var dots = 36;
   for (var d = 0; d < dots; d++) {
     var b = turn + (d / dots) * Math.PI * 2;
-    ctx.fillStyle = 'hsl(' + ((d * 9 + t * 50) % 360) + ', 90%, 64%)';
+    ctx.fillStyle = 'hsl(' + ((d * 10 + t * 60) % 360) + ', 95%, 60%)';
     ctx.beginPath();
-    ctx.arc(wheel.x + Math.cos(b) * wheel.r, wheel.y + Math.sin(b) * wheel.r, dot, 0, Math.PI * 2);
+    ctx.arc(
+      wheel.x + Math.cos(b) * wheel.r,
+      wheel.y + Math.sin(b) * wheel.r,
+      dot * 0.8,
+      0,
+      Math.PI * 2,
+    );
     ctx.fill();
   }
-  // Gondolas hang below the rim.
+  for (var tail = 0; tail < 6; tail++) {
+    var e = turn * 2.2 - tail * 0.09;
+    ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.95 - tail * 0.15) + ')';
+    ctx.beginPath();
+    ctx.arc(
+      wheel.x + Math.cos(e) * wheel.r,
+      wheel.y + Math.sin(e) * wheel.r,
+      dot * (1.5 - tail * 0.15),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  // Gondolas in turn red, blue, yellow and green, hanging under the rim and kept upright.
+  var colours = ['#d23a2e', '#3366cc', '#f2b632', '#3d9b5a'];
   for (var g = 0; g < 16; g++) {
     var c = turn + (g / 16) * Math.PI * 2 + 0.1;
     var gx = wheel.x + Math.cos(c) * wheel.r;
     var gy = wheel.y + Math.sin(c) * wheel.r;
-    ctx.fillStyle = 'rgba(255, 232, 186, 0.9)';
-    ctx.fillRect(gx - dot * 1.1, gy + dot * 0.6, dot * 2.2, dot * 1.8);
+    ctx.fillStyle = colours[g % colours.length];
+    ctx.fillRect(gx - dot * 1.3, gy + dot * 0.5, dot * 2.6, dot * 2.2);
+    ctx.fillStyle = 'rgba(255, 236, 190, 0.95)';
+    ctx.fillRect(gx - dot * 0.8, gy + dot * 0.9, dot * 1.6, dot * 0.8);
   }
-  ctx.fillStyle = '#f4f6fb';
+  // The hub.
+  ctx.fillStyle = '#a3201a';
   ctx.beginPath();
-  ctx.arc(wheel.x, wheel.y, dot * 1.6, 0, Math.PI * 2);
+  ctx.arc(wheel.x, wheel.y, dot * 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(wheel.x, wheel.y, dot * 0.9, 0, Math.PI * 2);
   ctx.fill();
 
   // Port Tower's light show: two soft bands of colour rising up the lattice.
