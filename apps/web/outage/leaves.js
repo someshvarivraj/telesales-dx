@@ -1534,8 +1534,7 @@ function denseIslands() {
 
 /**
  * Japan in stars across the whole evening sky (11/16): turned a little so the islands run from
- * one side of the screen to the other, sized to fill the sky above the mountains. Only dots at
- * first; 「星をつなぐ」 draws the lines between them.
+ * one side of the screen to the other, sized to fill the sky above the mountains. Dots only.
  */
 function starMapOf(width, height, top) {
   var tall = Math.min(200, height * 0.21);
@@ -1587,33 +1586,16 @@ function starMapOf(width, height, top) {
 }
 
 /**
- * The stars, twinkling. `link` (0–1) draws the lines island by island when 「星をつなぐ」 is on.
+ * The stars, twinkling: dots only, for anyone who wants to find Japan in them.
  * Kobe (gold) and Sanda (pink) shine brighter; `poked` makes them send out a ring.
  */
-function drawStarMap(ctx, map, t, poked, link) {
+function drawStarMap(ctx, map, t, poked) {
   if (!map) return;
   ctx.save();
   ctx.shadowColor = 'rgba(60, 70, 150, 0.4)';
   ctx.shadowBlur = 3;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  if (link > 0) {
-    var total = map.islands.length;
-    map.islands.forEach(function (island, index) {
-      var share = Math.max(0, Math.min(1, link * total - index * 0.7));
-      if (share <= 0) return;
-      var count = Math.ceil(island.length * share);
-      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.85 * Math.min(1, link * 3)).toFixed(3) + ')';
-      ctx.lineWidth = 1.5 * map.size;
-      ctx.beginPath();
-      for (var i = 0; i <= count; i++) {
-        var pt = island[i % island.length].at;
-        if (i === 0) ctx.moveTo(pt[0], pt[1]);
-        else ctx.lineTo(pt[0], pt[1]);
-      }
-      ctx.stroke();
-    });
-  }
   map.islands.forEach(function (island) {
     island.forEach(function (pt) {
       var tw = 0.5 + 0.5 * Math.sin(t * (1.1 + (pt.phase % 1.3)) + pt.phase);
@@ -1883,9 +1865,6 @@ export function startLeaves(canvas, options) {
   var ctx = canvas.getContext('2d');
   if (!ctx) return function () {};
   var lake = Boolean(opts.lake);
-  // Japan in stars across the sky (11/16); lines only when 「星をつなぐ」 is on.
-  var linkOn = false;
-  var link = 0;
   EVENING = lake;
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     if (!lake) return function () {};
@@ -1901,7 +1880,7 @@ export function startLeaves(canvas, options) {
       var scenery = buildScenery(w, h, top, r);
       var moon = sunOf(w);
       drawScenery(ctx, scenery, w, h, top, false);
-      drawStarMap(ctx, starMapOf(w, h, top), 0, -1, linkOn ? 1 : 0);
+      drawStarMap(ctx, starMapOf(w, h, top), 0, -1);
       drawSun(ctx, moon, 0, -1);
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
@@ -1912,14 +1891,9 @@ export function startLeaves(canvas, options) {
     };
     still();
     window.addEventListener('resize', still);
-    var stopStill = function () {
+    return function () {
       window.removeEventListener('resize', still);
     };
-    stopStill.connectStars = function (on) {
-      linkOn = Boolean(on);
-      still();
-    };
-    return stopStill;
   }
   var ratio = Math.min(2, window.devicePixelRatio || 1);
   var width = 0;
@@ -2176,9 +2150,7 @@ export function startLeaves(canvas, options) {
     if (lake) {
       drawScenery(ctx, scenery, width, height, lakeTop, false);
       if (EVENING) {
-        // Lines grow in over about 2.5 s and fade out quickly when turned off.
-        link = linkOn ? Math.min(1, link + dt / 2.5) : Math.max(0, link - dt * 2.5);
-        drawStarMap(ctx, starMap, clock, clock - mapPokedAt, link);
+        drawStarMap(ctx, starMap, clock, clock - mapPokedAt);
         if (!shooting && clock >= nextShooting) shooting = newShootingStar(width, lakeTop);
         if (shooting) {
           shooting.age += dt;
@@ -2403,7 +2375,7 @@ export function startLeaves(canvas, options) {
     window.addEventListener('pointermove', track);
   }
   raf = window.requestAnimationFrame(frame);
-  var stop = function () {
+  return function stop() {
     window.cancelAnimationFrame(raf);
     window.removeEventListener('resize', resize);
     document.removeEventListener('visibilitychange', visibility);
@@ -2411,9 +2383,4 @@ export function startLeaves(canvas, options) {
     window.removeEventListener('pointermove', track);
     ctx.clearRect(0, 0, width, height);
   };
-  /** 「星をつなぐ」: draw (or hide) the lines that join the stars into Japan. */
-  stop.connectStars = function (on) {
-    linkOn = Boolean(on);
-  };
-  return stop;
 }
