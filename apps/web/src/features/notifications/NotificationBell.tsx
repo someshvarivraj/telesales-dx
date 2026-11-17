@@ -78,6 +78,7 @@ export function NotificationBell({ variant = 'icon' }: NotificationBellProps) {
           )}
         </span>
         {variant === 'menu' && <span className="nav-label">{ja.nav.notifications}</span>}
+        {variant === 'menu' && <span className="nav-rail-label">{ja.nav.notifications}</span>}
       </button>
       {open && (
         <ActivityPanel

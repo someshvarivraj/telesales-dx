@@ -1,4 +1,5 @@
 import { OptionCategory, Permission } from '@telesales/shared';
+import { Video } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
@@ -49,6 +50,18 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
       title={EVENT_STYLE[event.kind].label}
       footer={
         <>
+          {/* 参加 (11/17, as in Teams): open the online meeting straight from the calendar. */}
+          {plan?.appointment?.meetingUrl && (
+            <a
+              href={plan.appointment.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-2 bg-success px-4 text-sm font-bold text-white hover:brightness-110"
+            >
+              <Video aria-hidden="true" className="size-4" />
+              参加
+            </a>
+          )}
           {plan?.appointment && (
             <Link
               to={paths.appointment(plan.appointment.id)}

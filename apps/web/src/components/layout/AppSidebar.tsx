@@ -200,8 +200,10 @@ function SideLink({ item, folded }: { item: NavItem; folded: boolean }) {
         )
       }
     >
-      <item.icon aria-hidden="true" className="size-[18px] shrink-0" strokeWidth={1.8} />
+      <item.icon aria-hidden="true" className="nav-icon size-[18px] shrink-0" strokeWidth={1.8} />
       <span className="nav-label truncate">{item.sideLabel}</span>
+      {/* Folded: a Teams-like rail, a short label under each icon (11/17). */}
+      <span className="nav-rail-label">{item.label}</span>
     </NavLink>
   );
 }

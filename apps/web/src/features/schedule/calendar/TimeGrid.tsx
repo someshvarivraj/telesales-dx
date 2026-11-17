@@ -1,6 +1,6 @@
 import { BOOKING_STEP_MINUTES, DEFAULT_PLAN_MINUTES, jstMinutesOfDay } from '@telesales/shared';
 import { Building2, Lock, Video } from 'lucide-react';
-import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { Fragment, type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import { ja } from '@/i18n/ja';
 import { errorMessageOf } from '@/lib/api/errorMessage';
@@ -435,62 +435,82 @@ export function TimeGrid({
                     const style = EVENT_STYLE[event.kind];
                     const appointment = event.plan?.appointment;
                     return (
-                      <button
-                        key={event.key}
-                        type="button"
-                        data-event
-                        onClick={(click) => {
-                          click.stopPropagation();
-                          onEvent(event);
-                        }}
-                        {...peek?.(event)}
-                        className={cn(
-                          'group absolute z-[6] cursor-pointer overflow-hidden px-1.5 text-left text-xs leading-4 transition-[box-shadow,filter] duration-150',
-                          'hover:z-[7] hover:shadow-[0_4px_12px_-2px_rgb(30_37_48/0.25)] hover:brightness-[0.98]',
-                          style.chip,
-                          tight ? 'flex items-center gap-1 py-0' : 'py-1',
-                        )}
-                        style={{
-                          top,
-                          height: h,
-                          left: `calc(${(lane / lanes) * 100}% + 3px)`,
-                          width: `calc(${100 / lanes}% - 6px)`,
-                        }}
-                      >
-                        {tight ? (
-                          <>
-                            <span className="shrink-0 font-bold tabular-nums">
-                              {formatTime(event.startsAt)}
-                            </span>
-                            <span className="truncate">{event.title}</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="block truncate font-bold">{event.title}</span>
-                            <span className="block truncate text-[11px] text-ink-sub tabular-nums">
-                              {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
-                            </span>
-                            {appointment && h > 52 && (
-                              <span className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-sub">
-                                {appointment.format === 'ONLINE' ? (
-                                  <Video aria-hidden="true" className="size-3" />
-                                ) : (
-                                  <Building2 aria-hidden="true" className="size-3" />
-                                )}
-                                {appointment.format === 'ONLINE'
-                                  ? 'Web'
-                                  : ja.format[appointment.format]}
+                      <Fragment key={event.key}>
+                        <button
+                          key="chip"
+                          type="button"
+                          data-event
+                          onClick={(click) => {
+                            click.stopPropagation();
+                            onEvent(event);
+                          }}
+                          {...peek?.(event)}
+                          className={cn(
+                            'group absolute z-[6] cursor-pointer overflow-hidden px-1.5 text-left text-xs leading-4 transition-[box-shadow,filter] duration-150',
+                            'hover:z-[7] hover:shadow-[0_4px_12px_-2px_rgb(30_37_48/0.25)] hover:brightness-[0.98]',
+                            style.chip,
+                            tight ? 'flex items-center gap-1 py-0' : 'py-1',
+                          )}
+                          style={{
+                            top,
+                            height: h,
+                            left: `calc(${(lane / lanes) * 100}% + 3px)`,
+                            width: `calc(${100 / lanes}% - 6px)`,
+                          }}
+                        >
+                          {tight ? (
+                            <>
+                              <span className="shrink-0 font-bold tabular-nums">
+                                {formatTime(event.startsAt)}
                               </span>
-                            )}
-                            {event.kind === 'lock' && (
-                              <Lock
-                                aria-hidden="true"
-                                className="absolute top-1 right-1 size-3 text-warning-ink"
-                              />
-                            )}
-                          </>
+                              <span className="truncate">{event.title}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="block truncate font-bold">{event.title}</span>
+                              <span className="block truncate text-[11px] text-ink-sub tabular-nums">
+                                {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
+                              </span>
+                              {appointment && h > 52 && (
+                                <span className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-sub">
+                                  {appointment.format === 'ONLINE' ? (
+                                    <Video aria-hidden="true" className="size-3" />
+                                  ) : (
+                                    <Building2 aria-hidden="true" className="size-3" />
+                                  )}
+                                  {appointment.format === 'ONLINE'
+                                    ? 'Web'
+                                    : ja.format[appointment.format]}
+                                </span>
+                              )}
+                              {event.kind === 'lock' && (
+                                <Lock
+                                  aria-hidden="true"
+                                  className="absolute top-1 right-1 size-3 text-warning-ink"
+                                />
+                              )}
+                            </>
+                          )}
+                        </button>
+                        {/* 参加 (11/17, as in Teams): online appointments open their meeting here. */}
+                        {appointment?.meetingUrl && h >= 40 && (
+                          <a
+                            href={appointment.meetingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-event
+                            onClick={(click) => click.stopPropagation()}
+                            className="absolute z-[7] flex h-5 items-center gap-1 bg-success px-1.5 text-[10px] font-bold text-white hover:brightness-110"
+                            style={{
+                              top: top + h - 24,
+                              right: `calc(${(1 - (lane + 1) / lanes) * 100}% + 7px)`,
+                            }}
+                          >
+                            <Video aria-hidden="true" className="size-3" />
+                            参加
+                          </a>
                         )}
-                      </button>
+                      </Fragment>
                     );
                   })}
 

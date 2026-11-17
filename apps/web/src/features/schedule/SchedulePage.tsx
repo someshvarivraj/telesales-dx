@@ -22,6 +22,7 @@ import {
   Search,
   Sparkles,
   UserPlus,
+  Video,
   X,
 } from 'lucide-react';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
@@ -64,10 +65,12 @@ import { PlanDialog } from './PlanDialog';
 import { TimeOffDialog } from './TimeOffDialog';
 import { WeekView } from './WeekView';
 
-type View = 'day' | 'week' | 'month' | 'list';
+type View = 'day' | 'workweek' | 'week' | 'month' | 'list';
 
 const VIEWS: { value: View; label: string; hint: string }[] = [
   { value: 'day', label: '日', hint: '日（D）' },
+  // 稼働日 (11/17, as in Teams): the week without Saturday and Sunday.
+  { value: 'workweek', label: '稼働日', hint: '稼働日・月〜金（R）' },
   { value: 'week', label: '週', hint: '週（W）' },
   { value: 'month', label: '月', hint: '月（M）' },
   { value: 'list', label: 'リスト', hint: 'リスト（L）' },
@@ -94,9 +97,9 @@ const DAY_COLUMNS_MAX = PAGE_SIZE;
 
 function rangeFor(view: View, date: string): { from: string; to: string } {
   if (view === 'day') return { from: date, to: date };
-  if (view === 'week') {
+  if (view === 'week' || view === 'workweek') {
     const start = startOfWeek(date);
-    return { from: start, to: addDays(start, 6) };
+    return { from: start, to: addDays(start, view === 'workweek' ? 4 : 6) };
   }
   if (view === 'list') return { from: date, to: addDays(date, LIST_DAYS - 1) };
   const month = monthRange(date);
@@ -127,7 +130,7 @@ function usePref<T>(key: string, initial: T): [T, (value: T) => void] {
 const SHORTCUTS: [string, string][] = [
   ['T', '今日へ'],
   ['← / →', '前へ・次へ'],
-  ['D・W・M・L', '日・週・月・リスト'],
+  ['D・R・W・M・L', '日・稼働日・週・月・リスト'],
   ['/', '予定を検索'],
   ['F', '空き時間の表示を切り替え'],
   ['+ / −', '時間の幅を広げる・狭める'],
@@ -145,9 +148,13 @@ export function SchedulePage() {
   const fullScreen = useFullScreen(pageRef);
   const [params, setParams] = useSearchParams();
   const date = params.get('date') ?? todayJst();
-  const view =
+  const requested =
     (params.get('view') as View | null) ??
     (window.matchMedia?.('(max-width: 640px)').matches ? 'list' : 'week');
+  // 稼働日 is the week view with Monday–Friday only; everything else treats it as a week.
+  const workWeek = requested === 'workweek';
+  const view: Exclude<View, 'workweek'> = workWeek ? 'week' : requested;
+  const weekDays = workWeek ? 5 : 7;
   const canPlans = usePermission(Permission.WriteSalesPlans);
   const isAdmin = usePermission(Permission.Administer);
   // A sales rep opens on their own schedule (request 11/11); 全員 is kept as ?people=all.
@@ -168,7 +175,7 @@ export function SchedulePage() {
   const canSalesBook = usePermission(Permission.ManageSalesAppointments);
   const canTelemaBook = usePermission(Permission.ManageTelemaAppointments);
 
-  const { from, to } = rangeFor(view, date);
+  const { from, to } = rangeFor(requested, date);
   // useHref adds the path the app is served under (e.g. /telesales-dx/); a bare path 404s there.
   // Every sales rep is printed (request 11/2), whoever is shown on screen.
   const printHref = useHref(`${paths.schedulePrint}?${new URLSearchParams({ date }).toString()}`);
@@ -307,6 +314,7 @@ export function SchedulePage() {
         k: () => step(-1),
         d: () => update({ view: 'day' }),
         w: () => update({ view: 'week' }),
+        r: () => update({ view: 'workweek' }),
         m: () => update({ view: 'month' }),
         l: () => update({ view: 'list' }),
         f: () => setShowFree(!showFree),
@@ -481,7 +489,7 @@ export function SchedulePage() {
           </div>
           <Segmented
             aria-label="表示"
-            value={view}
+            value={requested}
             onChange={(value) => update({ view: value })}
             options={VIEWS}
           />
@@ -607,6 +615,57 @@ export function SchedulePage() {
           </div>
         </div>
       </StickyTop>
+
+      {/* いま／次 (11/17, as Teams shows the next meeting): your plan in progress and the next
+          one today, with 参加 for an online meeting. Only while today is on screen. */}
+      {upNext.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-stretch gap-2">
+          {upNext.slice(0, 2).map((event) => {
+            const start = jstMinutesOfDay(new Date(event.startsAt));
+            const live = start <= nowMinutes;
+            const meetingUrl = event.plan?.appointment?.meetingUrl;
+            return (
+              <div
+                key={event.key}
+                className={cn(
+                  'flex min-w-0 flex-1 basis-72 items-center gap-3 border border-line border-l-4 bg-surface px-3 py-2 shadow-(--shadow-card)',
+                  live ? 'border-l-success' : 'border-l-main',
+                )}
+              >
+                <span
+                  className={cn(
+                    'shrink-0 px-1.5 text-[11px] leading-5 font-bold',
+                    live ? 'bg-success-soft text-success' : 'bg-main-soft text-main',
+                  )}
+                >
+                  {live ? 'いま' : `あと${hoursLabel(start - nowMinutes)}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelected(event)}
+                  className="min-w-0 flex-1 cursor-pointer text-left"
+                >
+                  <span className="block truncate text-sm font-bold">{event.title}</span>
+                  <span className="block text-xs text-ink-sub tabular-nums">
+                    {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
+                  </span>
+                </button>
+                {meetingUrl && (
+                  <a
+                    href={meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 bg-success px-3 text-xs font-bold text-white hover:brightness-110"
+                  >
+                    <Video aria-hidden="true" className="size-3.5" />
+                    参加
+                  </a>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className={cn('grid gap-4', railOpen && 'lg:grid-cols-[15.5rem_minmax(0,1fr)]')}>
         {/* Side rail */}
@@ -789,7 +848,7 @@ export function SchedulePage() {
               if (view === 'week' && people.length === 1) {
                 const person = people[0] ?? allPeople[0];
                 if (!person) return null;
-                const days = Array.from({ length: 7 }, (_, index) => addDays(from, index));
+                const days = Array.from({ length: weekDays }, (_, index) => addDays(from, index));
                 return (
                   <TimeGrid
                     pxPerMin={zoom}
@@ -855,6 +914,7 @@ export function SchedulePage() {
                   <WeekView
                     corner={memberMenu(true)}
                     start={from}
+                    dayCount={weekDays}
                     people={visible}
                     events={events}
                     holidays={data.holidays}

@@ -1,4 +1,5 @@
 import { DayBeforeResult, jstMinutesOfDay, Permission } from '@telesales/shared';
+import { CalendarClock, CircleCheck, PhoneOff } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
@@ -10,6 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryState } from '@/components/ui/QueryState';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { cn } from '@/components/ui/cn';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { errorMessageOf } from '@/lib/api/errorMessage';
@@ -100,21 +102,16 @@ export function DayBeforePage() {
                         </p>
                       </div>
                       {canCheck && (
-                        <div className="flex flex-wrap gap-2">
-                          {Object.values(DayBeforeResult).map((result) => (
-                            <Button
-                              key={result}
-                              variant={item.dayBeforeResult === result ? 'primary' : 'secondary'}
-                              loading={
-                                check.isPending &&
-                                check.variables.id === item.id &&
-                                check.variables.request.result === result
-                              }
-                              onClick={() => check.mutate({ id: item.id, request: { result } })}
-                            >
-                              {ja.dayBefore[result]}
-                            </Button>
-                          ))}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <DayBeforeChoice
+                            result={item.dayBeforeResult}
+                            savingResult={
+                              check.isPending && check.variables.id === item.id
+                                ? check.variables.request.result
+                                : null
+                            }
+                            onPick={(result) => check.mutate({ id: item.id, request: { result } })}
+                          />
                           {item.dayBeforeResult && afterNoon && (
                             <Link
                               to={paths.appointmentMail(item.id, 'dayBefore')}
@@ -134,5 +131,83 @@ export function DayBeforePage() {
         }}
       </QueryState>
     </div>
+  );
+}
+
+const DONE: Record<DayBeforeResult, { icon: typeof CircleCheck; tone: string }> = {
+  [DayBeforeResult.Confirmed]: {
+    icon: CircleCheck,
+    tone: 'border-success/40 bg-success-soft text-success',
+  },
+  [DayBeforeResult.NotReached]: {
+    icon: PhoneOff,
+    tone: 'border-warning/50 bg-warning-soft text-warning-ink',
+  },
+  [DayBeforeResult.Changed]: {
+    icon: CalendarClock,
+    tone: 'border-schedule/40 bg-schedule-soft text-schedule',
+  },
+};
+
+/**
+ * The day-before result (11/17: a highlighted button after 確認済み looked as if it still had to
+ * be pressed). Before a result: the three choices as buttons. After: the result as a clear
+ * status (icon, colour, 記録済み), with a small 「結果を変える」 to show the choices again.
+ */
+export function DayBeforeChoice({
+  result,
+  savingResult,
+  onPick,
+}: {
+  result: DayBeforeResult | null;
+  savingResult: DayBeforeResult | null;
+  onPick: (result: DayBeforeResult) => void;
+}) {
+  const [changing, setChanging] = useState(false);
+  if (result && !changing && !savingResult) {
+    const done = DONE[result];
+    const Icon = done.icon;
+    return (
+      <>
+        <span
+          role="status"
+          className={cn(
+            'inline-flex h-10 items-center gap-2 border px-4 text-sm font-bold',
+            done.tone,
+          )}
+        >
+          <Icon aria-hidden="true" className="size-4.5" />
+          {ja.dayBefore[result]}
+          <span className="text-xs font-normal opacity-80">記録済み</span>
+        </span>
+        <Button variant="text" size="sm" onClick={() => setChanging(true)}>
+          結果を変える
+        </Button>
+      </>
+    );
+  }
+  return (
+    <>
+      {Object.values(DayBeforeResult).map((choice) => (
+        <Button
+          key={choice}
+          variant="secondary"
+          loading={savingResult === choice}
+          aria-pressed={result === choice}
+          className={cn(result === choice && 'border-main text-main')}
+          onClick={() => {
+            onPick(choice);
+            setChanging(false);
+          }}
+        >
+          {ja.dayBefore[choice]}
+        </Button>
+      ))}
+      {changing && (
+        <Button variant="text" size="sm" onClick={() => setChanging(false)}>
+          やめる
+        </Button>
+      )}
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { Role } from '@telesales/shared';
+import type { Role } from '@telesales/shared';
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 
 /**
@@ -38,14 +38,17 @@ function write(key: string, theme: Theme) {
   }
 }
 
-/** Telemarketing starts in sakura; everyone else in the standard look. */
-export function defaultTheme(roles: readonly Role[]): Theme {
-  return roles.includes(Role.Telema) || roles.includes(Role.TelemaLead) ? 'sakura' : 'standard';
+/**
+ * Everyone starts in Teams風 (request 11/17). A theme someone already chose is kept; さくら and
+ * the others stay selectable.
+ */
+export function defaultTheme(_roles: readonly Role[]): Theme {
+  return 'teams';
 }
 
 /** Before login (sign-in page): the look last used in this browser. */
 export function lastTheme(): Theme {
-  return read(LAST_KEY) ?? 'standard';
+  return read(LAST_KEY) ?? 'teams';
 }
 
 function apply(theme: Theme) {
