@@ -118,8 +118,8 @@ function rangesOf(top, tall, rand) {
 }
 
 /**
- * Which mountain is at this point of the screen (11/17), the front-most first: `near`, `mid`,
- * `fuji` or `far`, with the screen y of its ridge right there — or null (sky or lake). The
+ * Which mountain is at this point of the screen (11/17), the front-most first: `mid`, `fuji`
+ * or `far` (the near hills are no longer drawn), with the screen y of its ridge right there — or null (sky or lake). The
  * sign-in screen uses it to let MoraBot peek out from behind the mountain that was clicked.
  */
 export function mountainAt(x, y, width, height) {
@@ -129,7 +129,6 @@ export function mountainAt(x, y, width, height) {
   var ranges = rangesOf(top, tall, seeded(1113));
   var fuji = fujiOf(width, height);
   var order = [
-    ['near', ranges.near],
     ['mid', ranges.mid],
     ['fuji', fuji.ridge],
     ['far', ranges.far],
@@ -174,8 +173,8 @@ function ridgeOf(base, amp, freq, rand) {
 }
 
 /**
- * Lake scenery (11/13): distant blue mountains, a nearer range with a cliff and autumn hills
- * with red, orange and amber trees along the shore. Drawn once per size onto its own canvas.
+ * Lake scenery: distant blue mountains, Fuji, and Kobe's waterfront on the right shore (11/17).
+ * Drawn once per size onto its own canvas.
  */
 function buildScenery(width, height, top, ratio) {
   var canvas = document.createElement('canvas');
@@ -197,10 +196,11 @@ function buildScenery(width, height, top, ratio) {
     ctx.fillRect(0, 0, width, top + 4);
   }
   var ranges = rangesOf(top, tall, rand);
+  // Only the far blue ranges (11/17): the near brown hills with their autumn trees are gone, so
+  // the city reads as standing at the water's edge.
   var layers = [
     { ridge: ranges.far, from: '#dfe6ee', to: '#c9d4df' },
     { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
-    { ridge: ranges.near, from: '#a5705e', to: '#7e5446' },
   ];
   layers.forEach(function (layer, index) {
     var highest = top - (index === 0 ? tall : index === 1 ? tall * 0.68 : tall * 0.22);
@@ -226,19 +226,6 @@ function buildScenery(width, height, top, ratio) {
     }
   });
 
-  // Autumn trees along the near hills.
-  var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
-  var near = layers[2].ridge;
-  for (var t = 0; t < width / 7; t++) {
-    var tx = rand() * width;
-    var ground = near(tx);
-    var ty = ground + rand() * (top - ground) * 0.85;
-    var r = 3 + rand() * 4;
-    ctx.fillStyle = trees[Math.floor(rand() * trees.length)];
-    ctx.beginPath();
-    ctx.ellipse(tx, ty, r, r * 1.15, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
   // Kobe's waterfront (11/17) on the far right shore, right of the sign-in box: Sannomiya's towers, Hotel Okura, the Maritime Museum and Port Tower. The Ferris
   // wheel and the tower's light show move, so they are drawn each frame (drawHarborLights).
   var harbor = harborOf(width, top, tall);
@@ -283,6 +270,24 @@ function drawWaterfront(ctx, harbor, rand) {
   var base = harbor.base;
   if (!(H > 30)) return;
   ctx.save();
+  // The city's warm glow on the horizon behind the buildings (evening), fading out on all sides.
+  ctx.save();
+  ctx.translate(X - H * 0.2, base);
+  ctx.scale(3.4, 1);
+  var glow = ctx.createRadialGradient(0, 0, 0, 0, 0, H * 1.15);
+  glow.addColorStop(0, 'rgba(255, 196, 140, 0.5)');
+  glow.addColorStop(1, 'rgba(255, 196, 140, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(-H * 1.15, -H * 1.15, H * 2.3, H * 1.15);
+  ctx.restore();
+  // A back row of hazy towers, so it reads as a city and not a few buildings.
+  for (var bx = X - H * 3.2; bx < X + H * 1.5; bx += H * (0.13 + rand() * 0.07)) {
+    var bw = H * (0.09 + rand() * 0.08);
+    var bh = H * (0.32 + rand() * 0.55);
+    ctx.fillStyle = 'rgba(160, 170, 192, 0.9)';
+    ctx.fillRect(bx, base - bh, bw, bh);
+    drawWindows(ctx, bx, base - bh, bw, bh, rand, 0.3);
+  }
   // Sannomiya: the tall ones behind, west of the tower; lower blocks to the east.
   var blocks = [
     [-2.75, 0.17, 0.42],
@@ -316,23 +321,42 @@ function drawWaterfront(ctx, harbor, rand) {
   ctx.arc(X - 2.15 * H + 0.11 * H, base - 0.86 * H - 2, Math.max(1.2, H / 70), 0, Math.PI * 2);
   ctx.fill();
 
-  // Hotel Okura Kobe: the tall round white tower beside Port Tower.
-  var ow = H * 0.2;
-  var oh = H * 0.74;
+  // Hotel Okura Kobe beside Port Tower (11/17: drawn so it reads as a hotel): a low lobby wing,
+  // a round white tower shaded like a cylinder with a grid of lit rooms, and a crown on top.
+  var ow = H * 0.22;
+  var oh = H * 0.78;
   var ox = X + H * 0.3;
+  var ocx = ox + ow / 2;
+  ctx.fillStyle = '#d9d7df';
+  ctx.fillRect(ocx - H * 0.24, base - H * 0.11, H * 0.48, H * 0.11);
+  drawWindows(ctx, ocx - H * 0.24, base - H * 0.11, H * 0.48, H * 0.11, rand, 0.7);
   var body = ctx.createLinearGradient(ox, 0, ox + ow, 0);
-  body.addColorStop(0, '#f3f1f4');
-  body.addColorStop(0.6, '#dcdae2');
-  body.addColorStop(1, '#bdbccb');
+  body.addColorStop(0, '#b4b3c2');
+  body.addColorStop(0.35, '#f6f4f8');
+  body.addColorStop(0.7, '#dedce5');
+  body.addColorStop(1, '#a6a5b6');
   ctx.fillStyle = body;
-  ctx.fillRect(ox, base - oh, ow, oh);
-  ctx.beginPath();
-  ctx.ellipse(ox + ow / 2, base - oh, ow / 2, ow * 0.12, 0, 0, Math.PI * 2);
-  ctx.fill();
-  for (var band = base - oh + H * 0.06; band < base - H * 0.05; band += H * 0.05) {
-    ctx.fillStyle = rand() < 0.6 ? 'rgba(255, 214, 128, 0.85)' : 'rgba(80, 88, 112, 0.35)';
-    ctx.fillRect(ox + ow * 0.12, band, ow * 0.76, H * 0.018);
+  ctx.fillRect(ox, base - oh, ow, oh - H * 0.11);
+  // Rooms: columns squeezed towards the edges, as on a round wall.
+  var cols = 6;
+  for (var row = base - oh + H * 0.07; row < base - H * 0.14; row += H * 0.034) {
+    for (var col = 0; col < cols; col++) {
+      var angle = -1.25 + (2.5 * (col + 0.5)) / cols;
+      var wxc = ocx + Math.sin(angle) * ow * 0.42;
+      var ww = Math.max(0.6, ow * 0.09 * Math.cos(angle));
+      ctx.fillStyle = rand() < 0.55 ? 'rgba(255, 210, 120, 0.95)' : 'rgba(84, 92, 118, 0.45)';
+      ctx.fillRect(wxc - ww / 2, row, ww, H * 0.016);
+    }
   }
+  // The crown: a slightly wider ring, a small roof box and a red light.
+  ctx.fillStyle = '#c9c7d3';
+  ctx.fillRect(ox - ow * 0.06, base - oh - H * 0.03, ow * 1.12, H * 0.035);
+  ctx.fillStyle = '#e8e6ee';
+  ctx.fillRect(ocx - ow * 0.22, base - oh - H * 0.07, ow * 0.44, H * 0.04);
+  ctx.fillStyle = '#ff4a3a';
+  ctx.beginPath();
+  ctx.arc(ocx, base - oh - H * 0.08, Math.max(1.1, H / 75), 0, Math.PI * 2);
+  ctx.fill();
 
   // Kobe Maritime Museum: a low white frame like a wave or a sail, west of the tower.
   var mx = X - H * 0.72;
@@ -358,9 +382,42 @@ function drawWaterfront(ctx, harbor, rand) {
   }
   ctx.stroke();
 
+  // A dense low row along the water, leaving the tower, the hotel and the museum clear.
+  for (var lx = X - H * 3.3; lx < X + H * 3.2; lx += H * (0.1 + rand() * 0.06)) {
+    var rel = (lx - X) / H;
+    if (rel > -0.85 && rel < 0.6) continue;
+    var lw = H * (0.08 + rand() * 0.07);
+    var lh = H * (0.1 + rand() * 0.17);
+    ctx.fillStyle = rand() < 0.5 ? '#8a92a8' : '#7a8299';
+    ctx.fillRect(lx, base - lh, lw, lh);
+    drawWindows(ctx, lx, base - lh, lw, lh, rand, 0.55);
+  }
+  // Port cranes at the east end of the quay.
+  [2.62, 2.98].forEach(function (at) {
+    var cx = X + H * at;
+    var ch = H * 0.42;
+    ctx.strokeStyle = '#5d6b85';
+    ctx.lineWidth = Math.max(1, H / 75);
+    ctx.beginPath();
+    ctx.moveTo(cx - H * 0.06, base);
+    ctx.lineTo(cx - H * 0.04, base - ch);
+    ctx.moveTo(cx + H * 0.06, base);
+    ctx.lineTo(cx + H * 0.04, base - ch);
+    ctx.moveTo(cx - H * 0.12, base - ch);
+    ctx.lineTo(cx + H * 0.22, base - ch);
+    ctx.moveTo(cx - H * 0.04, base - ch);
+    ctx.lineTo(cx, base - ch - H * 0.1);
+    ctx.lineTo(cx + H * 0.04, base - ch);
+    ctx.stroke();
+    ctx.fillStyle = '#ff4a3a';
+    ctx.beginPath();
+    ctx.arc(cx, base - ch - H * 0.1, Math.max(1, H / 85), 0, Math.PI * 2);
+    ctx.fill();
+  });
+
   // The quay along the water.
   ctx.fillStyle = '#8c8f99';
-  ctx.fillRect(X - H * 2.9, base - 2, H * 5.3, 3);
+  ctx.fillRect(X - H * 3.4, base - 2, H * 6.7, 3);
   ctx.restore();
 }
 
