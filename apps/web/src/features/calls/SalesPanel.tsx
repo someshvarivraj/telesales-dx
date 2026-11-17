@@ -192,6 +192,21 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const { repId, setRepId } = panel;
   const [date, setDate] = useState(todayJst);
   const { box: panelBox, pos: panelPos, start: startDrag } = useDragPosition();
+  // The calendar scrolls inside the room the panel really has (11/17: "100%" had nothing to be a
+  // percentage of, so it grew to full height and was cut off at about 16:00 with no scrollbar).
+  const calendarBox = useRef<HTMLDivElement>(null);
+  const [calendarHeight, setCalendarHeight] = useState('400px');
+  useEffect(() => {
+    const box = calendarBox.current;
+    if (!box) return;
+    const measure = () => setCalendarHeight(`${Math.max(200, box.clientHeight - 16)}px`);
+    measure();
+    // Not every environment has it (the test runner's jsdom doesn't).
+    if (typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [mode]);
   // Docked, it takes the right side and the page gets narrower (11/17). Set here, while the
   // panel is really on screen, so the room is never left behind on another screen.
   useEffect(() => {
@@ -402,13 +417,13 @@ function PanelBody({ panel }: { panel: PanelContext }) {
         </p>
       )}
 
-      <div className="relative min-h-0 flex-1 overflow-hidden p-2">
+      <div ref={calendarBox} className="relative min-h-0 flex-1 overflow-hidden p-2">
         {mode === 'max' && (
           <AreaCompanies focus={focus} onPick={panel.openFor} current={company?.id} />
         )}
         {repId && rep ? (
           <TimeGrid
-            maxHeight="100%"
+            maxHeight={calendarHeight}
             minColumnWidth={mode === 'float' ? 90 : 110}
             onEvent={() => undefined}
             columnLabel={(column) => `${column.date}の空き時間を選ぶ`}
@@ -450,7 +465,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
           />
         ) : (
           <DayTimeline
-            maxHeight="100%"
+            maxHeight={calendarHeight}
             date={date}
             people={people}
             events={events}
