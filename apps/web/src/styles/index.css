@@ -1748,3 +1748,22 @@ dialog[open] > div {
     animation: none !important;
   }
 }
+/* A MoraBot face popping up from behind a clicked mountain, then ducking back (11/17). */
+.morabot-face-pop {
+  animation: morabot-face-pop ease-in-out forwards;
+}
+@keyframes morabot-face-pop {
+  0% {
+    transform: translate(-50%, 110%);
+  }
+  22%,
+  72% {
+    transform: translate(-50%, 18%);
+  }
+  80% {
+    transform: translate(-50%, 24%) rotate(-6deg);
+  }
+  100% {
+    transform: translate(-50%, 110%);
+  }
+}

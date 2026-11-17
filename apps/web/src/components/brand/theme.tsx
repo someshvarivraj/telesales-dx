@@ -94,3 +94,13 @@ export function LastThemeProvider({ children }: { children: ReactNode }) {
     <ThemeContext.Provider value={{ theme, setTheme: keep }}>{children}</ThemeContext.Provider>
   );
 }
+
+/**
+ * A fixed look for what is inside, without touching the page (11/17): the sign-in screen's
+ * peeking MoraBot is the pink one for テレマ lines and the blue one for 営業.
+ */
+export function LookProvider({ theme, children }: { theme: Theme; children: ReactNode }) {
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme: keep }}>{children}</ThemeContext.Provider>
+  );
+}

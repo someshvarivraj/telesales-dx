@@ -19,3 +19,19 @@ export function fujiOf(
   summit: number;
   ridge: (x: number) => number;
 };
+
+/** The mountain at this point of the screen (front-most first) and its ridge's screen y there. */
+export function mountainAt(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): { kind: 'near' | 'mid' | 'fuji' | 'far'; ridge: number } | null;
+
+/** The ridge line of one of the three ranges at screen x, for a screen of this size. */
+export function rangeRidge(
+  kind: 'near' | 'mid' | 'far',
+  x: number,
+  width: number,
+  height: number,
+): number;

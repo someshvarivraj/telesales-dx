@@ -35,7 +35,7 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <LastThemeProvider>
-      <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
+      <div data-scene className="relative flex min-h-dvh items-center justify-center px-4 py-16">
         {/* Leaves fall behind the sign-in box onto a lake under an evening sky (11/13). No grid
             here: only its click ripple, over the sky, fading out above the mountains. */}
         {leaves && <FallingLeaves className="z-0" lake />}
@@ -54,10 +54,16 @@ export function AuthLayout({
         {leaves && <MoraBotPeek />}
         <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
 
-        <div className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16">
+        <div
+          data-scene
+          className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16"
+        >
           {/* With the lake, the headline sits at the top so MoraBot can peek out from behind
               Fuji below it. */}
-          <section className={cn('max-w-md flex-1 max-lg:hidden', leaves && 'self-start')}>
+          <section
+            data-scene
+            className={cn('max-w-md flex-1 max-lg:hidden', leaves && 'self-start')}
+          >
             <p className="text-2xl leading-snug font-bold text-ink">
               架電からアポ、打ち合わせの結果まで。
             </p>

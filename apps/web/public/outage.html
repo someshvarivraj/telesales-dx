@@ -241,6 +241,46 @@ function leafSprite(size, colors) {
   return canvas;
 }
 
+/** The three mountain ranges' ridge lines (far, middle, near), the same every time. */
+function rangesOf(top, tall, rand) {
+  return {
+    far: ridgeOf(top, tall, 0.0042, rand),
+    mid: ridgeOf(top, tall * 0.68, 0.0071, rand),
+    near: ridgeOf(top, tall * 0.22, 0.016, rand),
+  };
+}
+
+/**
+ * Which mountain is at this point of the screen (11/17), the front-most first: `near`, `mid`,
+ * `fuji` or `far`, with the screen y of its ridge right there — or null (sky or lake). The
+ * sign-in screen uses it to let MoraBot peek out from behind the mountain that was clicked.
+ */
+function mountainAt(x, y, width, height) {
+  var top = lakeTopOf(height);
+  if (y >= top) return null;
+  var tall = Math.min(200, height * 0.21);
+  var ranges = rangesOf(top, tall, seeded(1113));
+  var fuji = fujiOf(width, height);
+  var order = [
+    ['near', ranges.near],
+    ['mid', ranges.mid],
+    ['fuji', fuji.ridge],
+    ['far', ranges.far],
+  ];
+  for (var i = 0; i < order.length; i++) {
+    var ridge = order[i][1](x);
+    if (y >= ridge && ridge < top - 2) return { kind: order[i][0], ridge: ridge };
+  }
+  return null;
+}
+
+/** A range's ridge at screen x (used to cut a peeking MoraBot along that range). */
+function rangeRidge(kind, x, width, height) {
+  var top = lakeTopOf(height);
+  var tall = Math.min(200, height * 0.21);
+  return rangesOf(top, tall, seeded(1113))[kind](x);
+}
+
 /** Same numbers every time (mountains keep their shape when the window is resized). */
 function seeded(seed) {
   var a = seed >>> 0;
@@ -295,10 +335,11 @@ function buildScenery(width, height, top, ratio) {
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, width, top + 4);
   }
+  var ranges = rangesOf(top, tall, rand);
   var layers = [
-    { ridge: ridgeOf(top, tall, 0.0042, rand), from: '#dfe6ee', to: '#c9d4df' },
-    { ridge: ridgeOf(top, tall * 0.68, 0.0071, rand), from: '#b4c3d2', to: '#9cadbf' },
-    { ridge: ridgeOf(top, tall * 0.22, 0.016, rand), from: '#a5705e', to: '#7e5446' },
+    { ridge: ranges.far, from: '#dfe6ee', to: '#c9d4df' },
+    { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
+    { ridge: ranges.near, from: '#a5705e', to: '#7e5446' },
   ];
   var fallX = fallXOf(width);
   layers.forEach(function (layer, index) {
