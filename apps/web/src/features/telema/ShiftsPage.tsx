@@ -67,6 +67,21 @@ export function ShiftsPage() {
     box.scrollLeft = Math.max(0, cell.offsetLeft - nameColumn - cell.offsetWidth * 2);
   }, [month, data]);
 
+  // The table scrolls inside its own box that fills the rest of the screen (11/17), so the dates
+  // and the names stay in view and nothing slides under the page's fixed top.
+  const [room, setRoom] = useState(480);
+  useEffect(() => {
+    const measure = () => {
+      const box = scroller.current;
+      if (!box) return;
+      const top = box.getBoundingClientRect().top + window.scrollY;
+      setRoom(Math.max(320, window.innerHeight - top - 24));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  });
+
   return (
     <div className="flex flex-col gap-4">
       {/* Stays in the section's fixed top while the list scrolls (11/17). */}
@@ -157,11 +172,11 @@ export function ShiftsPage() {
           );
           return (
             <Card flush>
-              <div ref={scroller} className="overflow-x-auto">
+              <div ref={scroller} className="isolate overflow-auto" style={{ maxHeight: room }}>
                 <table className="border-separate border-spacing-0 text-xs">
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-20 w-52 min-w-52 border-r border-b border-head-line bg-head px-3 py-2 text-left text-sm">
+                      <th className="sticky top-0 left-0 z-30 w-52 min-w-52 border-r border-b border-head-line bg-head px-3 py-2 text-left text-sm">
                         名前
                       </th>
                       {view.days.map((day) => {
@@ -175,7 +190,7 @@ export function ShiftsPage() {
                             title={day.holidayName ?? undefined}
                             aria-current={isToday ? 'date' : undefined}
                             className={cn(
-                              'relative min-w-14 border-r border-b border-head-line px-1 pt-1 pb-1.5 text-center font-medium',
+                              'sticky top-0 z-20 min-w-14 border-r border-b border-head-line px-1 pt-1 pb-1.5 text-center font-medium',
                               isToday
                                 ? 'bg-main text-white'
                                 : past
@@ -211,7 +226,7 @@ export function ShiftsPage() {
                           </th>
                         );
                       })}
-                      <th className="min-w-20 border-b border-head-line bg-head px-2 py-1 text-right font-medium">
+                      <th className="sticky top-0 z-20 min-w-20 border-b border-head-line bg-head px-2 py-1 text-right font-medium">
                         合計
                       </th>
                     </tr>

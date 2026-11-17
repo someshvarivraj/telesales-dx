@@ -191,6 +191,16 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const { repId, setRepId } = panel;
   const [date, setDate] = useState(todayJst);
   const { box: panelBox, pos: panelPos, start: startDrag } = useDragPosition();
+  // Docked, it takes the right side and the page gets narrower (11/17). Set here, while the
+  // panel is really on screen, so the room is never left behind on another screen.
+  useEffect(() => {
+    if (mode !== 'split') return;
+    const root = document.documentElement;
+    root.style.setProperty('--split-room', SPLIT_WIDTH);
+    return () => {
+      root.style.removeProperty('--split-room');
+    };
+  }, [mode]);
 
   // A new company: ask the area table who its rep is, and show that person.
   const { mutate } = find;
