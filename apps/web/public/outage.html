@@ -1717,7 +1717,8 @@ function startLeaves(canvas, options) {
   }
 
   for (var s = 0; s < 8; s++) {
-    var size = 15 + Math.random() * 12;
+    // A little smaller (11/17): 10–17px instead of 15–27px, so they don't crowd the scene.
+    var size = 10 + Math.random() * 7;
     // Drawn at the screen's pixel density, so the leaves stay sharp.
     sprites.push({
       size: size,
