@@ -6,6 +6,7 @@ import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
 import { Alert } from '@/components/ui/Alert';
 import { StickyTopProvider } from '@/components/ui/StickyTop';
+import { paths } from '@/app/paths';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
 import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
@@ -17,8 +18,8 @@ import { useSystemStatus } from '@/features/system/useSystemStatus';
 import { ja } from '@/i18n/ja';
 import { AppHeader } from './AppHeader';
 import { AppSidebar } from './AppSidebar';
+import { TopBarMenus } from './TopBarMenus';
 import { MobileNav } from './MobileNav';
-import { isWidePage } from './navItems';
 
 /** Left menu on tablets and wider; top bar + bottom tab bar on phones. */
 export function AppLayout() {
@@ -28,7 +29,6 @@ export function AppLayout() {
   const maintenance = status.data?.maintenance === true;
   // The schedule (request 10/29) and 架電状況 (request 11/12) use the full width of the screen.
   const { pathname } = useLocation();
-  const wide = isWidePage(pathname);
   // Each page fades in and rises a little when it opens (11/16), without remounting it.
   const page = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -45,13 +45,19 @@ export function AppLayout() {
         <AppSidebar />
         <div className="app-main flex min-h-dvh min-w-0 flex-col">
           <AppHeader />
+          {/* A thin Teams-like top bar (11/17): language and theme as icons at the right. */}
+          <div className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex">
+            <TopBarMenus />
+          </div>
           <PlannedOutageBanner outage={status.data?.plannedOutage} className="sticky top-0 z-20" />
           {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
               MoraBot launcher in the corner. */}
           <main
             className={cn(
-              'mx-auto w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:pt-7 md:pb-28',
-              wide ? 'md:px-5' : 'max-w-7xl md:px-8',
+              // Full width on every screen (11/17): content takes the room, little empty margin.
+              'w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:px-6 md:pt-4',
+              // The schedule fills the screen with one scroll inside the calendar (11/17).
+              pathname.startsWith(paths.schedule) ? 'md:pb-4' : 'md:pb-28',
             )}
           >
             {maintenance && admin && (

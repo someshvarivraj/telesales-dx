@@ -6,13 +6,15 @@ import {
   Role,
   type TemporaryPasswordResponse,
 } from '@telesales/shared';
-import { Copy, KeyRound, Plus } from 'lucide-react';
+import { Copy, KeyRound, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { cn } from '@/components/ui/cn';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { Dialog } from '@/components/ui/Dialog';
 import { DraftNotice, ResetButton } from '@/components/ui/DraftBar';
 import { FormField } from '@/components/ui/FormField';
@@ -306,21 +308,64 @@ export function UsersPage() {
   const unlock = useUnlockUser();
   const [editing, setEditing] = useState<AdminUserDto | 'new' | null>(null);
   const [temporary, setTemporary] = useState<TemporaryPasswordResponse | null>(null);
+  // Search and role filter (request 11/17), kept in the fixed top with the add button.
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState<Role | 'all'>('all');
+  const words = search.trim().toLowerCase();
+  const matches = (user: AdminUserDto) =>
+    (role === 'all' || user.roles.includes(role)) &&
+    (!words ||
+      user.name.toLowerCase().includes(words) ||
+      user.email.toLowerCase().includes(words) ||
+      (user.employeeNo ?? '').toLowerCase().includes(words));
 
   return (
     <>
-      <Card
-        title="ユーザー"
-        actions={
+      <StickyExtra>
+        <div className="flex flex-wrap items-center gap-2 border border-line bg-surface px-4 py-3 shadow-(--shadow-card)">
+          <h2 className="mr-2 text-base font-bold">ユーザー</h2>
+          <label className="relative min-w-56 flex-1 sm:max-w-80">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-sub"
+            />
+            <input
+              type="search"
+              aria-label="名前・メール・社員番号で探す"
+              placeholder="名前・メール・社員番号で探す"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-9 w-full border border-line-strong bg-surface pr-2 pl-8 text-sm outline-none focus:border-main"
+            />
+          </label>
+          <div role="group" aria-label="役割で絞り込む" className="flex flex-wrap gap-1">
+            {(['all', ...ALL_ROLES] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={role === value}
+                onClick={() => setRole(value)}
+                className={cn(
+                  'h-8 cursor-pointer border px-2.5 text-xs font-bold transition-colors',
+                  role === value
+                    ? 'border-main bg-main-soft text-main'
+                    : 'border-line text-ink-sub hover:border-line-strong hover:text-ink',
+                )}
+              >
+                {value === 'all' ? 'すべて' : ja.role[value]}
+              </button>
+            ))}
+          </div>
           <Button
+            className="ml-auto"
             icon={<Plus className="size-4" aria-hidden="true" />}
             onClick={() => setEditing('new')}
           >
             ユーザーを追加
           </Button>
-        }
-        flush
-      >
+        </div>
+      </StickyExtra>
+      <Card flush>
         {(reset.isError || unlock.isError) && (
           <Alert tone="error" className="m-4">
             {errorMessageOf(reset.error ?? unlock.error)}
@@ -340,7 +385,7 @@ export function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {users.filter(matches).map((user) => (
                   <tr
                     key={user.id}
                     className={user.status === 'DISABLED' ? 'text-ink-sub' : undefined}
@@ -390,6 +435,13 @@ export function UsersPage() {
                     </Td>
                   </tr>
                 ))}
+                {users.filter(matches).length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-sm text-ink-sub">
+                      該当するユーザーはいません。
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </Table>
           )}

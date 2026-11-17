@@ -4,7 +4,7 @@ import { paths } from '@/app/paths';
 import { useLogout } from '@/features/auth/hooks/useSession';
 import { FeedbackButton } from '@/features/feedback/FeedbackButton';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
-import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
+import { LanguageMenu, ThemeMenu } from './TopBarMenus';
 import { ja } from '@/i18n/ja';
 import { BrandMark } from './BrandMark';
 
@@ -26,7 +26,8 @@ export function AppHeader() {
           <span className="truncate">{ja.app.name}</span>
         </Link>
         <div className="ml-auto flex items-center gap-1">
-          <LanguageSwitch className="w-32" />
+          <LanguageMenu />
+          <ThemeMenu />
           <FeedbackButton variant="icon" />
           <NotificationBell />
           <button

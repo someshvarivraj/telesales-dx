@@ -25,7 +25,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useHref, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Button } from '@/components/ui/Button';
@@ -145,6 +145,22 @@ const ALL_PEOPLE = 'all';
 export function SchedulePage() {
   const user = useCurrentUser();
   const pageRef = useRef<HTMLDivElement>(null);
+  // One scroll only (11/17): the calendar's own scroll area gets exactly the room left on the
+  // screen under the fixed top, so the page itself does not scroll as well.
+  const viewBox = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState(600);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const top = (viewBox.current?.getBoundingClientRect().top ?? 0) + window.scrollY;
+      // Under it: the member menu row, the hint line and the page's bottom padding.
+      setRoom(Math.max(320, Math.floor(window.innerHeight - top - 96)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  });
+  const fill = `${room}px`;
+  const railHeight = `${room + 72}px`;
   const fullScreen = useFullScreen(pageRef);
   const [params, setParams] = useSearchParams();
   const date = params.get('date') ?? todayJst();
@@ -670,7 +686,9 @@ export function SchedulePage() {
       <div className={cn('grid gap-4', railOpen && 'lg:grid-cols-[15.5rem_minmax(0,1fr)]')}>
         {/* Side rail */}
         <aside
-          className={cn('hidden flex-col gap-5', railOpen && 'lg:flex')}
+          // Its own scroll only when it is taller than the screen's room (11/17).
+          style={{ maxHeight: railHeight }}
+          className={cn('hidden flex-col gap-5 overflow-y-auto', railOpen && 'lg:flex')}
           aria-label="カレンダーの絞り込み"
         >
           <div className="border border-line bg-surface p-3">
@@ -779,7 +797,7 @@ export function SchedulePage() {
           </section>
         </aside>
 
-        <div className="min-w-0">
+        <div ref={viewBox} className="min-w-0">
           {!(view === 'week' && visible.length > 1) &&
             !(view === 'day' && visible.length > DAY_COLUMNS_MAX) && (
               <div className="mb-2 w-64">{memberMenu(view === 'day' || view === 'week')}</div>
@@ -798,6 +816,7 @@ export function SchedulePage() {
                 const holiday = data.holidays.find((h) => h.date === date);
                 return (
                   <DayTimeline
+                    maxHeight={fill}
                     corner={memberMenu(true)}
                     date={date}
                     people={visible}
@@ -829,7 +848,7 @@ export function SchedulePage() {
                     bufferMinutes={data.travelBufferMinutes}
                     pxPerMin={zoom}
                     // 5:00–24:00 scrolls inside the view instead of making the page very tall.
-                    maxHeight="calc(100dvh - 15rem)"
+                    maxHeight={fill}
                     colorOrder={order}
                     onRange={
                       canWritePlans
@@ -851,6 +870,7 @@ export function SchedulePage() {
                 const days = Array.from({ length: weekDays }, (_, index) => addDays(from, index));
                 return (
                   <TimeGrid
+                    maxHeight={fill}
                     pxPerMin={zoom}
                     onEvent={setSelected}
                     peek={peek.bind}

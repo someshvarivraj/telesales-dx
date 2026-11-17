@@ -93,7 +93,10 @@ export function MoraBotPeek() {
       [...files].map((src) => {
         const image = new Image();
         image.src = src;
-        return image.decode().catch(() => undefined);
+        // Not every environment can decode ahead (the test runner cannot): then just load.
+        return typeof image.decode === 'function'
+          ? image.decode().catch(() => undefined)
+          : Promise.resolve();
       }),
     ).then(finish);
     // Never wait long on a slow network: start anyway after 4 s.
