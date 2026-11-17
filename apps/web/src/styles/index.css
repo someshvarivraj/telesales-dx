@@ -845,19 +845,6 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
   border-bottom: 1px solid var(--color-line);
   background: var(--color-surface);
 }
-.morabot-step-timer {
-  width: 100%;
-  transform-origin: left;
-  animation: morabot-step-fill linear both;
-}
-@keyframes morabot-step-fill {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .morabot-idle,
   .morabot-idle *,
