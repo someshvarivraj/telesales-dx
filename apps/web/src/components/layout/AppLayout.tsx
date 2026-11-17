@@ -4,7 +4,6 @@ import { Outlet, useLocation } from 'react-router';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
-import { SeasonStrip } from '@/components/fun/SeasonStrip';
 import { Alert } from '@/components/ui/Alert';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
@@ -59,7 +58,6 @@ export function AppLayout() {
                 で終えられます）。
               </Alert>
             )}
-            <SeasonStrip userId={id} />
             <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
           </main>
         </div>

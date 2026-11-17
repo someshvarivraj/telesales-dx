@@ -1523,7 +1523,7 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
 }
 
 /* ---------------------------------------------------------------------------
-   Small joys (11/16): booking celebration, the season strip, 今日のおみくじ,
+   Small joys (11/16): booking celebration, 今日のおみくじ,
    and gentle motion when a page appears. All of it stops for reduced motion.
    --------------------------------------------------------------------------- */
 .celebrate {
@@ -1629,45 +1629,6 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
   }
 }
 
-.season-strip {
-  animation: fade-in 0.4s ease-out;
-}
-.season-icon {
-  transform-origin: 50% 90%;
-  animation: season-sway 3.2s ease-in-out infinite;
-}
-@keyframes season-sway {
-  0%,
-  100% {
-    transform: rotate(-7deg);
-  }
-  50% {
-    transform: rotate(7deg);
-  }
-}
-.season-strip.season-momiji {
-  border-left: 3px solid #e5391f;
-}
-.season-strip.season-sakura,
-.season-strip.season-plum {
-  border-left: 3px solid #e8517a;
-}
-.season-strip.season-green {
-  border-left: 3px solid #4caf50;
-}
-.season-strip.season-rain {
-  border-left: 3px solid #7c8fd6;
-}
-.season-strip.season-summer {
-  border-left: 3px solid #3b8dbd;
-}
-.season-strip.season-moon {
-  border-left: 3px solid #e0b84a;
-}
-.season-strip.season-snow {
-  border-left: 3px solid #6aa8d8;
-}
-
 .omikuji-shake {
   transform-origin: 50% 100%;
   animation: omikuji-shake 0.65s ease-in-out;
@@ -1728,7 +1689,6 @@ dialog[open] > div {
 @media (prefers-reduced-motion: reduce) {
   .celebrate-leaf,
   .celebrate-stamp,
-  .season-icon,
   .omikuji-shake,
   .omikuji-open,
   .page-enter,
