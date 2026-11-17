@@ -10,13 +10,7 @@ import { StickyTopProvider } from '@/components/ui/StickyTop';
 import { paths } from '@/app/paths';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
-import {
-  onCallsScreen,
-  SalesPanel,
-  SalesPanelProvider,
-  SPLIT_WIDTH,
-  useSalesPanel,
-} from '@/features/calls/SalesPanel';
+import { SalesPanel, SalesPanelProvider } from '@/features/calls/SalesPanel';
 import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
 import { NoticeToaster } from '@/features/notifications/NoticeToaster';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
@@ -65,7 +59,6 @@ export function AppLayout() {
               />
               {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
               MoraBot launcher in the corner. */}
-              <SplitRoom />
               <main
                 className={cn(
                   // Full width on every screen (11/17): content takes the room, little empty margin.
@@ -108,17 +101,4 @@ function MaintenanceNotice() {
       </p>
     </section>
   );
-}
-
-/** The docked 営業の予定 takes the right side; the page gets narrower instead of hiding under it. */
-function SplitRoom() {
-  const panel = useSalesPanel();
-  const { pathname } = useLocation();
-  const split = panel?.mode === 'split' && onCallsScreen(pathname);
-  useEffect(() => {
-    const root = document.documentElement;
-    if (split) root.style.setProperty('--split-room', SPLIT_WIDTH);
-    else root.style.removeProperty('--split-room');
-  }, [split]);
-  return null;
 }

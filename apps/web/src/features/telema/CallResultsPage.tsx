@@ -134,7 +134,7 @@ function Results({ data, today }: { data: CallResultsResponse; today: string }) 
         </Card>
       ) : (
         <Card flush>
-          <div className="overflow-x-auto">
+          <div className="isolate overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>

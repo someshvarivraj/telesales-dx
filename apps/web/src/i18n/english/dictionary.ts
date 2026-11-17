@@ -4,6 +4,18 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  今日の架電リスト: "Today's call list",
+  今日の架電リストを開く: "Open today's call list",
+  今日の架電リストをたたむ: "Fold today's call list",
+  たたむ: 'Fold',
+  '会社名・電話・地域で探す': 'Search name, phone or area',
+  '今日割り振られた企業はまだありません。': 'No companies allocated to you today yet.',
+  架電対象から探す: 'Find in call targets',
+  企業ページで架電結果を入力: 'Enter the call result on the company page',
+  '担当営業を探しています…': 'Finding the rep…',
+  '営業担当表に合う行がありません。右で営業を選んでください。':
+    'No matching row in the sales area table. Pick a rep on the right.',
+  ドラッグして動かせます: 'Drag to move',
   // Sales schedule panel, areas, users filter (11/17)
   '該当するユーザーはいません。': 'No matching users.',
   '名前・メール・社員番号で探す': 'Search by name, e-mail or employee no.',
@@ -1941,6 +1953,7 @@ export const EXACT: Readonly<Record<string, string>> = {
 export const PATTERNS: readonly (readonly [string, string])[] = [
   ['{0}さんの担当エリア（{1}）の企業を表示中', "Showing companies in {0}'s area ({1})"],
   ['{0}さんの担当エリア（{1}）', "{0}'s area ({1})"],
+  ['担当営業：{0}（右の予定に表示中）', 'Rep: {0} (shown on the right)'],
   ['候補{0}を外す', 'Remove candidate {0}'],
   ['候補{0}の終了', 'Candidate {0} end'],
   ['候補{0}の開始', 'Candidate {0} start'],

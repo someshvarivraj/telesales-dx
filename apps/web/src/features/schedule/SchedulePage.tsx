@@ -44,6 +44,7 @@ import { AgendaView } from './AgendaView';
 import { AreaPicker, useSalesAreas } from '@/features/calls/AreaPicker';
 import { useSalesPanel } from '@/features/calls/SalesPanel';
 import { useSavePlan, useSchedule } from './api';
+import { TodayCallList } from './TodayCallList';
 import { existingListBookingHref } from './bookingLinks';
 import { useEventPeek } from './calendar/EventPeek';
 import { DayTimeline } from './calendar/DayTimeline';
@@ -209,7 +210,11 @@ export function SchedulePage() {
   const [zoom, setZoom] = usePref('zoom', 1);
   const [showFree, setShowFree] = usePref('free', false);
   const [hidden, setHidden] = usePref<EventKind[]>('hiddenKinds', []);
-  const [railOpen, setRailOpen] = usePref('rail', true);
+  // テレマ see today's call list beside the reps' calendars (11/17); the call list is the master.
+  const showToday =
+    canTelemaBook && user.roles.some((role) => role === Role.Telema || role === Role.TelemaLead);
+  // Beside today's list the calendar starts without its side column (two columns, not three).
+  const [railOpen, setRailOpen] = usePref(showToday ? 'rail-with-today' : 'rail', !showToday);
   const [sort, setSort] = usePref<'name' | 'free' | 'busy'>('sort', 'name');
   const [groups, setGroups] = usePref<SavedGroup[]>('groups', []);
   const [page, setPage] = useState(0);
@@ -428,619 +433,635 @@ export function SchedulePage() {
     'inline-flex h-10 items-center gap-2 border border-line-strong bg-surface px-3.5 text-sm font-bold text-ink transition-colors hover:border-main-line hover:bg-main-soft';
 
   return (
-    <div ref={pageRef} className="schedule-page">
-      {/* The title, its buttons and the toolbar stay at the top while the page scrolls (11/17). */}
-      <StickyTop className="mb-3">
-        {/* Page head: the place and the actions people come here for. */}
-        <div className="mb-4 flex flex-wrap items-end gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-ink-sub">{ja.module.schedule}</p>
-            <h1 className="text-2xl font-bold tracking-tight tabular-nums">
-              {title}
-              <span className="ml-2 text-base font-medium text-ink-sub">{year}年</span>
-            </h1>
-          </div>
-          {canTelemaBook && areaPanel && (
-            <AreaPicker
-              area={areaPanel.area}
-              onArea={(next) => {
-                areaPanel.setArea(next);
-                setPage(0);
-              }}
-            />
-          )}
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {canTimeOff && (
-              <Button
-                variant="secondary"
-                icon={<CalendarOff className="size-4" aria-hidden="true" />}
-                onClick={() => setTimeOffDialog({ userId: chosen[0] ?? user.id, date })}
-              >
-                休みを入力
-              </Button>
-            )}
-            {canTelemaBook && (
-              <Link to={existingListBookingHref(date, chosen[0])} className={bookingLink}>
-                <FileUp className="size-4" aria-hidden="true" />
-                既存リストのアポを登録
-              </Link>
-            )}
-            {canSalesBook && (
-              <Link
-                to={`${paths.book}?source=SALES_BOOKED&repId=${user.id}&date=${date}`}
-                className={bookingLink}
-              >
-                <UserPlus className="size-4" aria-hidden="true" />
-                自分で取ったアポを登録
-              </Link>
-            )}
-            {canWritePlans && (
-              <Button
-                icon={<Plus className="size-4" aria-hidden="true" />}
-                onClick={() => setPlanDialog({ defaults: { ownerId: chosen[0] ?? user.id, date } })}
-              >
-                予定を追加
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Toolbar */}
-        <div className="-mx-1 flex flex-wrap items-center gap-2 px-1 py-1.5">
-          <button
-            type="button"
-            aria-label={railOpen ? 'サイドを閉じる' : 'サイドを開く'}
-            aria-pressed={railOpen}
-            onClick={() => setRailOpen(!railOpen)}
-            className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink lg:flex"
-          >
-            <PanelLeft aria-hidden="true" className="size-4" />
-          </button>
-          <div className="flex items-center border border-line-strong bg-surface">
-            <button
-              type="button"
-              aria-label="前へ"
-              onClick={() => step(-1)}
-              className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
-            >
-              <ChevronLeft aria-hidden="true" className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => update({ date: todayJst() })}
-              className="h-10 cursor-pointer border-x border-line px-4 text-sm font-bold hover:bg-column"
-            >
-              今日
-            </button>
-            <button
-              type="button"
-              aria-label="次へ"
-              onClick={() => step(1)}
-              className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
-            >
-              <ChevronRight aria-hidden="true" className="size-4" />
-            </button>
-          </div>
-          <Segmented
-            aria-label="表示"
-            value={requested}
-            onChange={(value) => update({ view: value })}
-            options={VIEWS}
-          />
-          {fullScreen.supported && (
-            <Button
-              variant="secondary"
-              icon={
-                fullScreen.on ? (
-                  <Minimize2 className="size-4" aria-hidden="true" />
-                ) : (
-                  <Maximize2 className="size-4" aria-hidden="true" />
-                )
-              }
-              onClick={fullScreen.toggle}
-            >
-              {fullScreen.on ? '全画面を終了' : '全画面'}
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            icon={<Printer className="size-4" aria-hidden="true" />}
-            onClick={() => window.open(printHref, '_blank')}
-          >
-            週間予定を印刷
-          </Button>
-          <div className="relative min-w-44 flex-1 sm:max-w-72">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-sub"
-            />
-            <input
-              ref={search}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  setQuery('');
-                  event.currentTarget.blur();
-                }
-              }}
-              placeholder="会社名・予定を検索"
-              aria-label="会社名・予定を検索"
-              className="h-10 w-full border border-line-strong bg-surface pr-8 pl-9 text-sm placeholder:text-ink-disabled focus:border-main-focus focus:ring-3 focus:ring-main-focus/20 focus:outline-none"
-            />
-            {query ? (
-              <button
-                type="button"
-                aria-label="検索を消す"
-                onClick={() => setQuery('')}
-                className="absolute top-1/2 right-1.5 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center text-ink-sub hover:text-ink"
-              >
-                <X aria-hidden="true" className="size-3.5" />
-              </button>
-            ) : (
-              <kbd className="absolute top-1/2 right-2 -translate-y-1/2 border border-line px-1.5 text-[10px] text-ink-sub max-sm:hidden">
-                /
-              </kbd>
-            )}
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            {(view === 'week' || view === 'day') && people.length > 1 && (
-              <Select
-                aria-label="並び順"
-                size="sm"
-                className="w-36"
-                value={sort}
-                options={[
-                  { value: 'name', label: '並び：名前順' },
-                  { value: 'free', label: '並び：空きが多い順' },
-                  { value: 'busy', label: '並び：アポが多い順' },
-                ]}
-                onChange={(e) => setSort(e.target.value as 'name' | 'free' | 'busy')}
-              />
-            )}
-            <button
-              type="button"
-              aria-pressed={showFree}
-              onClick={() => setShowFree(!showFree)}
-              title="空き時間を表示（F）"
-              className={cn(
-                'inline-flex h-10 cursor-pointer items-center gap-1.5 border px-3 text-sm font-bold transition-colors',
-                showFree
-                  ? 'border-free-ink/40 bg-free text-free-ink'
-                  : 'border-line-strong bg-surface text-ink-sub hover:text-ink',
-              )}
-            >
-              <Sparkles aria-hidden="true" className="size-4" />
-              空き時間
-            </button>
-            {(view === 'day' || (view === 'week' && people.length === 1)) && (
-              <div
-                className="flex items-center border border-line-strong bg-surface"
-                title="時間の幅（+ / −）"
-              >
-                <button
-                  type="button"
-                  aria-label="時間の幅を狭める"
-                  onClick={() => zoomBy(-1)}
-                  disabled={zoom <= (ZOOMS[0] ?? 0)}
-                  className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:text-ink disabled:opacity-30"
-                >
-                  <Minus aria-hidden="true" className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="時間の幅を広げる"
-                  onClick={() => zoomBy(1)}
-                  disabled={zoom >= (ZOOMS[ZOOMS.length - 1] ?? 9)}
-                  className="flex size-10 cursor-pointer items-center justify-center border-l border-line text-ink-sub hover:text-ink disabled:opacity-30"
-                >
-                  <Plus aria-hidden="true" className="size-4" />
-                </button>
-              </div>
-            )}
-            <button
-              type="button"
-              aria-label="ショートカット一覧"
-              onClick={() => setHelp(true)}
-              className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink md:flex"
-            >
-              <Keyboard aria-hidden="true" className="size-4" />
-            </button>
-          </div>
-        </div>
-      </StickyTop>
-
-      {/* いま／次 (11/17, as Teams shows the next meeting): your plan in progress and the next
-          one today, with 参加 for an online meeting. Only while today is on screen. */}
-      {upNext.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-stretch gap-2">
-          {upNext.slice(0, 2).map((event) => {
-            const start = jstMinutesOfDay(new Date(event.startsAt));
-            const live = start <= nowMinutes;
-            const meetingUrl = event.plan?.appointment?.meetingUrl;
-            return (
-              <div
-                key={event.key}
-                className={cn(
-                  'flex min-w-0 flex-1 basis-72 items-center gap-3 border border-line border-l-4 bg-surface px-3 py-2 shadow-(--shadow-card)',
-                  live ? 'border-l-success' : 'border-l-main',
-                )}
-              >
-                <span
-                  className={cn(
-                    'shrink-0 px-1.5 text-[11px] leading-5 font-bold',
-                    live ? 'bg-success-soft text-success' : 'bg-main-soft text-main',
-                  )}
-                >
-                  {live ? 'いま' : `あと${hoursLabel(start - nowMinutes)}`}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelected(event)}
-                  className="min-w-0 flex-1 cursor-pointer text-left"
-                >
-                  <span className="block truncate text-sm font-bold">{event.title}</span>
-                  <span className="block text-xs text-ink-sub tabular-nums">
-                    {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
-                  </span>
-                </button>
-                {meetingUrl && (
-                  <a
-                    href={meetingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-8 shrink-0 items-center gap-1.5 bg-success px-3 text-xs font-bold text-white hover:brightness-110"
-                  >
-                    <Video aria-hidden="true" className="size-3.5" />
-                    参加
-                  </a>
-                )}
-              </div>
-            );
-          })}
+    <div className={showToday ? 'lg:flex lg:items-start lg:gap-4' : undefined}>
+      {showToday && (
+        <div className="shrink-0 max-lg:hidden">
+          <TodayCallList onRep={(repId) => update({ people: repId })} />
         </div>
       )}
-
-      <div className={cn('grid gap-4', railOpen && 'lg:grid-cols-[15.5rem_minmax(0,1fr)]')}>
-        {/* Side rail */}
-        <aside
-          // Its own scroll only when it is taller than the screen's room (11/17).
-          style={{ maxHeight: railHeight }}
-          className={cn('hidden flex-col gap-5 overflow-y-auto', railOpen && 'lg:flex')}
-          aria-label="カレンダーの絞り込み"
-        >
-          <div className="border border-line bg-surface p-3">
-            <MiniMonth
-              date={date}
-              range={{
-                from: view === 'month' ? monthRange(date).from : from,
-                to: view === 'month' ? monthRange(date).to : to,
-              }}
-              holidays={holidays}
-              load={load}
-              onPick={(day) => update({ date: day })}
-            />
+      <div ref={pageRef} className="schedule-page min-w-0 flex-1">
+        {/* The title, its buttons and the toolbar stay at the top while the page scrolls (11/17). */}
+        <StickyTop className="mb-3">
+          {/* Page head: the place and the actions people come here for. */}
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-ink-sub">{ja.module.schedule}</p>
+              <h1 className="text-2xl font-bold tracking-tight tabular-nums">
+                {title}
+                <span className="ml-2 text-base font-medium text-ink-sub">{year}年</span>
+              </h1>
+            </div>
+            {canTelemaBook && areaPanel && (
+              <AreaPicker
+                area={areaPanel.area}
+                onArea={(next) => {
+                  areaPanel.setArea(next);
+                  setPage(0);
+                }}
+              />
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {canTimeOff && (
+                <Button
+                  variant="secondary"
+                  icon={<CalendarOff className="size-4" aria-hidden="true" />}
+                  onClick={() => setTimeOffDialog({ userId: chosen[0] ?? user.id, date })}
+                >
+                  休みを入力
+                </Button>
+              )}
+              {canTelemaBook && (
+                <Link to={existingListBookingHref(date, chosen[0])} className={bookingLink}>
+                  <FileUp className="size-4" aria-hidden="true" />
+                  既存リストのアポを登録
+                </Link>
+              )}
+              {canSalesBook && (
+                <Link
+                  to={`${paths.book}?source=SALES_BOOKED&repId=${user.id}&date=${date}`}
+                  className={bookingLink}
+                >
+                  <UserPlus className="size-4" aria-hidden="true" />
+                  自分で取ったアポを登録
+                </Link>
+              )}
+              {canWritePlans && (
+                <Button
+                  icon={<Plus className="size-4" aria-hidden="true" />}
+                  onClick={() =>
+                    setPlanDialog({ defaults: { ownerId: chosen[0] ?? user.id, date } })
+                  }
+                >
+                  予定を追加
+                </Button>
+              )}
+            </div>
           </div>
 
-          {upNext.length > 0 && (
-            <section className="border border-line bg-surface">
-              <h2 className="border-b border-line px-3 py-2 text-xs font-bold text-ink-sub">
-                このあと（自分）
-              </h2>
-              <ul>
-                {upNext.map((event) => {
-                  const start = jstMinutesOfDay(new Date(event.startsAt));
-                  const inProgress = start <= nowMinutes;
-                  return (
-                    <li key={event.key}>
-                      <button
-                        type="button"
-                        onClick={() => setSelected(event)}
-                        className="flex w-full cursor-pointer gap-2 px-3 py-2 text-left hover:bg-hover"
-                      >
-                        <span className={cn('w-[3px] shrink-0', EVENT_STYLE[event.kind].bar)} />
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-bold">{event.title}</span>
-                          <span className="text-[11px] text-ink-sub tabular-nums">
-                            {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
-                            <span
-                              className={cn(
-                                'ml-1.5 font-bold',
-                                inProgress ? 'text-now' : 'text-calls',
-                              )}
-                            >
-                              {inProgress ? '進行中' : `あと${hoursLabel(start - nowMinutes)}`}
+          {/* Toolbar */}
+          <div className="-mx-1 flex flex-wrap items-center gap-2 px-1 py-1.5">
+            <button
+              type="button"
+              aria-label={railOpen ? 'サイドを閉じる' : 'サイドを開く'}
+              aria-pressed={railOpen}
+              onClick={() => setRailOpen(!railOpen)}
+              className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink lg:flex"
+            >
+              <PanelLeft aria-hidden="true" className="size-4" />
+            </button>
+            <div className="flex items-center border border-line-strong bg-surface">
+              <button
+                type="button"
+                aria-label="前へ"
+                onClick={() => step(-1)}
+                className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
+              >
+                <ChevronLeft aria-hidden="true" className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => update({ date: todayJst() })}
+                className="h-10 cursor-pointer border-x border-line px-4 text-sm font-bold hover:bg-column"
+              >
+                今日
+              </button>
+              <button
+                type="button"
+                aria-label="次へ"
+                onClick={() => step(1)}
+                className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:bg-column hover:text-ink"
+              >
+                <ChevronRight aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+            <Segmented
+              aria-label="表示"
+              value={requested}
+              onChange={(value) => update({ view: value })}
+              options={VIEWS}
+            />
+            {fullScreen.supported && (
+              <Button
+                variant="secondary"
+                icon={
+                  fullScreen.on ? (
+                    <Minimize2 className="size-4" aria-hidden="true" />
+                  ) : (
+                    <Maximize2 className="size-4" aria-hidden="true" />
+                  )
+                }
+                onClick={fullScreen.toggle}
+              >
+                {fullScreen.on ? '全画面を終了' : '全画面'}
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              icon={<Printer className="size-4" aria-hidden="true" />}
+              onClick={() => window.open(printHref, '_blank')}
+            >
+              週間予定を印刷
+            </Button>
+            <div className="relative min-w-44 flex-1 sm:max-w-72">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-sub"
+              />
+              <input
+                ref={search}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    setQuery('');
+                    event.currentTarget.blur();
+                  }
+                }}
+                placeholder="会社名・予定を検索"
+                aria-label="会社名・予定を検索"
+                className="h-10 w-full border border-line-strong bg-surface pr-8 pl-9 text-sm placeholder:text-ink-disabled focus:border-main-focus focus:ring-3 focus:ring-main-focus/20 focus:outline-none"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  aria-label="検索を消す"
+                  onClick={() => setQuery('')}
+                  className="absolute top-1/2 right-1.5 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center text-ink-sub hover:text-ink"
+                >
+                  <X aria-hidden="true" className="size-3.5" />
+                </button>
+              ) : (
+                <kbd className="absolute top-1/2 right-2 -translate-y-1/2 border border-line px-1.5 text-[10px] text-ink-sub max-sm:hidden">
+                  /
+                </kbd>
+              )}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              {(view === 'week' || view === 'day') && people.length > 1 && (
+                <Select
+                  aria-label="並び順"
+                  size="sm"
+                  className="w-36"
+                  value={sort}
+                  options={[
+                    { value: 'name', label: '並び：名前順' },
+                    { value: 'free', label: '並び：空きが多い順' },
+                    { value: 'busy', label: '並び：アポが多い順' },
+                  ]}
+                  onChange={(e) => setSort(e.target.value as 'name' | 'free' | 'busy')}
+                />
+              )}
+              <button
+                type="button"
+                aria-pressed={showFree}
+                onClick={() => setShowFree(!showFree)}
+                title="空き時間を表示（F）"
+                className={cn(
+                  'inline-flex h-10 cursor-pointer items-center gap-1.5 border px-3 text-sm font-bold transition-colors',
+                  showFree
+                    ? 'border-free-ink/40 bg-free text-free-ink'
+                    : 'border-line-strong bg-surface text-ink-sub hover:text-ink',
+                )}
+              >
+                <Sparkles aria-hidden="true" className="size-4" />
+                空き時間
+              </button>
+              {(view === 'day' || (view === 'week' && people.length === 1)) && (
+                <div
+                  className="flex items-center border border-line-strong bg-surface"
+                  title="時間の幅（+ / −）"
+                >
+                  <button
+                    type="button"
+                    aria-label="時間の幅を狭める"
+                    onClick={() => zoomBy(-1)}
+                    disabled={zoom <= (ZOOMS[0] ?? 0)}
+                    className="flex size-10 cursor-pointer items-center justify-center text-ink-sub hover:text-ink disabled:opacity-30"
+                  >
+                    <Minus aria-hidden="true" className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="時間の幅を広げる"
+                    onClick={() => zoomBy(1)}
+                    disabled={zoom >= (ZOOMS[ZOOMS.length - 1] ?? 9)}
+                    className="flex size-10 cursor-pointer items-center justify-center border-l border-line text-ink-sub hover:text-ink disabled:opacity-30"
+                  >
+                    <Plus aria-hidden="true" className="size-4" />
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                aria-label="ショートカット一覧"
+                onClick={() => setHelp(true)}
+                className="hidden size-10 cursor-pointer items-center justify-center border border-line-strong bg-surface text-ink-sub hover:text-ink md:flex"
+              >
+                <Keyboard aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+          </div>
+        </StickyTop>
+
+        {/* いま／次 (11/17, as Teams shows the next meeting): your plan in progress and the next
+            one today, with 参加 for an online meeting. Only while today is on screen. */}
+        {upNext.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-stretch gap-2">
+            {upNext.slice(0, 2).map((event) => {
+              const start = jstMinutesOfDay(new Date(event.startsAt));
+              const live = start <= nowMinutes;
+              const meetingUrl = event.plan?.appointment?.meetingUrl;
+              return (
+                <div
+                  key={event.key}
+                  className={cn(
+                    'flex min-w-0 flex-1 basis-72 items-center gap-3 border border-line border-l-4 bg-surface px-3 py-2 shadow-(--shadow-card)',
+                    live ? 'border-l-success' : 'border-l-main',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'shrink-0 px-1.5 text-[11px] leading-5 font-bold',
+                      live ? 'bg-success-soft text-success' : 'bg-main-soft text-main',
+                    )}
+                  >
+                    {live ? 'いま' : `あと${hoursLabel(start - nowMinutes)}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(event)}
+                    className="min-w-0 flex-1 cursor-pointer text-left"
+                  >
+                    <span className="block truncate text-sm font-bold">{event.title}</span>
+                    <span className="block text-xs text-ink-sub tabular-nums">
+                      {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
+                    </span>
+                  </button>
+                  {meetingUrl && (
+                    <a
+                      href={meetingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-8 shrink-0 items-center gap-1.5 bg-success px-3 text-xs font-bold text-white hover:brightness-110"
+                    >
+                      <Video aria-hidden="true" className="size-3.5" />
+                      参加
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className={cn('grid gap-4', railOpen && 'lg:grid-cols-[15.5rem_minmax(0,1fr)]')}>
+          {/* Side rail */}
+          <aside
+            // Its own scroll only when it is taller than the screen's room (11/17).
+            style={{ maxHeight: railHeight }}
+            className={cn('hidden flex-col gap-5 overflow-y-auto', railOpen && 'lg:flex')}
+            aria-label="カレンダーの絞り込み"
+          >
+            <div className="border border-line bg-surface p-3">
+              <MiniMonth
+                date={date}
+                range={{
+                  from: view === 'month' ? monthRange(date).from : from,
+                  to: view === 'month' ? monthRange(date).to : to,
+                }}
+                holidays={holidays}
+                load={load}
+                onPick={(day) => update({ date: day })}
+              />
+            </div>
+
+            {upNext.length > 0 && (
+              <section className="border border-line bg-surface">
+                <h2 className="border-b border-line px-3 py-2 text-xs font-bold text-ink-sub">
+                  このあと（自分）
+                </h2>
+                <ul>
+                  {upNext.map((event) => {
+                    const start = jstMinutesOfDay(new Date(event.startsAt));
+                    const inProgress = start <= nowMinutes;
+                    return (
+                      <li key={event.key}>
+                        <button
+                          type="button"
+                          onClick={() => setSelected(event)}
+                          className="flex w-full cursor-pointer gap-2 px-3 py-2 text-left hover:bg-hover"
+                        >
+                          <span className={cn('w-[3px] shrink-0', EVENT_STYLE[event.kind].bar)} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-bold">{event.title}</span>
+                            <span className="text-[11px] text-ink-sub tabular-nums">
+                              {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
+                              <span
+                                className={cn(
+                                  'ml-1.5 font-bold',
+                                  inProgress ? 'text-now' : 'text-calls',
+                                )}
+                              >
+                                {inProgress ? '進行中' : `あと${hoursLabel(start - nowMinutes)}`}
+                              </span>
                             </span>
                           </span>
-                        </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+
+            <section>
+              <h2 className="mb-1.5 px-1 text-xs font-bold text-ink-sub">表示する種類</h2>
+              <ul className="flex flex-col">
+                {KINDS.map((kind) => {
+                  const on = !hidden.includes(kind);
+                  const count = counts(kind);
+                  return (
+                    <li key={kind}>
+                      <button
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() =>
+                          setHidden(on ? [...hidden, kind] : hidden.filter((k) => k !== kind))
+                        }
+                        className={cn(
+                          'flex min-h-8 w-full cursor-pointer items-center gap-2 px-1 text-left text-sm hover:bg-column',
+                          !on && 'text-ink-disabled line-through',
+                        )}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'size-3 shrink-0',
+                            EVENT_STYLE[kind].dot,
+                            !on && 'opacity-30',
+                          )}
+                        />
+                        <span className="flex-1">{EVENT_STYLE[kind].label}</span>
+                        {count > 0 && (
+                          <span className="text-[11px] text-ink-sub tabular-nums">{count}</span>
+                        )}
                       </button>
                     </li>
                   );
                 })}
               </ul>
+              <p className="mt-2 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
+                <span className="inline-block size-3 bg-off ring-1 ring-line" aria-hidden="true" />
+                土日祝・会社の休日
+              </p>
+              <p className="mt-1 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
+                <span
+                  className="inline-block size-3 bg-dayoff ring-1 ring-line"
+                  aria-hidden="true"
+                />
+                休み（終日）
+              </p>
+              <p className="mt-1 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-3 ring-1 ring-line [background-image:repeating-linear-gradient(135deg,rgb(46_111_102/0.3)_0_2px,transparent_2px_5px)]"
+                />
+                移動時間（アポの前後{schedule.data?.travelBufferMinutes ?? 0}分）
+              </p>
             </section>
-          )}
+          </aside>
 
-          <section>
-            <h2 className="mb-1.5 px-1 text-xs font-bold text-ink-sub">表示する種類</h2>
-            <ul className="flex flex-col">
-              {KINDS.map((kind) => {
-                const on = !hidden.includes(kind);
-                const count = counts(kind);
-                return (
-                  <li key={kind}>
-                    <button
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() =>
-                        setHidden(on ? [...hidden, kind] : hidden.filter((k) => k !== kind))
+          <div ref={viewBox} className="min-w-0">
+            {!(view === 'week' && visible.length > 1) &&
+              !(view === 'day' && visible.length > DAY_COLUMNS_MAX) && (
+                <div className="mb-2 w-64">{memberMenu(view === 'day' || view === 'week')}</div>
+              )}
+
+            <QueryState query={schedule}>
+              {(data) => {
+                if (people.length === 0) {
+                  return (
+                    <p className="border border-line bg-surface py-16 text-center text-sm text-ink-sub">
+                      メンバーを1人以上選んでください。
+                    </p>
+                  );
+                }
+                if (view === 'day' && visible.length > DAY_COLUMNS_MAX) {
+                  const holiday = data.holidays.find((h) => h.date === date);
+                  return (
+                    <DayTimeline
+                      maxHeight={fill}
+                      corner={memberMenu(true)}
+                      date={date}
+                      people={visible}
+                      events={events}
+                      off={isWeekend(date) || Boolean(holiday)}
+                      onEvent={setSelected}
+                      peek={peek.bind}
+                      showFree={showFree}
+                      pxPerMin={zoom}
+                      colorOrder={order}
+                      onRange={
+                        canWritePlans
+                          ? (ownerId, start, end) => openRange(ownerId, date, start, end)
+                          : undefined
                       }
-                      className={cn(
-                        'flex min-h-8 w-full cursor-pointer items-center gap-2 px-1 text-left text-sm hover:bg-column',
-                        !on && 'text-ink-disabled line-through',
-                      )}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'size-3 shrink-0',
-                          EVENT_STYLE[kind].dot,
-                          !on && 'opacity-30',
-                        )}
-                      />
-                      <span className="flex-1">{EVENT_STYLE[kind].label}</span>
-                      {count > 0 && (
-                        <span className="text-[11px] text-ink-sub tabular-nums">{count}</span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="mt-2 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
-              <span className="inline-block size-3 bg-off ring-1 ring-line" aria-hidden="true" />
-              土日祝・会社の休日
-            </p>
-            <p className="mt-1 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
-              <span className="inline-block size-3 bg-dayoff ring-1 ring-line" aria-hidden="true" />
-              休み（終日）
-            </p>
-            <p className="mt-1 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
-              <span
-                aria-hidden="true"
-                className="inline-block size-3 ring-1 ring-line [background-image:repeating-linear-gradient(135deg,rgb(46_111_102/0.3)_0_2px,transparent_2px_5px)]"
-              />
-              移動時間（アポの前後{schedule.data?.travelBufferMinutes ?? 0}分）
-            </p>
-          </section>
-        </aside>
-
-        <div ref={viewBox} className="min-w-0">
-          {!(view === 'week' && visible.length > 1) &&
-            !(view === 'day' && visible.length > DAY_COLUMNS_MAX) && (
-              <div className="mb-2 w-64">{memberMenu(view === 'day' || view === 'week')}</div>
-            )}
-
-          <QueryState query={schedule}>
-            {(data) => {
-              if (people.length === 0) {
-                return (
-                  <p className="border border-line bg-surface py-16 text-center text-sm text-ink-sub">
-                    メンバーを1人以上選んでください。
-                  </p>
-                );
-              }
-              if (view === 'day' && visible.length > DAY_COLUMNS_MAX) {
-                const holiday = data.holidays.find((h) => h.date === date);
-                return (
-                  <DayTimeline
-                    maxHeight={fill}
-                    corner={memberMenu(true)}
-                    date={date}
-                    people={visible}
-                    events={events}
-                    off={isWeekend(date) || Boolean(holiday)}
-                    onEvent={setSelected}
-                    peek={peek.bind}
-                    showFree={showFree}
-                    pxPerMin={zoom}
-                    colorOrder={order}
-                    onRange={
-                      canWritePlans
-                        ? (ownerId, start, end) => openRange(ownerId, date, start, end)
-                        : undefined
-                    }
-                  />
-                );
-              }
-              if (view === 'day') {
-                return (
-                  <DayView
-                    date={date}
-                    people={visible}
-                    events={events}
-                    holidays={data.holidays}
-                    onEvent={setSelected}
-                    peek={peek.bind}
-                    showFree={showFree}
-                    bufferMinutes={data.travelBufferMinutes}
-                    pxPerMin={zoom}
-                    // 5:00–24:00 scrolls inside the view instead of making the page very tall.
-                    maxHeight={fill}
-                    colorOrder={order}
-                    onRange={
-                      canWritePlans
-                        ? (ownerId, start, end, title) =>
-                            openRange(ownerId, date, start, end, title)
-                        : undefined
-                    }
-                    onQuickAdd={
-                      canWritePlans
-                        ? (ownerId, start, end, title) => quickAdd(ownerId, date, start, end, title)
-                        : undefined
-                    }
-                  />
-                );
-              }
-              if (view === 'week' && people.length === 1) {
-                const person = people[0] ?? allPeople[0];
-                if (!person) return null;
-                const days = Array.from({ length: weekDays }, (_, index) => addDays(from, index));
-                return (
-                  <TimeGrid
-                    maxHeight={fill}
-                    pxPerMin={zoom}
-                    onEvent={setSelected}
-                    peek={peek.bind}
-                    showFree={showFree}
-                    bufferMinutes={data.travelBufferMinutes}
-                    minColumnWidth={120}
-                    columnLabel={(column) => `${column.date}の空き時間を選ぶ`}
-                    onRange={
-                      canWritePlans
-                        ? (column, start, end, title) =>
-                            openRange(person.id, column.date, start, end, title)
-                        : undefined
-                    }
-                    onQuickAdd={
-                      canWritePlans
-                        ? (column, start, end, title) =>
-                            quickAdd(person.id, column.date, start, end, title)
-                        : undefined
-                    }
-                    columns={days.map((day) => {
-                      const holiday = data.holidays.find((h) => h.date === day);
-                      const dayEvents = eventsOn(events, day, person.id);
-                      const off = isWeekend(day) || Boolean(holiday);
-                      return {
-                        key: day,
-                        date: day,
-                        personId: person.id,
-                        off,
-                        // A whole day of 休み shades the whole column (11/17).
-                        dayOff: !off && isDayOff(dayEvents),
-                        events: dayEvents,
-                        header: (
-                          <button
-                            type="button"
-                            onClick={() => update({ view: 'day', date: day })}
-                            className="flex w-full cursor-pointer items-end gap-1.5 text-left"
-                          >
-                            <span
-                              className={cn(
-                                'flex h-8 min-w-8 items-center justify-center px-1 text-xl leading-none font-bold tabular-nums',
-                                day === todayJst() ? 'bg-main text-white' : 'hover:bg-column',
-                              )}
+                    />
+                  );
+                }
+                if (view === 'day') {
+                  return (
+                    <DayView
+                      date={date}
+                      people={visible}
+                      events={events}
+                      holidays={data.holidays}
+                      onEvent={setSelected}
+                      peek={peek.bind}
+                      showFree={showFree}
+                      bufferMinutes={data.travelBufferMinutes}
+                      pxPerMin={zoom}
+                      // 5:00–24:00 scrolls inside the view instead of making the page very tall.
+                      maxHeight={fill}
+                      colorOrder={order}
+                      onRange={
+                        canWritePlans
+                          ? (ownerId, start, end, title) =>
+                              openRange(ownerId, date, start, end, title)
+                          : undefined
+                      }
+                      onQuickAdd={
+                        canWritePlans
+                          ? (ownerId, start, end, title) =>
+                              quickAdd(ownerId, date, start, end, title)
+                          : undefined
+                      }
+                    />
+                  );
+                }
+                if (view === 'week' && people.length === 1) {
+                  const person = people[0] ?? allPeople[0];
+                  if (!person) return null;
+                  const days = Array.from({ length: weekDays }, (_, index) => addDays(from, index));
+                  return (
+                    <TimeGrid
+                      maxHeight={fill}
+                      pxPerMin={zoom}
+                      onEvent={setSelected}
+                      peek={peek.bind}
+                      showFree={showFree}
+                      bufferMinutes={data.travelBufferMinutes}
+                      minColumnWidth={120}
+                      columnLabel={(column) => `${column.date}の空き時間を選ぶ`}
+                      onRange={
+                        canWritePlans
+                          ? (column, start, end, title) =>
+                              openRange(person.id, column.date, start, end, title)
+                          : undefined
+                      }
+                      onQuickAdd={
+                        canWritePlans
+                          ? (column, start, end, title) =>
+                              quickAdd(person.id, column.date, start, end, title)
+                          : undefined
+                      }
+                      columns={days.map((day) => {
+                        const holiday = data.holidays.find((h) => h.date === day);
+                        const dayEvents = eventsOn(events, day, person.id);
+                        const off = isWeekend(day) || Boolean(holiday);
+                        return {
+                          key: day,
+                          date: day,
+                          personId: person.id,
+                          off,
+                          // A whole day of 休み shades the whole column (11/17).
+                          dayOff: !off && isDayOff(dayEvents),
+                          events: dayEvents,
+                          header: (
+                            <button
+                              type="button"
+                              onClick={() => update({ view: 'day', date: day })}
+                              className="flex w-full cursor-pointer items-end gap-1.5 text-left"
                             >
-                              {Number(day.slice(8))}
-                            </span>
-                            <span className="min-w-0 pb-0.5 text-[11px] text-ink-sub">
-                              {weekdayJa(day)}
-                              {holiday && (
-                                <span className="ml-1 truncate text-sunday">{holiday.name}</span>
-                              )}
-                            </span>
-                          </button>
-                        ),
-                      };
-                    })}
-                  />
-                );
-              }
-              if (view === 'week') {
+                              <span
+                                className={cn(
+                                  'flex h-8 min-w-8 items-center justify-center px-1 text-xl leading-none font-bold tabular-nums shrink-0 whitespace-nowrap',
+                                  day === todayJst() ? 'bg-main text-white' : 'hover:bg-column',
+                                )}
+                              >
+                                {Number(day.slice(8))}
+                              </span>
+                              <span
+                                className="min-w-0 truncate pb-0.5 text-[11px] text-ink-sub"
+                                title={holiday?.name}
+                              >
+                                {weekdayJa(day)}
+                                {holiday && (
+                                  <span className="ml-1 truncate text-sunday">{holiday.name}</span>
+                                )}
+                              </span>
+                            </button>
+                          ),
+                        };
+                      })}
+                    />
+                  );
+                }
+                if (view === 'week') {
+                  return (
+                    <WeekView
+                      corner={memberMenu(true)}
+                      start={from}
+                      dayCount={weekDays}
+                      people={visible}
+                      events={events}
+                      holidays={data.holidays}
+                      onEvent={setSelected}
+                      peek={peek.bind}
+                      showFree={showFree}
+                      colorOrder={order}
+                      onDay={(_personId, day) => update({ view: 'day', date: day })}
+                      onAdd={
+                        canWritePlans
+                          ? (ownerId, day) => setPlanDialog({ defaults: { ownerId, date: day } })
+                          : undefined
+                      }
+                    />
+                  );
+                }
+                if (view === 'list') {
+                  return (
+                    <AgendaView
+                      from={from}
+                      days={LIST_DAYS}
+                      people={people}
+                      events={events}
+                      holidays={data.holidays}
+                      onEvent={setSelected}
+                      peek={peek.bind}
+                      colorOrder={order}
+                    />
+                  );
+                }
                 return (
-                  <WeekView
-                    corner={memberMenu(true)}
-                    start={from}
-                    dayCount={weekDays}
-                    people={visible}
-                    events={events}
-                    holidays={data.holidays}
-                    onEvent={setSelected}
-                    peek={peek.bind}
-                    showFree={showFree}
-                    colorOrder={order}
-                    onDay={(_personId, day) => update({ view: 'day', date: day })}
-                    onAdd={
-                      canWritePlans
-                        ? (ownerId, day) => setPlanDialog({ defaults: { ownerId, date: day } })
-                        : undefined
-                    }
-                  />
-                );
-              }
-              if (view === 'list') {
-                return (
-                  <AgendaView
-                    from={from}
-                    days={LIST_DAYS}
+                  <MonthView
+                    month={date}
                     people={people}
                     events={events}
                     holidays={data.holidays}
                     onEvent={setSelected}
                     peek={peek.bind}
                     colorOrder={order}
+                    onDay={(day) => update({ view: 'day', date: day })}
                   />
                 );
-              }
-              return (
-                <MonthView
-                  month={date}
-                  people={people}
-                  events={events}
-                  holidays={data.holidays}
-                  onEvent={setSelected}
-                  peek={peek.bind}
-                  colorOrder={order}
-                  onDay={(day) => update({ view: 'day', date: day })}
-                />
-              );
-            }}
-          </QueryState>
-          {view !== 'list' && view !== 'month' && canWritePlans && (
-            <p className="mt-2 text-xs text-ink-sub">
-              {view === 'week' && people.length > 1
-                ? 'マスにカーソルを合わせると「＋」で予定を追加できます。1人だけ選ぶと時間の表示になります。'
-                : '空いている時間をドラッグすると、その時間で予定を追加できます。'}
-            </p>
-          )}
+              }}
+            </QueryState>
+            {view !== 'list' && view !== 'month' && canWritePlans && (
+              <p className="mt-2 text-xs text-ink-sub">
+                {view === 'week' && people.length > 1
+                  ? 'マスにカーソルを合わせると「＋」で予定を追加できます。1人だけ選ぶと時間の表示になります。'
+                  : '空いている時間をドラッグすると、その時間で予定を追加できます。'}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
 
-      {peek.layer}
-      <EventDetailDialog
-        event={selected}
-        onClose={() => setSelected(null)}
-        onEdit={(event) => {
-          setSelected(null);
-          setPlanDialog({ event });
-        }}
-      />
-      {planDialog && (
-        <PlanDialog
-          open
-          plan={planDialog.event?.plan}
-          defaults={planDialog.defaults}
-          onClose={() => setPlanDialog(null)}
+        {peek.layer}
+        <EventDetailDialog
+          event={selected}
+          onClose={() => setSelected(null)}
+          onEdit={(event) => {
+            setSelected(null);
+            setPlanDialog({ event });
+          }}
         />
-      )}
-      {timeOffDialog && (
-        <TimeOffDialog open defaults={timeOffDialog} onClose={() => setTimeOffDialog(null)} />
-      )}
-      <Dialog open={help} onClose={() => setHelp(false)} title="キーボードショートカット">
-        <dl className="grid grid-cols-[7rem_1fr] gap-y-2 text-sm">
-          {SHORTCUTS.map(([key, label]) => (
-            <div key={key} className="contents">
-              <dt>
-                <kbd className="border border-line-strong bg-column px-2 py-0.5 text-xs font-bold">
-                  {key}
-                </kbd>
-              </dt>
-              <dd>{label}</dd>
-            </div>
-          ))}
-        </dl>
-      </Dialog>
+        {planDialog && (
+          <PlanDialog
+            open
+            plan={planDialog.event?.plan}
+            defaults={planDialog.defaults}
+            onClose={() => setPlanDialog(null)}
+          />
+        )}
+        {timeOffDialog && (
+          <TimeOffDialog open defaults={timeOffDialog} onClose={() => setTimeOffDialog(null)} />
+        )}
+        <Dialog open={help} onClose={() => setHelp(false)} title="キーボードショートカット">
+          <dl className="grid grid-cols-[7rem_1fr] gap-y-2 text-sm">
+            {SHORTCUTS.map(([key, label]) => (
+              <div key={key} className="contents">
+                <dt>
+                  <kbd className="border border-line-strong bg-column px-2 py-0.5 text-xs font-bold">
+                    {key}
+                  </kbd>
+                </dt>
+                <dd>{label}</dd>
+              </div>
+            ))}
+          </dl>
+        </Dialog>
+      </div>
     </div>
   );
 }
