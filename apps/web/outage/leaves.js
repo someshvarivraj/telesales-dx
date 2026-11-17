@@ -266,9 +266,238 @@ function buildScenery(width, height, top, ratio) {
     ctx.ellipse(tx, ty, r, r * 1.15, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  // Kobe Port Tower (11/17) on the far right shore, between the sign-in box and the waterfall.
-  drawPortTower(ctx, towerXOf(width), top - 1, Math.min(118, tall * 0.66));
-  return { canvas: canvas, fallX: fallX, fallTop: fallTop, fallBottom: fallBottom };
+  // Kobe's waterfront (11/17) on the far right shore, between the sign-in box and the
+  // waterfall: Sannomiya's towers, Hotel Okura, the Maritime Museum and Port Tower. The Ferris
+  // wheel and the tower's light show move, so they are drawn each frame (drawHarborLights).
+  var harbor = harborOf(width, top, tall);
+  drawWaterfront(ctx, harbor, seeded(1117));
+  drawPortTower(ctx, harbor.towerX, harbor.base, harbor.H);
+  return {
+    canvas: canvas,
+    fallX: fallX,
+    fallTop: fallTop,
+    fallBottom: fallBottom,
+    harbor: harbor,
+  };
+}
+
+/** Where the waterfront stands; everything is placed in tower heights (H) around the tower. */
+function harborOf(width, top, tall) {
+  var H = Math.min(118, tall * 0.66);
+  var towerX = towerXOf(width);
+  return {
+    H: H,
+    towerX: towerX,
+    base: top - 1,
+    wheel: { x: towerX - H * 1.3, y: top - 1 - H * 0.47, r: H * 0.36 },
+  };
+}
+
+/** Lit and dark windows in rows over a building's face. */
+function drawWindows(ctx, x, y, w, h, rand, lit) {
+  var cell = Math.max(2.4, w / 6);
+  for (var wy = y + cell * 0.8; wy < y + h - cell * 0.6; wy += cell) {
+    for (var wx = x + cell * 0.5; wx < x + w - cell * 0.6; wx += cell) {
+      ctx.fillStyle = rand() < lit ? 'rgba(255, 214, 128, 0.95)' : 'rgba(70, 78, 100, 0.35)';
+      ctx.fillRect(wx, wy, cell * 0.5, cell * 0.42);
+    }
+  }
+}
+
+/**
+ * The still part of the waterfront: Sannomiya's high-rises behind (hazy blue, warm windows), a
+ * few lower blocks east of the tower, Hotel Okura's round white tower, the Maritime Museum's
+ * white wave of a roof, and the quay along the water.
+ */
+function drawWaterfront(ctx, harbor, rand) {
+  var H = harbor.H;
+  var X = harbor.towerX;
+  var base = harbor.base;
+  if (!(H > 30)) return;
+  ctx.save();
+  // Sannomiya: the tall ones behind, west of the tower; lower blocks to the east.
+  var blocks = [
+    [-2.75, 0.17, 0.42],
+    [-2.55, 0.2, 0.62],
+    [-2.33, 0.15, 0.5],
+    [-2.15, 0.22, 0.86],
+    [-1.9, 0.16, 0.58],
+    [-1.72, 0.2, 0.74],
+    [-1.5, 0.15, 0.46],
+    [-1.06, 0.18, 0.68],
+    [-0.86, 0.15, 0.5],
+    [0.62, 0.18, 0.4],
+    [0.82, 0.22, 0.52],
+    [1.05, 0.16, 0.34],
+    [1.22, 0.2, 0.44],
+  ];
+  blocks.forEach(function (b) {
+    var w = b[1] * H;
+    var h = b[2] * H;
+    var x = X + b[0] * H;
+    var face = ctx.createLinearGradient(x, 0, x + w, 0);
+    face.addColorStop(0, '#9aa3b8');
+    face.addColorStop(1, '#7f88a0');
+    ctx.fillStyle = face;
+    ctx.fillRect(x, base - h, w, h);
+    drawWindows(ctx, x, base - h, w, h, rand, 0.42);
+  });
+  // A red light on top of the tallest one.
+  ctx.fillStyle = '#ff4a3a';
+  ctx.beginPath();
+  ctx.arc(X - 2.15 * H + 0.11 * H, base - 0.86 * H - 2, Math.max(1.2, H / 70), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hotel Okura Kobe: the tall round white tower beside Port Tower.
+  var ow = H * 0.2;
+  var oh = H * 0.74;
+  var ox = X + H * 0.3;
+  var body = ctx.createLinearGradient(ox, 0, ox + ow, 0);
+  body.addColorStop(0, '#f3f1f4');
+  body.addColorStop(0.6, '#dcdae2');
+  body.addColorStop(1, '#bdbccb');
+  ctx.fillStyle = body;
+  ctx.fillRect(ox, base - oh, ow, oh);
+  ctx.beginPath();
+  ctx.ellipse(ox + ow / 2, base - oh, ow / 2, ow * 0.12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (var band = base - oh + H * 0.06; band < base - H * 0.05; band += H * 0.05) {
+    ctx.fillStyle = rand() < 0.6 ? 'rgba(255, 214, 128, 0.85)' : 'rgba(80, 88, 112, 0.35)';
+    ctx.fillRect(ox + ow * 0.12, band, ow * 0.76, H * 0.018);
+  }
+
+  // Kobe Maritime Museum: a low white frame like a wave or a sail, west of the tower.
+  var mx = X - H * 0.72;
+  var mw = H * 0.52;
+  ctx.fillStyle = '#e9edf3';
+  ctx.fillRect(mx, base - H * 0.08, mw, H * 0.08);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.lineWidth = Math.max(0.8, H / 110);
+  for (var r = 0; r <= 8; r++) {
+    var u = r / 8;
+    var peak = H * (0.12 + 0.16 * Math.sin(Math.PI * u * 0.9 + 0.2));
+    ctx.beginPath();
+    ctx.moveTo(mx + u * mw, base - H * 0.08);
+    ctx.lineTo(mx + u * mw + H * 0.05, base - peak);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  for (var q = 0; q <= 16; q++) {
+    var v = q / 16;
+    var yTop = base - H * (0.12 + 0.16 * Math.sin(Math.PI * v * 0.9 + 0.2));
+    if (q === 0) ctx.moveTo(mx + v * mw + H * 0.05, yTop);
+    else ctx.lineTo(mx + v * mw + H * 0.05, yTop);
+  }
+  ctx.stroke();
+
+  // The quay along the water.
+  ctx.fillStyle = '#8c8f99';
+  ctx.fillRect(X - H * 2.9, base - 2, H * 4.35, 3);
+  ctx.restore();
+}
+
+/** The shared outline of Port Tower: a twisted hyperboloid of straight pipes. */
+function towerGeom(cx, base, H) {
+  var latticeTop = base - H * 0.84;
+  var bottomR = H * 0.17;
+  var topR = H * 0.14;
+  var twist = 2.45;
+  return {
+    cx: cx,
+    base: base,
+    H: H,
+    latticeTop: latticeTop,
+    bottomR: bottomR,
+    topR: topR,
+    twist: twist,
+    radius: function (v) {
+      return Math.sqrt(
+        (1 - v) * (1 - v) * bottomR * bottomR +
+          v * v * topR * topR +
+          2 * v * (1 - v) * bottomR * topR * Math.cos(twist),
+      );
+    },
+    yAt: function (v) {
+      return base - (base - latticeTop) * v;
+    },
+  };
+}
+
+/**
+ * What moves on the waterfront (11/17): Harborland's big Ferris wheel turning slowly with its
+ * rim lights running through the colours, and Port Tower's light show, bands of coloured light
+ * rising up the pipes.
+ */
+function drawHarborLights(ctx, harbor, t) {
+  if (!harbor || !(harbor.H > 30)) return;
+  var H = harbor.H;
+  var wheel = harbor.wheel;
+  ctx.save();
+  // The wheel's legs.
+  ctx.strokeStyle = '#a7adbd';
+  ctx.lineWidth = Math.max(1, H / 80);
+  ctx.beginPath();
+  ctx.moveTo(wheel.x - wheel.r * 0.55, harbor.base);
+  ctx.lineTo(wheel.x, wheel.y);
+  ctx.lineTo(wheel.x + wheel.r * 0.55, harbor.base);
+  ctx.stroke();
+  // Spokes and rim.
+  var turn = t * 0.12;
+  ctx.strokeStyle = 'rgba(236, 240, 248, 0.85)';
+  ctx.lineWidth = Math.max(0.6, H / 160);
+  for (var s = 0; s < 12; s++) {
+    var a = turn + (s / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(wheel.x, wheel.y);
+    ctx.lineTo(wheel.x + Math.cos(a) * wheel.r, wheel.y + Math.sin(a) * wheel.r);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(wheel.x, wheel.y, wheel.r, 0, Math.PI * 2);
+  ctx.stroke();
+  // Rim lights, a wave of colour running round.
+  var dots = 40;
+  var dot = Math.max(0.9, H / 95);
+  for (var d = 0; d < dots; d++) {
+    var b = turn + (d / dots) * Math.PI * 2;
+    ctx.fillStyle = 'hsl(' + ((d * 9 + t * 50) % 360) + ', 90%, 64%)';
+    ctx.beginPath();
+    ctx.arc(wheel.x + Math.cos(b) * wheel.r, wheel.y + Math.sin(b) * wheel.r, dot, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Gondolas hang below the rim.
+  for (var g = 0; g < 16; g++) {
+    var c = turn + (g / 16) * Math.PI * 2 + 0.1;
+    var gx = wheel.x + Math.cos(c) * wheel.r;
+    var gy = wheel.y + Math.sin(c) * wheel.r;
+    ctx.fillStyle = 'rgba(255, 232, 186, 0.9)';
+    ctx.fillRect(gx - dot * 1.1, gy + dot * 0.6, dot * 2.2, dot * 1.8);
+  }
+  ctx.fillStyle = '#f4f6fb';
+  ctx.beginPath();
+  ctx.arc(wheel.x, wheel.y, dot * 1.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Port Tower's light show: two soft bands of colour rising up the lattice.
+  var tower = towerGeom(harbor.towerX, harbor.base, H);
+  ctx.beginPath();
+  for (var i = 0; i <= 24; i++) ctx.lineTo(tower.cx - tower.radius(i / 24), tower.yAt(i / 24));
+  for (var j = 24; j >= 0; j--) ctx.lineTo(tower.cx + tower.radius(j / 24), tower.yAt(j / 24));
+  ctx.closePath();
+  ctx.clip();
+  for (var k = 0; k < 2; k++) {
+    var v = (t * 0.16 + k * 0.5) % 1;
+    var y = tower.yAt(v);
+    var band = (tower.base - tower.latticeTop) * 0.16;
+    var hue = (t * 35 + k * 140) % 360;
+    var glow = ctx.createLinearGradient(0, y - band, 0, y + band);
+    glow.addColorStop(0, 'hsla(' + hue + ', 95%, 62%, 0)');
+    glow.addColorStop(0.5, 'hsla(' + hue + ', 95%, 62%, 0.6)');
+    glow.addColorStop(1, 'hsla(' + hue + ', 95%, 62%, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(tower.cx - tower.bottomR, y - band, tower.bottomR * 2, band * 2);
+  }
+  ctx.restore();
 }
 
 /** Where Kobe Port Tower stands: right of the centred sign-in box, left of the waterfall. */
@@ -285,20 +514,13 @@ function towerXOf(width) {
  */
 function drawPortTower(ctx, cx, base, H) {
   if (!(H > 30)) return;
-  var latticeTop = base - H * 0.84;
-  var bottomR = H * 0.17;
-  var topR = H * 0.14;
-  var twist = 2.45;
-  var radius = function (v) {
-    return Math.sqrt(
-      (1 - v) * (1 - v) * bottomR * bottomR +
-        v * v * topR * topR +
-        2 * v * (1 - v) * bottomR * topR * Math.cos(twist),
-    );
-  };
-  var yAt = function (v) {
-    return base - (base - latticeTop) * v;
-  };
+  var geom = towerGeom(cx, base, H);
+  var latticeTop = geom.latticeTop;
+  var bottomR = geom.bottomR;
+  var topR = geom.topR;
+  var twist = geom.twist;
+  var radius = geom.radius;
+  var yAt = geom.yAt;
   ctx.save();
   ctx.globalAlpha = 0.94;
 
@@ -1690,6 +1912,7 @@ export function startLeaves(canvas, options) {
       drawLake(ctx, w, h, top, 0, []);
       drawScenery(ctx, scenery, w, h, top, true);
       drawWaterfall(ctx, scenery, top, 0, []);
+      drawHarborLights(ctx, scenery && scenery.harbor, 0);
       drawTorii(ctx, toriiOf(w, h, top), 0);
       drawFisher(ctx, fisherOf(w, h), 0, 0);
       drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
@@ -1957,6 +2180,7 @@ export function startLeaves(canvas, options) {
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawWaterfall(ctx, scenery, lakeTop, clock, falls);
+      drawHarborLights(ctx, scenery && scenery.harbor, clock);
       drawTorii(ctx, torii, clock);
       swimFish(fish, dt, width, height, lakeTop);
       fish.sort(function (a, b) {
