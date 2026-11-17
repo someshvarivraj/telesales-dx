@@ -1066,6 +1066,15 @@ function sunOf(width) {
   return { x: 100, y: 100, r: 68 };
 }
 
+/**
+ * Whether a point on the screen is on the moon (11/17): the sign-in screen's grid skips its
+ * click ripple there, so a click on the moon shows only the moon's own animation.
+ */
+export function isOnMoon(x, y, width) {
+  var moon = sunOf(width);
+  return Math.hypot(x - moon.x, y - moon.y) <= moon.r * 1.1;
+}
+
 /** The mallet (杵): pointing at the mortar when down, raised over the rabbit's head when up. */
 var MALLET_DOWN = Math.PI + 0.06;
 var MALLET_UP = Math.PI + 1.5;

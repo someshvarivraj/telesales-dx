@@ -3,6 +3,7 @@ import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
 import { MoraBotStory, type StoryStep } from '@/components/brand/MoraBotStory';
 import { FallingLeaves } from '@/components/brand/FallingLeaves';
+import { isOnMoon } from '../../../outage/leaves.js';
 import { LastThemeProvider } from '@/components/brand/theme';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
@@ -64,6 +65,7 @@ export function AuthLayout({
         {leaves ? (
           <GridBackdrop
             lines={false}
+            skipClick={(x, y) => isOnMoon(x, y, window.innerWidth)}
             className="z-0 [mask-image:linear-gradient(to_bottom,black_45%,transparent_62%)]"
           />
         ) : (
