@@ -14,8 +14,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { AreaPicker } from './AreaPicker';
-import { useSalesPanel } from './SalesPanel';
-import { CalendarDays } from 'lucide-react';
+import { useCompanyFocus, useSalesPanel } from './SalesPanel';
+import { CalendarDays, X } from 'lucide-react';
 import { StickyExtra } from '@/components/ui/StickyTop';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -107,7 +107,7 @@ export function CallTargetsPage() {
     };
 
   const areaPanel = useSalesPanel();
-  const salesArea = areaPanel && areaPanel.mode !== 'closed' ? areaPanel.area : null;
+  const focus = useCompanyFocus(areaPanel);
   const conditions = chips.map((chip) => ({
     field: chip.field,
     value: chip.field === 'nextCallDue' ? todayJst() : chip.value,
@@ -121,7 +121,7 @@ export function CallTargetsPage() {
     nonTargetsOnly: list === 'NON_TARGETS',
     assignedToMe: onlyMine,
     // The area chosen beside the list (a prefecture or city of the 営業担当表, 11/17).
-    areas: salesArea ? [salesArea] : [],
+    areas: focus.areas,
   };
   const query = useCompanySearch({ ...search, page, pageSize: 50 });
 
@@ -185,6 +185,27 @@ export function CallTargetsPage() {
                 setPage(1);
               }}
             />
+            {focus.repName ? (
+              <span className="flex min-w-0 items-center gap-1.5 border border-main-line bg-main-soft px-2 py-1 text-xs text-main">
+                <span className="truncate font-bold">{focus.label}の企業を表示中</span>
+                <button
+                  type="button"
+                  aria-label="営業での絞り込みをやめる"
+                  title="営業での絞り込みをやめる"
+                  onClick={() => {
+                    areaPanel.setRepId('');
+                    setPage(1);
+                  }}
+                  className="flex size-5 shrink-0 cursor-pointer items-center justify-center hover:bg-main-line/50"
+                >
+                  <X aria-hidden="true" className="size-3.5" />
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs text-ink-sub">
+                営業の予定で営業を選ぶと、その人の担当エリアの企業だけになります。
+              </span>
+            )}
           </div>
         )}
       </StickyExtra>

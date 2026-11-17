@@ -5,6 +5,8 @@ import {
   isWeekend,
   Permission,
   areaLabel,
+  areasOfRep,
+  areasSummary,
   repIdsOfArea,
   Role,
   type SalesAreaPick,
@@ -71,6 +73,9 @@ interface PanelContext {
   /** The chosen sales area: narrows the reps here and the companies in the call list (11/17). */
   area: SalesAreaPick | null;
   setArea: (area: SalesAreaPick | null) => void;
+  /** The sales rep being looked at (営業 A in the sketch): their calendar and their area's companies. */
+  repId: string;
+  setRepId: (repId: string) => void;
 }
 
 const Ctx = createContext<PanelContext | null>(null);
@@ -141,6 +146,7 @@ export function SalesPanelProvider({ children }: { children: ReactNode }) {
       // Private windows: the choice just isn't remembered.
     }
   }, []);
+  const [repId, setRepId] = useState('');
   const openFor = useCallback((next: PanelCompany) => {
     setCompany(next);
     setModeState((current) => (current === 'split' || current === 'max' ? current : 'float'));
@@ -153,8 +159,10 @@ export function SalesPanelProvider({ children }: { children: ReactNode }) {
       openFor,
       area,
       setArea,
+      repId,
+      setRepId,
     }),
-    [canBook, user.roles, mode, setMode, company, openFor, area, setArea],
+    [canBook, user.roles, mode, setMode, company, openFor, area, setArea, repId],
   );
   return <Ctx.Provider value={value as PanelContext}>{children}</Ctx.Provider>;
 }
@@ -178,7 +186,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const navigate = useNavigate();
   const reps = usePeople(Role.Sales);
   const find = useFindRep();
-  const [repId, setRepId] = useState<string>('');
+  const { repId, setRepId } = panel;
   const [date, setDate] = useState(todayJst);
 
   // A new company: ask the area table who its rep is, and show that person.
@@ -189,7 +197,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
       { companyId: company.id },
       { onSuccess: (suggestion) => suggestion.rep && setRepId(suggestion.rep.id) },
     );
-  }, [company, mutate]);
+  }, [company, mutate, setRepId]);
 
   const monday = mondayOf(date);
   const days = Array.from({ length: 5 }, (_, i) => addDays(monday, i));
@@ -201,6 +209,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const areas = useSalesAreas();
   const inArea = repIdsOfArea(areas.data ?? [], area);
   const allReps = reps.data ?? [];
+  const focus = useCompanyFocus(panel);
   const people = inArea ? allReps.filter((person) => inArea.has(person.id)) : allReps;
   const order = allReps.map((person) => person.id);
   const rep = allReps.find((person) => person.id === repId);
@@ -300,12 +309,16 @@ function PanelBody({ panel }: { panel: PanelContext }) {
           className="h-8 min-w-40 border border-line-strong bg-surface px-2 text-sm"
         >
           <option value="">{area ? 'エリアの営業全員（1日）' : '営業全員（1日）'}</option>
-          {(rep && !people.includes(rep) ? [rep, ...people] : people).map((person) => (
-            <option key={person.id} value={person.id}>
-              {person.name}
-              {suggestion?.rep?.id === person.id ? '（担当表）' : ''}
-            </option>
-          ))}
+          {(rep && !people.includes(rep) ? [rep, ...people] : people).map((person) => {
+            const where = areasSummary(areasOfRep(areas.data ?? [], person.id));
+            return (
+              <option key={person.id} value={person.id}>
+                {person.name}
+                {where ? `｜${where}` : ''}
+                {suggestion?.rep?.id === person.id ? '（担当表）' : ''}
+              </option>
+            );
+          })}
         </select>
         <div className="flex items-center">
           <ModeButton
@@ -358,7 +371,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
 
       <div className="relative min-h-0 flex-1 overflow-hidden p-2">
         {mode === 'max' && (
-          <AreaCompanies area={area} onPick={panel.openFor} current={company?.id} />
+          <AreaCompanies focus={focus} onPick={panel.openFor} current={company?.id} />
         )}
         {repId && rep ? (
           <TimeGrid
@@ -462,23 +475,23 @@ function ModeButton({
  * 担当営業 and their week come up; its name opens the company page.
  */
 function AreaCompanies({
-  area,
+  focus,
   onPick,
   current,
 }: {
-  area: SalesAreaPick | null;
+  focus: CompanyFocus;
   onPick: (company: PanelCompany) => void;
   current?: string;
 }) {
   const [folded, setFolded] = useState(false);
   const query = useCompanySearch({
-    areas: area ? [area] : [],
+    areas: focus.areas,
     callTargetsOnly: true,
     page: 1,
     pageSize: 50,
   });
   const items = query.data?.items ?? [];
-  const label = areaLabel(area);
+  const label = focus.label;
   return (
     <aside
       aria-label="エリアの企業"
@@ -487,15 +500,20 @@ function AreaCompanies({
       <button
         type="button"
         onClick={() => setFolded(!folded)}
-        className="flex h-9 shrink-0 cursor-pointer items-center gap-2 border-b border-line bg-column px-3 text-left text-sm font-bold"
+        className="flex shrink-0 cursor-pointer items-start gap-2 border-b border-line bg-column px-3 py-2 text-left"
       >
-        企業名
-        <span className="text-xs font-normal text-ink-sub">
-          {label}・{query.data?.total ?? 0}件
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-bold whitespace-nowrap">
+            企業名
+            <span className="text-xs font-normal text-ink-sub tabular-nums">
+              {query.data?.total ?? 0}件
+            </span>
+          </span>
+          <span className="mt-0.5 block text-[11px] leading-snug text-ink-sub">{label}</span>
         </span>
         <ChevronRight
           aria-hidden="true"
-          className={cn('ml-auto size-4 transition-transform', !folded && 'rotate-90')}
+          className={cn('mt-0.5 size-4 shrink-0 transition-transform', !folded && 'rotate-90')}
         />
       </button>
       {!folded && (
@@ -528,4 +546,37 @@ function AreaCompanies({
       )}
     </aside>
   );
+}
+
+export interface CompanyFocus {
+  /** The places whose companies are shown (empty: every company). */
+  areas: SalesAreaPick[];
+  /** What is shown, in words: 「山口 碧紘さんの担当エリア」, 「兵庫県 神戸市北区」… */
+  label: string;
+  /** Set when a sales rep decides the companies (and can be cleared). */
+  repName: string | null;
+}
+
+/**
+ * Which companies go with what テレマ are looking at (sketch 11/17): a chosen 営業 brings their
+ * area's companies (営業 A → 大阪); otherwise the chosen area; otherwise every company.
+ */
+export function useCompanyFocus(panel: PanelContext | null): CompanyFocus {
+  const areas = useSalesAreas();
+  const reps = usePeople(Role.Sales);
+  const on = panel !== null && panel.mode !== 'closed';
+  const rep = on && panel.repId ? reps.data?.find((person) => person.id === panel.repId) : null;
+  if (rep) {
+    const picks = areasOfRep(areas.data ?? [], rep.id);
+    return {
+      areas: picks,
+      label:
+        picks.length > 0
+          ? `${rep.name}さんの担当エリア（${areasSummary(picks)}）`
+          : `${rep.name}さん（営業担当表にエリアがないため、すべての企業）`,
+      repName: rep.name,
+    };
+  }
+  const area = on ? panel.area : null;
+  return { areas: area ? [area] : [], label: areaLabel(area), repName: null };
 }

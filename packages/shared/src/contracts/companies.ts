@@ -211,7 +211,7 @@ export const companySearchRequestSchema = z.object({
         city: z.string().trim().max(50).nullable().default(null),
       }),
     )
-    .max(20)
+    .max(200)
     .default([]),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(200).default(50),

@@ -134,9 +134,16 @@ export class AreaTableService {
       select: { prefecture: true, city: true, salesRepId: true, backupRepId: true },
       orderBy: [{ prefecture: 'asc' }, { city: 'asc' }],
     });
-    const byPrefecture = new Map<string, { reps: Set<string>; cities: Map<string, Set<string>> }>();
+    const byPrefecture = new Map<
+      string,
+      { reps: Set<string>; wide: Set<string>; cities: Map<string, Set<string>> }
+    >();
     for (const row of rows) {
-      const entry = byPrefecture.get(row.prefecture) ?? { reps: new Set(), cities: new Map() };
+      const entry = byPrefecture.get(row.prefecture) ?? {
+        reps: new Set(),
+        wide: new Set(),
+        cities: new Map(),
+      };
       byPrefecture.set(row.prefecture, entry);
       const reps = [row.salesRepId, row.backupRepId].filter((id): id is string => Boolean(id));
       for (const id of reps) entry.reps.add(id);
@@ -145,6 +152,9 @@ export class AreaTableService {
         const city = entry.cities.get(place) ?? new Set<string>();
         entry.cities.set(place, city);
         for (const id of reps) city.add(id);
+      } else {
+        // （全域）, その他… or no city: the rep's area is the whole prefecture.
+        for (const id of reps) entry.wide.add(id);
       }
     }
     const order = (name: string) => {
@@ -156,6 +166,7 @@ export class AreaTableService {
       .map(([prefecture, entry]) => ({
         prefecture,
         repIds: [...entry.reps],
+        wideRepIds: [...entry.wide],
         cities: [...entry.cities.entries()]
           .sort(([a], [b]) => a.localeCompare(b, 'ja'))
           .map(([city, reps]) => ({ city, repIds: [...reps] })),
