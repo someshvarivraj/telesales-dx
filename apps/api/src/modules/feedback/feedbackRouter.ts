@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { currentUserOf } from '../../http/currentUser.js';
 import type { Authenticator } from '../../http/middleware/Authenticator.js';
-import { sendFile, uploadedFiles } from '../../http/sendFile.js';
+import { canShowInline, sendFile, uploadedFiles } from '../../http/sendFile.js';
 import { uploadFiles } from '../../http/upload.js';
 import { idParam, parseQuery, parseWith } from '../../http/validate.js';
 import type { FeedbackService } from './FeedbackService.js';
@@ -51,7 +51,7 @@ export function createFeedbackRouter(deps: {
       idParam(req, 'fileId'),
     );
     sendFile(res, record, content, {
-      inline: record.contentType.startsWith('image/') || record.contentType === 'application/pdf',
+      inline: canShowInline(record.contentType),
     });
   });
   router.get('/feedback/mine', view, async (req, res) => {

@@ -6,10 +6,17 @@ describe('safeRedirectTarget', () => {
     expect(safeRedirectTarget('/sales/schedule?week=2')).toBe('/sales/schedule?week=2');
   });
 
-  it.each([null, '', 'https://evil.example', '//evil.example', '/login?redirect=/x'])(
-    'rejects %s',
-    (value) => {
-      expect(safeRedirectTarget(value)).toBeNull();
-    },
-  );
+  it.each([
+    null,
+    '',
+    'https://evil.example',
+    '//evil.example',
+    '/\\evil.example',
+    '/\\/evil.example',
+    '/\tevil',
+    'javascript:alert(1)',
+    '/login?redirect=/x',
+  ])('rejects %s', (value) => {
+    expect(safeRedirectTarget(value)).toBeNull();
+  });
 });

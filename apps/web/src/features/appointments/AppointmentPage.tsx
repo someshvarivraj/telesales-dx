@@ -57,6 +57,7 @@ import { PreparationSection } from './PreparationSection';
 import { ResultSection } from './ResultSection';
 import { TimelineSection } from './TimelineSection';
 import { BackBar, BackLink } from '@/components/ui/BackLink';
+import { ExternalLink } from '@/components/ui/ExternalLink';
 
 type OpenDialog = 'reschedule' | 'cancel' | 'request' | 'edit' | null;
 
@@ -433,16 +434,7 @@ export function AppointmentPage() {
                       { label: '住所', value: appointment.company.address, wide: true },
                       {
                         label: 'URL',
-                        value: appointment.company.url ? (
-                          <a
-                            href={appointment.company.url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="break-all text-link"
-                          >
-                            {appointment.company.url}
-                          </a>
-                        ) : null,
+                        value: <ExternalLink value={appointment.company.url} />,
                         wide: true,
                       },
                     ]}

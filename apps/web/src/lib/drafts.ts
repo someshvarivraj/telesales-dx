@@ -60,6 +60,22 @@ export function pruneDrafts(): void {
   }
 }
 
+/**
+ * Drops one person's kept drafts (11/18 audit): called when they log out, so what they typed —
+ * company and contact details — does not stay in the browser of a shared PC. A session that only
+ * runs out keeps them, so nothing typed is lost.
+ */
+export function clearDrafts(userId: string): void {
+  try {
+    const mine = `${PREFIX}${userId}.`;
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(mine)) remove(key);
+    }
+  } catch {
+    // Storage blocked.
+  }
+}
+
 export interface Draft<T> {
   value: T;
   set: (value: SetStateAction<T>) => void;

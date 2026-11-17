@@ -21,6 +21,11 @@ export interface Table {
 
 /** Rows looked at for the headers: the Telema template has a file-name note in row 1. */
 const HEADER_SEARCH_ROWS = 10;
+/**
+ * The most data rows one list may have (11/18 audit). Lists are about 1,000 rows; without a cap
+ * a 20 MB file of short rows could tie up the server and the database for a long time.
+ */
+export const MAX_TABLE_ROWS = 20_000;
 
 /** The first row where at least two cells are known column names; row 1 if none is. */
 function findHeaderRow(rows: string[][]): number {
@@ -96,6 +101,9 @@ async function readXlsx(content: Buffer): Promise<Table> {
   if (!sheet || sheet.rowCount < 1) {
     throw new FileUnreadableError({ reason: 'empty' });
   }
+  if (sheet.rowCount > MAX_TABLE_ROWS + HEADER_SEARCH_ROWS) {
+    throw new FileUnreadableError({ reason: 'too_many_rows', max: MAX_TABLE_ROWS });
+  }
   const top: string[][] = [];
   for (let number = 1; number <= Math.min(HEADER_SEARCH_ROWS, sheet.rowCount); number++) {
     const cells: string[] = [];
@@ -137,6 +145,9 @@ function readCsv(content: Buffer): Table {
   }
   if (records.length === 0) {
     throw new FileUnreadableError({ reason: 'empty' });
+  }
+  if (records.length > MAX_TABLE_ROWS + HEADER_SEARCH_ROWS) {
+    throw new FileUnreadableError({ reason: 'too_many_rows', max: MAX_TABLE_ROWS });
   }
   const headerIndex = findHeaderRow(records);
   const { headers, notes } = headersOf(records[headerIndex] ?? []);

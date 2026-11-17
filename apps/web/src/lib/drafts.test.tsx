@@ -58,3 +58,16 @@ describe('useDraft (request 11/2: a refresh keeps what was typed)', () => {
     expect(draft.result.current.value).toBe('新しい');
   });
 });
+
+describe('clearDrafts (on log out, 11/18 audit)', () => {
+  it("drops only that person's drafts", async () => {
+    const { clearDrafts } = await import('./drafts');
+    localStorage.setItem('telesales.draft.u1.booking:new', '{"value":1,"savedAt":0}');
+    localStorage.setItem('telesales.draft.u2.booking:new', '{"value":2,"savedAt":0}');
+    localStorage.setItem('telesales.theme', 'teams');
+    clearDrafts('u1');
+    expect(localStorage.getItem('telesales.draft.u1.booking:new')).toBeNull();
+    expect(localStorage.getItem('telesales.draft.u2.booking:new')).not.toBeNull();
+    expect(localStorage.getItem('telesales.theme')).toBe('teams');
+  });
+});

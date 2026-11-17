@@ -136,22 +136,25 @@ export class EmailService {
     if (claimed.count === 0) {
       throw new InvalidStateError({ reason: 'already_sent' });
     }
-    // The sender address may be shared, so the e-mail says who sent it (Sano 10/24 No.6).
-    const draft = await this.prisma.outboundEmail.findUniqueOrThrow({ where: { id } });
-    const user = await this.prisma.user.findUnique({
-      where: { id: actor.id },
-      select: { name: true },
-    });
-    const stamped = stampOperator(draft, {
-      name: user?.name ?? '',
-      roles: Object.values(Role).filter((role) => actor.hasRole(role)),
-    });
-    const row = await this.prisma.outboundEmail.update({
-      where: { id },
-      data: { subject: stamped.subject, body: stamped.body },
-    });
-    const attachments = await this.loadAttachments(row.attachmentIds);
+    // Everything after the claim is inside the try (11/18 audit): a failure while preparing the
+    // mail (sender, attachments) used to leave it QUEUED for good, and every retry was refused
+    // as "already sent" although nothing had gone out.
     try {
+      // The sender address may be shared, so the e-mail says who sent it (Sano 10/24 No.6).
+      const draft = await this.prisma.outboundEmail.findUniqueOrThrow({ where: { id } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: actor.id },
+        select: { name: true },
+      });
+      const stamped = stampOperator(draft, {
+        name: user?.name ?? '',
+        roles: Object.values(Role).filter((role) => actor.hasRole(role)),
+      });
+      const row = await this.prisma.outboundEmail.update({
+        where: { id },
+        data: { subject: stamped.subject, body: stamped.body },
+      });
+      const attachments = await this.loadAttachments(row.attachmentIds);
       await this.mailer.send({
         to: row.to,
         cc: row.cc,
@@ -177,10 +180,10 @@ export class EmailService {
       targetType: 'email',
       targetId: id,
       metadata: {
-        noticeCode: row.noticeCode,
-        appointmentId: row.appointmentId,
-        to: row.to,
-        cc: row.cc,
+        noticeCode: sent.noticeCode,
+        appointmentId: sent.appointmentId,
+        to: sent.to,
+        cc: sent.cc,
       },
     });
     return toEmailDraftDto(sent);
