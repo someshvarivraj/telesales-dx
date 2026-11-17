@@ -6,14 +6,16 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from '
  * telemarketing team at the 10/27 test; it is their default and anyone can switch.
  * 「目にやさしい」 (11/2): warm paper tones, softer text and a calm green, for long days.
  * 「ダーク」 (11/17): dark surfaces and light text, the same colours for each kind of thing.
+ * 「Teams風」 (11/17): the purple, greys and type of Microsoft Teams, for people used to it.
  */
-export type Theme = 'standard' | 'sakura' | 'eyecare' | 'dark';
+export type Theme = 'standard' | 'sakura' | 'eyecare' | 'dark' | 'teams';
 
 export const THEMES: { value: Theme; label: string }[] = [
   { value: 'standard', label: '標準' },
   { value: 'sakura', label: 'さくら' },
   { value: 'eyecare', label: '目にやさしい' },
   { value: 'dark', label: 'ダーク' },
+  { value: 'teams', label: 'Teams風' },
 ];
 
 const LAST_KEY = 'telesales.theme.last';
