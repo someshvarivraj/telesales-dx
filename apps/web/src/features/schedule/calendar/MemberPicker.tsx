@@ -20,12 +20,10 @@ interface MemberPickerProps {
   onGroups: (groups: SavedGroup[]) => void;
 }
 
-const SHOWN_CHOSEN = 8;
-const SHOWN_RESULTS = 30;
 
 /**
- * Who the calendar shows, built for a hundred people or more: search by name, saved
- * groups (マイグループ) and only the chosen people listed — never the whole staff at once.
+ * Who the calendar shows: everyone as a checkbox list (narrowed by the search above it),
+ * presets and saved groups (マイグループ).
  */
 export function MemberPicker({
   people,
@@ -37,7 +35,6 @@ export function MemberPicker({
 }: MemberPickerProps) {
   const [query, setQuery] = useState('');
   const [naming, setNaming] = useState<string | null>(null);
-  const [more, setMore] = useState(false);
   const order = people.map((person) => person.id);
   const everyone = chosen.length === 0;
   const chosenPeople = everyone ? [] : people.filter((person) => chosen.includes(person.id));
@@ -52,6 +49,14 @@ export function MemberPicker({
   const toggle = (id: string) => {
     const next = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
     onChange(next.length === people.length ? [] : next);
+  };
+  // A tick on/off. From 全員, taking one person off keeps all the others.
+  const check = (id: string) => {
+    if (everyone) {
+      onChange(order.filter((x) => x !== id));
+      return;
+    }
+    toggle(id);
   };
   const sameAs = (ids: string[]) =>
     !everyone && ids.length === chosen.length && ids.every((id) => chosen.includes(id));
@@ -118,83 +123,50 @@ export function MemberPicker({
         />
       </div>
 
-      {needle ? (
-        <ul className="scroll-quiet max-h-72 overflow-y-auto border border-line bg-surface">
-          {results.length === 0 && (
-            <li className="px-3 py-2 text-sm text-ink-sub">見つかりません</li>
-          )}
-          {results.slice(0, SHOWN_RESULTS).map((person) => {
-            const on = !everyone && chosen.includes(person.id);
-            return (
-              <li key={person.id}>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => toggle(person.id)}
-                  className="flex min-h-9 w-full cursor-pointer items-center gap-2 px-2.5 text-left text-sm hover:bg-hover"
-                >
-                  <Avatar size="sm" name={person.name} color={personColor(person.id, order)} />
-                  <span className="flex-1 truncate">{person.name}</span>
-                  <span className={cn('text-[11px] font-bold', on ? 'text-success' : 'text-link')}>
-                    {on ? '表示中' : '＋追加'}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-          {results.length > SHOWN_RESULTS && (
-            <li className="px-3 py-1.5 text-[11px] text-ink-sub">
-              ほか{results.length - SHOWN_RESULTS}人。名前をもう少し入れてください。
-            </li>
-          )}
-        </ul>
-      ) : everyone ? (
-        <p className="border border-dashed border-line px-3 py-2.5 text-xs leading-relaxed text-ink-sub">
-          {people.length}人全員を表示中です。名前で探して追加するか、グループを選ぶと絞り込めます。
-        </p>
-      ) : (
-        <div>
-          <p className="mb-1 flex items-center px-0.5 text-[11px] font-bold text-ink-sub">
-            表示中 {chosenPeople.length}人
+      {/* Everyone as a checkbox list (11/17: テレマ choosing several 営業 had to search one
+          name at a time). Typing above narrows the list. */}
+      <div>
+        <p className="mb-1 flex items-center px-0.5 text-[11px] font-bold text-ink-sub">
+          {everyone ? `全員（${people.length}人）を表示中` : `表示中 ${chosenPeople.length}人`}
+          {!everyone && (
             <button
               type="button"
               onClick={() => onChange([])}
               className="ml-auto h-6 cursor-pointer px-1.5 font-bold text-ink-sub transition-colors hover:bg-hover hover:text-ink"
             >
-              解除
-            </button>
-          </p>
-          <ul className="flex flex-col">
-            {(more ? chosenPeople : chosenPeople.slice(0, SHOWN_CHOSEN)).map((person) => (
-              <li key={person.id} className="group flex min-h-8 items-center gap-2 px-0.5">
-                <Avatar size="sm" name={person.name} color={personColor(person.id, order)} />
-                <span className="flex-1 truncate text-sm">
-                  {person.name}
-                  {person.id === meId && (
-                    <span className="ml-1 text-[11px] text-ink-sub">（自分）</span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`${person.name}を外す`}
-                  onClick={() => toggle(person.id)}
-                  className="flex size-6 cursor-pointer items-center justify-center text-ink-sub opacity-0 group-hover:opacity-100 hover:text-danger focus:opacity-100"
-                >
-                  <X aria-hidden="true" className="size-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-          {chosenPeople.length > SHOWN_CHOSEN && (
-            <button
-              type="button"
-              onClick={() => setMore(!more)}
-              className="mt-1 h-7 w-full cursor-pointer px-1.5 text-left text-[11px] font-bold text-ink-sub transition-colors hover:bg-hover hover:text-ink"
-            >
-              {more ? '閉じる' : `ほか${chosenPeople.length - SHOWN_CHOSEN}人を表示`}
+              全員に戻す
             </button>
           )}
-          {naming === null ? (
+        </p>
+        <ul className="scroll-quiet max-h-72 overflow-y-auto border border-line bg-surface">
+          {needle && results.length === 0 && (
+            <li className="px-3 py-2 text-sm text-ink-sub">見つかりません</li>
+          )}
+          {(needle ? results : people).map((person) => {
+            const on = everyone || chosen.includes(person.id);
+            return (
+              <li key={person.id}>
+                <label className="flex min-h-9 w-full cursor-pointer items-center gap-2 px-2.5 text-sm hover:bg-hover">
+                  <input
+                    type="checkbox"
+                    className="check-input"
+                    checked={on}
+                    onChange={() => check(person.id)}
+                  />
+                  <Avatar size="sm" name={person.name} color={personColor(person.id, order)} />
+                  <span className="flex-1 truncate">
+                    {person.name}
+                    {person.id === meId && (
+                      <span className="ml-1 text-[11px] text-ink-sub">（自分）</span>
+                    )}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+        {!everyone &&
+          (naming === null ? (
             !groups.some((group) => sameAs(group.ids)) &&
             chosenPeople.length > 1 && (
               <button
@@ -241,9 +213,8 @@ export function MemberPicker({
                 <Trash2 aria-hidden="true" className="size-3.5" />
               </button>
             </form>
-          )}
-        </div>
-      )}
+          ))}
+      </div>
     </div>
   );
 }
