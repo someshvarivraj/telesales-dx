@@ -118,8 +118,8 @@ function rangesOf(top, tall, rand) {
 }
 
 /**
- * Which mountain is at this point of the screen (11/17), the front-most first: `mid`, `fuji`
- * or `far` (the near hills are no longer drawn), with the screen y of its ridge right there — or null (sky or lake). The
+ * Which mountain is at this point of the screen (11/17), the front-most first: `near` (the
+ * brown hills, left side only), `mid`, `fuji` or `far`, with the screen y of its ridge right there — or null (sky or lake). The
  * sign-in screen uses it to let MoraBot peek out from behind the mountain that was clicked.
  */
 export function mountainAt(x, y, width, height) {
@@ -129,6 +129,7 @@ export function mountainAt(x, y, width, height) {
   var ranges = rangesOf(top, tall, seeded(1113));
   var fuji = fujiOf(width, height);
   var order = [
+    ['near', nearRidgeOf(ranges.near, width, top, tall)],
     ['mid', ranges.mid],
     ['fuji', fuji.ridge],
     ['far', ranges.far],
@@ -144,7 +145,9 @@ export function mountainAt(x, y, width, height) {
 export function rangeRidge(kind, x, width, height) {
   var top = lakeTopOf(height);
   var tall = Math.min(200, height * 0.21);
-  return rangesOf(top, tall, seeded(1113))[kind](x);
+  var ranges = rangesOf(top, tall, seeded(1113));
+  if (kind === 'near') return nearRidgeOf(ranges.near, width, top, tall)(x);
+  return ranges[kind](x);
 }
 
 /** Same numbers every time (mountains keep their shape when the window is resized). */
@@ -196,8 +199,8 @@ function buildScenery(width, height, top, ratio) {
     ctx.fillRect(0, 0, width, top + 4);
   }
   var ranges = rangesOf(top, tall, rand);
-  // Only the far blue ranges (11/17): the near brown hills with their autumn trees are gone, so
-  // the city reads as standing at the water's edge.
+  // The far blue ranges everywhere; the near brown hills only on the left (11/18), where there is
+  // no city — behind Kobe they would hide the waterfront's foot.
   var layers = [
     { ridge: ranges.far, from: '#dfe6ee', to: '#c9d4df' },
     { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
@@ -225,6 +228,32 @@ function buildScenery(width, height, top, ratio) {
       drawFuji(ctx, toriiOf(width, height, top).x + 30, top, tall);
     }
   });
+
+  // The near brown hills with autumn trees, from the left edge down to the water before the city.
+  var nearRidge = nearRidgeOf(ranges.near, width, top, tall);
+  var hills = ctx.createLinearGradient(0, top - tall * 0.22, 0, top);
+  hills.addColorStop(0, '#a5705e');
+  hills.addColorStop(1, '#7e5446');
+  ctx.fillStyle = hills;
+  ctx.beginPath();
+  ctx.moveTo(0, top + 2);
+  for (var hx = 0; hx <= width + 8; hx += 8) ctx.lineTo(hx, nearRidge(hx));
+  ctx.lineTo(width, top + 2);
+  ctx.closePath();
+  ctx.fill();
+  var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
+  for (var tr = 0; tr < width / 7; tr++) {
+    var tx = rand() * width;
+    var ground = nearRidge(tx);
+    var ty = ground + rand() * (top - ground) * 0.85;
+    var tr2 = 3 + rand() * 4;
+    var tc = trees[Math.floor(rand() * trees.length)];
+    if (ground > top - 4) continue;
+    ctx.fillStyle = tc;
+    ctx.beginPath();
+    ctx.ellipse(tx, ty, tr2, tr2 * 1.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Kobe's waterfront (11/17) on the far right shore, right of the sign-in box: Sannomiya's towers, Hotel Okura, the Maritime Museum and Port Tower. The Ferris
   // wheel and the tower's light show move, so they are drawn each frame (drawHarborLights).
@@ -554,6 +583,24 @@ function drawHarborLights(ctx, harbor, t) {
     ctx.fillRect(tower.cx - tower.bottomR, y - band, tower.bottomR * 2, band * 2);
   }
   ctx.restore();
+}
+
+/**
+ * The near brown hills, only where there is no city (11/18): the usual ridge on the left, sloping
+ * down into the water a little before the waterfront begins, and flat (water level) after it.
+ */
+function nearRidgeOf(near, width, top, tall) {
+  var H = Math.min(118, tall * 0.66);
+  var end = towerXOf(width) - H * 3.6;
+  var fadeFrom = end - Math.max(120, width * 0.08);
+  return function (x) {
+    if (x >= end) return top + 2;
+    var y = near(x);
+    if (x <= fadeFrom) return y;
+    var u = (x - fadeFrom) / (end - fadeFrom);
+    u = u * u * (3 - 2 * u);
+    return y + (top + 2 - y) * u;
+  };
 }
 
 /** Where Kobe Port Tower stands: right of the centred sign-in box. */
