@@ -1249,8 +1249,9 @@ function drawSun(ctx, sun, t, poked) {
   var breath = 0.5 + 0.5 * Math.sin(t * 0.8);
   var flash = p >= 0 ? 1 - p : 0;
   var glow = ctx.createRadialGradient(0, 0, r * 0.8, 0, 0, r * (2 + 0.15 * breath + 0.4 * flash));
-  glow.addColorStop(0, 'rgba(255, 250, 225, ' + (0.55 + 0.3 * flash).toFixed(3) + ')');
-  glow.addColorStop(1, 'rgba(255, 250, 225, 0)');
+  // A cool silver glow (11/17: the お月見 moon, not a gold one).
+  glow.addColorStop(0, 'rgba(244, 247, 255, ' + (0.6 + 0.3 * flash).toFixed(3) + ')');
+  glow.addColorStop(1, 'rgba(244, 247, 255, 0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
@@ -1262,13 +1263,7 @@ function drawSun(ctx, sun, t, poked) {
       var a = (i / 12) * Math.PI * 2 + 0.3;
       var dist = r * (1.05 + 0.9 * Math.sqrt(p) + (i % 3) * 0.08);
       ctx.fillStyle =
-        'rgba(255, ' +
-        (i % 2 ? 236 : 250) +
-        ', ' +
-        (i % 2 ? 150 : 225) +
-        ', ' +
-        (1 - p).toFixed(3) +
-        ')';
+        'rgba(' + (i % 2 ? '226, 234, 255' : '255, 255, 255') + ', ' + (1 - p).toFixed(3) + ')';
       sparkle(
         ctx,
         Math.cos(a) * dist,
@@ -1282,9 +1277,10 @@ function drawSun(ctx, sun, t, poked) {
   var bounce = p >= 0 ? 1 + 0.08 * Math.sin(p * Math.PI * 3) * (1 - p) : 1;
   ctx.scale(bounce, bounce);
   var disc = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-  disc.addColorStop(0, '#fffbe6');
-  disc.addColorStop(0.6, '#fbefc0');
-  disc.addColorStop(1, '#f1dc98');
+  // Pale silvery white with a breath of cream, as the moon is drawn for お月見.
+  disc.addColorStop(0, '#ffffff');
+  disc.addColorStop(0.55, '#f6f4ec');
+  disc.addColorStop(1, '#dcdde6');
   ctx.fillStyle = disc;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -1295,18 +1291,19 @@ function drawSun(ctx, sun, t, poked) {
   ctx.arc(0, 0, r * 0.98, 0, Math.PI * 2);
   ctx.clip();
   ctx.scale(r, r);
-  ctx.fillStyle = 'rgba(232, 196, 110, 0.28)';
+  ctx.fillStyle = 'rgba(160, 168, 190, 0.2)';
   CRATERS.forEach(function (c) {
     ctx.beginPath();
     ctx.ellipse(c[0], c[1], c[2], c[3], 0, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // Rabbits and mortar: soft amber shapes; where they overlap they look a little deeper.
+  // Rabbits and mortar: soft blue-grey shadows on the silver, the 月のうさぎ people see in the
+  // real moon; where they overlap they look a little deeper.
   ctx.save();
   ctx.translate(0, -0.04);
   ctx.scale(1.14, 1.14);
-  var mark = 'rgba(214, 150, 60, 0.5)';
+  var mark = 'rgba(122, 132, 160, 0.5)';
   ctx.fillStyle = mark;
   ctx.strokeStyle = mark;
   ctx.lineCap = 'round';
@@ -1332,7 +1329,7 @@ function drawSun(ctx, sun, t, poked) {
   ctx.beginPath();
   ctx.ellipse(0, 0.12, 0.22, 0.05, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255, 253, 240, 0.95)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.98)';
   ctx.beginPath();
   ctx.ellipse(0, 0.09 + hit * 0.01, 0.14 + hit * 0.03, 0.05 - hit * 0.012, 0, Math.PI, 0);
   ctx.fill();
@@ -1375,7 +1372,7 @@ function drawSun(ctx, sun, t, poked) {
 
   // A small puff of flour at each strike.
   if (hit) {
-    ctx.fillStyle = 'rgba(255, 253, 240, 0.9)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     [
       [-0.16, 0.0],
       [0.15, -0.02],
@@ -1390,11 +1387,72 @@ function drawSun(ctx, sun, t, poked) {
   ctx.restore();
 
   // A thin bright rim.
-  ctx.strokeStyle = 'rgba(255, 252, 235, 0.8)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.lineWidth = Math.max(1, r * 0.03);
   ctx.beginPath();
   ctx.arc(0, 0, r * 0.99, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.restore();
+  drawSusuki(ctx, sun, t);
+}
+
+/**
+ * すすき (11/17): pampas grass in front of the lower right of the moon, as in every お月見
+ * picture with the moon, the rabbits and the mochi. A few stalks with feathery plumes, swaying
+ * a little in the evening air. Soft dark silhouettes, so the moon stays the bright thing.
+ */
+function drawSusuki(ctx, sun, t) {
+  var r = sun.r;
+  ctx.save();
+  ctx.translate(sun.x + r * 0.95, sun.y + r * 1.25);
+  ctx.lineCap = 'round';
+  // Off to the lower right of the moon, so the rabbits stay in view; only the plumes cross its edge.
+  var stalks = [
+    [-0.15, 1.35, -0.3, 0],
+    [0.08, 1.55, -0.16, 1.3],
+    [0.3, 1.3, -0.02, 2.1],
+    [0.5, 1.05, 0.14, 3.4],
+  ];
+  stalks.forEach(function (s) {
+    var sway = Math.sin(t * 0.9 + s[3]) * 0.06;
+    var baseX = s[0] * r;
+    var tall = s[1] * r;
+    var lean = s[2] + sway;
+    var tipX = baseX + Math.sin(lean) * tall;
+    var tipY = -Math.cos(lean) * tall;
+    // The stalk, curving a little.
+    ctx.strokeStyle = 'rgba(92, 84, 104, 0.75)';
+    ctx.lineWidth = Math.max(1, r * 0.025);
+    ctx.beginPath();
+    ctx.moveTo(baseX, 0);
+    ctx.quadraticCurveTo(baseX + (tipX - baseX) * 0.2, tipY * 0.55, tipX, tipY);
+    ctx.stroke();
+    // The plume: soft feathers drooping from the top, pale against the sky.
+    for (var f = 0; f < 7; f++) {
+      var u = f / 6;
+      var fx = tipX - Math.sin(lean) * u * r * 0.32;
+      var fy = tipY + Math.cos(lean) * u * r * 0.32;
+      var side = f % 2 ? 1 : -1;
+      ctx.strokeStyle = 'rgba(214, 196, 176, ' + (0.85 - u * 0.3).toFixed(3) + ')';
+      ctx.lineWidth = Math.max(1, r * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.quadraticCurveTo(
+        fx + side * r * 0.1,
+        fy + r * 0.02,
+        fx + side * r * (0.12 + sway),
+        fy + r * 0.12,
+      );
+      ctx.stroke();
+    }
+    // One long leaf from the foot.
+    ctx.strokeStyle = 'rgba(92, 84, 104, 0.55)';
+    ctx.lineWidth = Math.max(1, r * 0.02);
+    ctx.beginPath();
+    ctx.moveTo(baseX, 0);
+    ctx.quadraticCurveTo(baseX + r * 0.15, -tall * 0.35, baseX + r * (0.45 + sway), -tall * 0.25);
+    ctx.stroke();
+  });
   ctx.restore();
 }
 
