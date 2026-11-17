@@ -54,6 +54,7 @@ const planInclude = {
       format: true,
       status: true,
       source: true,
+      meetingUrl: true,
       company: { select: { name: true } },
     },
   },
@@ -577,6 +578,7 @@ export class ScheduleService {
             format: row.appointment.format,
             status: row.appointment.status,
             isTelema: isTelemaSource(row.appointment.source),
+            meetingUrl: row.appointment.meetingUrl,
           }
         : null,
       canEdit: this.policy.canEditPlan(actor, row),

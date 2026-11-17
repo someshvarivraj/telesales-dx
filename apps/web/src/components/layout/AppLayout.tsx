@@ -9,6 +9,7 @@ import { StickyTopProvider } from '@/components/ui/StickyTop';
 import { cn } from '@/components/ui/cn';
 import { AssistantWidget } from '@/features/assistant/AssistantWidget';
 import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
+import { NoticeToaster } from '@/features/notifications/NoticeToaster';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { OutageOverlay } from '@/features/system/OutageOverlay';
 import { PlannedOutageBanner } from '@/features/system/PlannedOutageBanner';
@@ -67,6 +68,7 @@ export function AppLayout() {
         <MobileNav />
         <AssistantWidget />
         <SessionExpiryWarning />
+        <NoticeToaster />
         <OutageOverlay />
       </div>
     </ThemeProvider>

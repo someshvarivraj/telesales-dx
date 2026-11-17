@@ -12,6 +12,8 @@ import { type CalendarEvent, EVENT_STYLE, eventsOn, isDayOff, minutesWithin } fr
 
 interface WeekViewProps {
   start: string;
+  /** 7, or 5 for 稼働日 (Monday–Friday). */
+  dayCount?: number;
   people: UserRef[];
   events: CalendarEvent[];
   holidays: CalendarDayDto[];
@@ -46,8 +48,9 @@ export function WeekView({
   showFree = false,
   colorOrder,
   corner,
+  dayCount = 7,
 }: WeekViewProps) {
-  const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
+  const days = Array.from({ length: dayCount }, (_, index) => addDays(start, index));
   const holidayName = (date: string) => holidays.find((holiday) => holiday.date === date)?.name;
   const today = todayJst();
   const order = colorOrder ?? people.map((person) => person.id);

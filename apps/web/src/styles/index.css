@@ -440,7 +440,7 @@ html[data-theme='sakura'] {
   --sidebar-w: 15rem;
 }
 html[data-sidebar='closed'] {
-  --sidebar-w: 4.25rem;
+  --sidebar-w: 4.75rem;
 }
 @media (min-width: 768px) {
   .app-main {
@@ -458,6 +458,38 @@ html[data-sidebar='closed'] .sidebar :is(.nav-label, .sidebar-full) {
 html[data-sidebar='closed'] .sidebar .nav-link {
   justify-content: center;
   padding-inline: 0;
+}
+/*
+ * The folded menu as a Teams-like app bar (11/17): icon with a short label under it, the
+ * screen you are on marked by a bar on the left and the icon in the main colour.
+ */
+.sidebar .nav-rail-label {
+  display: none;
+}
+html[data-sidebar='closed'] .sidebar .nav-link {
+  flex-direction: column;
+  gap: 0.2rem;
+  height: auto;
+  padding-block: 0.45rem;
+  background: transparent;
+  box-shadow: none;
+}
+html[data-sidebar='closed'] .sidebar .nav-rail-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-sidebar='closed'] .sidebar .nav-link[aria-current='page'] {
+  color: var(--color-main);
+  --tw-ring-shadow: 0 0 #0000;
+}
+html[data-sidebar='closed'] .sidebar .nav-link[aria-current='page'] .nav-rail-label {
+  font-weight: 700;
 }
 .sidebar .sidebar-compact {
   display: none;
@@ -1857,5 +1889,21 @@ dialog[open] > div {
   }
   100% {
     transform: translate(-50%, 110%);
+  }
+}
+
+/* Teams-style notice pop-ups (11/17): slide in from the right. */
+.notice-toast {
+  animation: notice-toast-in 0.32s var(--ease-out-soft);
+}
+@keyframes notice-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice-toast {
+    animation: none;
   }
 }
