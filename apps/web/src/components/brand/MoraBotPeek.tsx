@@ -14,8 +14,12 @@ const PEEKS: { line: string; mood: MoraBotMood; look: Theme }[] = [
   { line: 'アポ確定、営業に共有しました！', mood: 'booked', look: 'sakura' },
   { line: '結果まで入力済みです！', mood: 'done', look: 'standard' },
 ];
-/** Places along Fuji's right slope (0 = summit edge, 1 = foot) where MoraBot peeks out. */
-const SPOTS = [0.16, 0.27, 0.2, 0.33];
+/**
+ * Where MoraBot peeks out, one after another (11/17: always rising near the same place looked
+ * like a glitch): the left slope, the summit, the right slope. Negative = left of the summit,
+ * 0 = the summit itself, positive = right; the size is how far down the slope (0–1).
+ */
+const SPOTS = [-0.22, 0, 0.22];
 const HIDDEN_MS = 1400;
 const RISE_MS = 700;
 const PEEK_MS = 3400;
@@ -56,7 +60,7 @@ function onScenery(x: number, y: number) {
 
 /**
  * Hide-and-seek behind the mountains (11/17, sign-in screen). MoraBot rises from behind Mt.
- * Fuji's right slope, looks around and says a line, ducks back and peeks out somewhere else.
+ * Fuji — left slope, summit, right slope in turn — looks around and says a line, then ducks back.
  * The part below the slope is cut away with the mountain's own outline. Clicking Fuji brings it
  * out right there; clicking another mountain makes a MoraBot face (pink or blue, at random) pop
  * up from behind it for a moment. Clicking MoraBot itself "finds" it (its usual poke reaction
@@ -130,13 +134,17 @@ export function MoraBotPeek() {
   const fuji = fujiOf(screen.width, screen.height);
   const size = Math.round(Math.min(118, Math.max(84, fuji.height * 0.36)));
   const boxWidth = size + 24;
-  const spot = SPOTS[turn % SPOTS.length] ?? 0.2;
+  const spot = SPOTS[turn % SPOTS.length] ?? 0;
   const peek = PEEKS[turn % PEEKS.length] ?? {
     line: '',
     mood: 'happy' as MoraBotMood,
     look: 'sakura' as Theme,
   };
-  const rawX = clickedX ?? fuji.x + fuji.summit + spot * (fuji.half - fuji.summit);
+  const slopeX =
+    spot === 0
+      ? fuji.x
+      : fuji.x + Math.sign(spot) * (fuji.summit + Math.abs(spot) * (fuji.half - fuji.summit));
+  const rawX = clickedX ?? slopeX;
   // Keep MoraBot on the screen and off the very foot of the slope.
   const cx = Math.max(boxWidth / 2 + 8, Math.min(fuji.x + fuji.half * 0.62, rawX));
   const left = cx - boxWidth / 2;
