@@ -31,7 +31,9 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
@@ -188,6 +190,7 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   const find = useFindRep();
   const { repId, setRepId } = panel;
   const [date, setDate] = useState(todayJst);
+  const { box: panelBox, pos: panelPos, start: startDrag } = useDragPosition();
 
   // A new company: ask the area table who its rep is, and show that person.
   const { mutate } = find;
@@ -252,8 +255,11 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   }
 
   const shell = {
-    float:
-      'right-24 bottom-6 h-[min(560px,calc(100dvh-6rem))] w-[min(620px,calc(100vw-8rem))] border border-line',
+    // Moved by its title bar and resized from the corner (11/17), so what is under it can be seen.
+    float: cn(
+      'h-[min(560px,calc(100dvh-6rem))] w-[min(620px,calc(100vw-8rem))] min-h-80 min-w-96 resize overflow-hidden border border-line',
+      !panelPos && 'right-24 bottom-6',
+    ),
     split: 'top-11 right-0 bottom-0 border-l border-line',
     max: 'top-11 right-0 bottom-0 left-(--sidebar-w)',
   }[mode as 'float' | 'split' | 'max'];
@@ -262,13 +268,27 @@ function PanelBody({ panel }: { panel: PanelContext }) {
   return (
     <section
       aria-label="営業の予定"
-      style={mode === 'split' ? { width: SPLIT_WIDTH } : undefined}
+      ref={panelBox}
+      style={
+        mode === 'split'
+          ? { width: SPLIT_WIDTH }
+          : mode === 'float' && panelPos
+            ? { left: panelPos.x, top: panelPos.y }
+            : undefined
+      }
       className={cn(
         'sales-panel fixed z-30 flex flex-col bg-surface shadow-(--shadow-raised) max-md:hidden',
         shell,
       )}
     >
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line bg-column px-3">
+      <header
+        onPointerDown={mode === 'float' ? startDrag : undefined}
+        title={mode === 'float' ? 'ドラッグして動かせます' : undefined}
+        className={cn(
+          'flex h-10 shrink-0 items-center gap-2 border-b border-line bg-column px-3',
+          mode === 'float' && 'cursor-move touch-none select-none',
+        )}
+      >
         <CalendarDays aria-hidden="true" className="size-4 text-main" />
         <h2 className="text-sm font-bold">営業の予定</h2>
         {company && (
@@ -394,16 +414,19 @@ function PanelBody({ panel }: { panel: PanelContext }) {
                 dayOff: !off && isDayOff(dayEvents),
                 events: dayEvents,
                 header: (
-                  <span className="flex items-end gap-1.5">
+                  <span className="flex w-full min-w-0 items-end gap-1.5">
                     <span
                       className={cn(
-                        'flex h-7 min-w-7 items-center justify-center px-1 text-lg leading-none font-bold tabular-nums',
+                        'flex h-7 min-w-7 items-center justify-center px-1 text-lg leading-none font-bold tabular-nums shrink-0 whitespace-nowrap',
                         day === todayJst() && 'bg-main text-white',
                       )}
                     >
                       {Number(day.slice(8))}
                     </span>
-                    <span className="pb-0.5 text-[11px] text-ink-sub">
+                    <span
+                      className="min-w-0 truncate pb-0.5 text-[11px] text-ink-sub"
+                      title={holiday?.name}
+                    >
                       {weekdayJa(day)}
                       {holiday && <span className="ml-1 text-sunday">{holiday.name}</span>}
                     </span>
@@ -579,4 +602,57 @@ export function useCompanyFocus(panel: PanelContext | null): CompanyFocus {
   }
   const area = on ? panel.area : null;
   return { areas: area ? [area] : [], label: areaLabel(area), repName: null };
+}
+
+const POSITION_STORE = 'sales-panel-position';
+
+/** Where the floating panel was left (kept between visits), moved by dragging its title bar. */
+function useDragPosition() {
+  const box = useRef<HTMLElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const value = JSON.parse(window.localStorage.getItem(POSITION_STORE) ?? 'null') as {
+        x?: unknown;
+        y?: unknown;
+      } | null;
+      return value && typeof value.x === 'number' && typeof value.y === 'number'
+        ? { x: value.x, y: value.y }
+        : null;
+    } catch {
+      return null;
+    }
+  });
+  const keepOnScreen = (x: number, y: number) => {
+    const rect = box.current?.getBoundingClientRect();
+    const width = rect?.width ?? 400;
+    return {
+      x: Math.min(Math.max(x, 8 - width + 120), window.innerWidth - 120),
+      y: Math.min(Math.max(y, 8), window.innerHeight - 48),
+    };
+  };
+  const start = (event: ReactPointerEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest('button,select,input,a')) return;
+    const rect = box.current?.getBoundingClientRect();
+    if (!rect) return;
+    event.preventDefault();
+    const dx = event.clientX - rect.left;
+    const dy = event.clientY - rect.top;
+    let last = { x: rect.left, y: rect.top };
+    const move = (e: PointerEvent) => {
+      last = keepOnScreen(e.clientX - dx, e.clientY - dy);
+      setPos(last);
+    };
+    const end = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      try {
+        window.localStorage.setItem(POSITION_STORE, JSON.stringify(last));
+      } catch {
+        // Not remembered in private windows.
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+  };
+  return { box, pos, start };
 }

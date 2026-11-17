@@ -103,7 +103,7 @@ export function WeekView({
                   >
                     <span
                       className={cn(
-                        'flex h-8 min-w-8 items-center justify-center px-1 text-xl leading-none font-bold tabular-nums transition-colors',
+                        'flex h-8 min-w-8 items-center justify-center px-1 text-xl leading-none font-bold tabular-nums transition-colors shrink-0 whitespace-nowrap',
                         date === today ? 'bg-main text-white' : 'group-hover:bg-column',
                         date !== today && (dow === 0 || holiday) && 'text-sunday',
                         date !== today && dow === 6 && !holiday && 'text-saturday',
