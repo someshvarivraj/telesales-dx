@@ -38,6 +38,7 @@ import {
 import { useLocation, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
 import { cn } from '@/components/ui/cn';
+import { Select } from '@/components/ui/Select';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useFindRep } from '@/features/calls/api';
@@ -332,24 +333,26 @@ function PanelBody({ panel }: { panel: PanelContext }) {
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2">
         <AreaPicker area={area} onArea={setArea} />
-        <select
+        {/* The app's own dropdown, as everywhere else (11/17): search box for long lists. */}
+        <Select
+          size="sm"
           aria-label="表示する営業"
+          className="w-64 max-w-full"
           value={repId}
           onChange={(event) => setRepId(event.target.value)}
-          className="h-8 min-w-40 border border-line-strong bg-surface px-2 text-sm"
-        >
-          <option value="">{area ? 'エリアの営業全員（1日）' : '営業全員（1日）'}</option>
-          {(rep && !people.includes(rep) ? [rep, ...people] : people).map((person) => {
-            const where = areasSummary(areasOfRep(areas.data ?? [], person.id));
-            return (
-              <option key={person.id} value={person.id}>
-                {person.name}
-                {where ? `｜${where}` : ''}
-                {suggestion?.rep?.id === person.id ? '（担当表）' : ''}
-              </option>
-            );
-          })}
-        </select>
+          options={[
+            { value: '', label: area ? 'エリアの営業全員（1日）' : '営業全員（1日）' },
+            ...(rep && !people.includes(rep) ? [rep, ...people] : people).map((person) => {
+              const where = areasSummary(areasOfRep(areas.data ?? [], person.id));
+              return {
+                value: person.id,
+                label: `${person.name}${where ? `｜${where}` : ''}${
+                  suggestion?.rep?.id === person.id ? '（担当表）' : ''
+                }`,
+              };
+            }),
+          ]}
+        />
         <div className="flex items-center">
           <ModeButton
             label={repId ? '前の週' : '前の日'}
