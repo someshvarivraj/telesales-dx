@@ -1362,17 +1362,52 @@ function drawStars(ctx, stars, t) {
  * curve in and steepen towards a short flat summit, blue-violet rock fading into haze below,
  * and a snow cap whose lower edge runs down the gullies in long white streaks.
  */
-function drawFuji(ctx, x, top, tall) {
+function fujiShape(x, top, tall) {
   var H = tall * 1.55;
   var half = tall * 2.7;
   var summit = half * 0.075;
-  var peak = top - H;
-  var heightAt = function (d) {
-    var a = Math.abs(d);
-    if (a <= summit) return H - 1.6 * Math.abs(Math.sin(d * 0.55));
-    var u = Math.min(1, (a - summit) / (half - summit));
-    return H * Math.pow(1 - u, 1.75);
+  return {
+    x: x,
+    top: top,
+    H: H,
+    half: half,
+    summit: summit,
+    heightAt: function (d) {
+      var a = Math.abs(d);
+      if (a <= summit) return H - 1.6 * Math.abs(Math.sin(d * 0.55));
+      var u = Math.min(1, (a - summit) / (half - summit));
+      return H * Math.pow(1 - u, 1.75);
+    },
   };
+}
+
+/**
+ * Where Mt. Fuji stands on a screen of this size (11/17), the same as drawn: the sign-in screen
+ * uses it so MoraBot can play hide-and-seek behind the slope. `ridge(x)` is the slope's screen y.
+ */
+function fujiOf(width, height) {
+  var top = lakeTopOf(height);
+  var tall = Math.min(200, height * 0.21);
+  var shape = fujiShape(toriiOf(width, height, top).x + 30, top, tall);
+  return {
+    x: shape.x,
+    top: top,
+    height: shape.H,
+    half: shape.half,
+    summit: shape.summit,
+    ridge: function (sx) {
+      return top - shape.heightAt(sx - shape.x);
+    },
+  };
+}
+
+function drawFuji(ctx, x, top, tall) {
+  var shape = fujiShape(x, top, tall);
+  var H = shape.H;
+  var half = shape.half;
+  var summit = shape.summit;
+  var peak = top - H;
+  var heightAt = shape.heightAt;
   var outline = function () {
     ctx.beginPath();
     ctx.moveTo(x - half, top + 2);

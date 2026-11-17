@@ -1721,3 +1721,30 @@ dialog[open] > div {
     transform: none;
   }
 }
+
+/* MoraBot's hide-and-seek behind Mt. Fuji on the sign-in screen (11/17). */
+.morabot-peek {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.morabot-peek-look {
+  transform-origin: 50% 90%;
+  animation: morabot-peek-look 2.6s ease-in-out 0.7s infinite;
+}
+@keyframes morabot-peek-look {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-9deg);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .morabot-peek-look {
+    animation: none !important;
+  }
+}
