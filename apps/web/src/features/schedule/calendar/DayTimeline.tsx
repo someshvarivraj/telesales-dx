@@ -137,7 +137,8 @@ export function DayTimeline({
             const allDay = personEvents.filter((event) => event.allDay);
             const lanes = Math.max(1, ...timed.map((item) => item.lanes));
             const rowH = Math.max(44, lanes * 22 + 8);
-            const closed = off || isDayOff(personEvents);
+            const dayOff = !off && isDayOff(personEvents);
+            const closed = off || dayOff;
             const free = closed ? 0 : freeMinutes(personEvents, date);
             const ghost =
               drag?.id === person.id
@@ -170,7 +171,7 @@ export function DayTimeline({
                   tabIndex={onRange && !closed ? 0 : undefined}
                   className={cn(
                     'relative select-none',
-                    closed ? 'bg-off' : '',
+                    off ? 'bg-off' : dayOff ? 'bg-dayoff' : '',
                     onRange && (closed ? 'cursor-not-allowed' : 'cursor-cell'),
                   )}
                   style={{

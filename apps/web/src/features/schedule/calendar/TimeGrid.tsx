@@ -3,6 +3,7 @@ import { Building2, Lock, Video } from 'lucide-react';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/components/ui/cn';
 import { ja } from '@/i18n/ja';
+import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatTime, todayJst } from '@/lib/format';
 import { type CalendarEvent, EVENT_STYLE } from '../events';
 import type { PeekBinder } from './EventPeek';
@@ -27,6 +28,8 @@ export interface GridColumn {
   header: ReactNode;
   /** Weekend, holiday or company day off: tinted. */
   off: boolean;
+  /** The person's whole day of 休み (11/17): its own lavender hatching, labelled, closed. */
+  dayOff?: boolean;
   events: CalendarEvent[];
 }
 
@@ -37,8 +40,16 @@ interface TimeGridProps {
   dayEnd?: number;
   onEvent: (event: CalendarEvent) => void;
   peek?: PeekBinder;
-  /** Drag (or click) on empty time: the range is snapped to `step` (30 minutes). */
-  onRange?: (column: GridColumn, start: string, end: string) => void;
+  /**
+   * Drag (or click) on empty time: the range is snapped to `step` (30 minutes). With
+   * `onQuickAdd` this is the 「詳細」 button of the type-in box, carrying what was typed.
+   */
+  onRange?: (column: GridColumn, start: string, end: string, title?: string) => void;
+  /**
+   * Type a plan straight into the grid (11/17): a click or drag on empty time opens a small box
+   * there; Enter saves it with the typed 件名, 「詳細」 opens the full form instead.
+   */
+  onQuickAdd?: (column: GridColumn, start: string, end: string, title: string) => Promise<unknown>;
   /** Highlight the slot being booked. */
   selection?: { personId: string; date: string; start: string; end: string } | null;
   /** Show free stretches in office hours. */
@@ -83,6 +94,7 @@ export function TimeGrid({
   onEvent,
   peek,
   onRange,
+  onQuickAdd,
   selection,
   showFree = false,
   bufferMinutes = 0,
@@ -105,6 +117,14 @@ export function TimeGrid({
   const showsToday = columns.some((column) => column.date === now.date);
   const [drag, setDrag] = useState<{ key: string; anchor: number; current: number } | null>(null);
   const dragMoved = useRef(false);
+  const [quick, setQuick] = useState<{
+    key: string;
+    start: number;
+    end: number;
+    title: string;
+    saving: boolean;
+    error: string | null;
+  } | null>(null);
 
   // Open on the working morning, or an hour before now when today is shown.
   const scrollKey = `${columns[0]?.date ?? ''}:${pxPerMin}`;
@@ -122,7 +142,25 @@ export function TimeGrid({
   const finish = (column: GridColumn, start: number, end: number) => {
     const from = Math.max(dayStart, Math.min(start, end));
     const to = Math.min(dayEnd, Math.max(start, end, from + step));
+    if (onQuickAdd) {
+      setQuick({ key: column.key, start: from, end: to, title: '', saving: false, error: null });
+      return;
+    }
     onRange?.(column, hhmm(from), hhmm(to));
+  };
+
+  const saveQuick = (column: GridColumn) => {
+    if (!quick || !onQuickAdd || quick.saving) return;
+    const title = quick.title.trim();
+    if (!title) return;
+    setQuick({ ...quick, saving: true, error: null });
+    onQuickAdd(column, hhmm(quick.start), hhmm(quick.end), title).then(
+      () => setQuick(null),
+      (error: unknown) =>
+        setQuick((current) =>
+          current ? { ...current, saving: false, error: errorMessageOf(error) } : current,
+        ),
+    );
   };
 
   const allDayRow = columns.some((column) => column.events.some((event) => event.allDay));
@@ -231,7 +269,8 @@ export function TimeGrid({
               const placed = placeEvents(column.events, column.date).filter(
                 (item) => item.end > dayStart && item.start < dayEnd,
               );
-              const free = showFree && !column.off ? freeRanges(column.events, column.date) : [];
+              const closed = column.off || column.dayOff === true;
+              const free = showFree && !closed ? freeRanges(column.events, column.date) : [];
               const ghost =
                 drag && drag.key === column.key
                   ? {
@@ -252,25 +291,20 @@ export function TimeGrid({
                   aria-label={onRange ? columnLabel?.(column) : undefined}
                   className={cn(
                     'relative flex-1 border-l border-line select-none',
-                    column.off ? 'bg-off' : 'bg-surface',
-                    // Weekends and holidays cannot be booked (11/2).
-                    onRange && (column.off ? 'cursor-not-allowed' : 'cursor-cell'),
+                    column.off ? 'bg-off' : column.dayOff ? 'bg-dayoff' : 'bg-surface',
+                    // Weekends, holidays and a whole day of 休み cannot be booked (11/2, 11/17).
+                    onRange && (closed ? 'cursor-not-allowed' : 'cursor-cell'),
                   )}
                   style={{ height, minWidth: minColumnWidth }}
                   onKeyDown={(event) => {
-                    if (column.off) return;
+                    if (closed || (event.target as HTMLElement).closest('[data-quick]')) return;
                     if (onRange && (event.key === 'Enter' || event.key === ' ')) {
                       event.preventDefault();
                       finish(column, WORK_START + 60, WORK_START + 60 + clickMinutes);
                     }
                   }}
                   onPointerDown={(event) => {
-                    if (
-                      !onRange ||
-                      column.off ||
-                      event.button !== 0 ||
-                      event.pointerType === 'touch'
-                    )
+                    if (!onRange || closed || event.button !== 0 || event.pointerType === 'touch')
                       return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
@@ -295,7 +329,7 @@ export function TimeGrid({
                   onClick={(event) => {
                     // Touch: a tap makes a range of clickMinutes (dragging would fight scrolling).
                     const native = event.nativeEvent as globalThis.PointerEvent;
-                    if (!onRange || column.off || native.pointerType !== 'touch') return;
+                    if (!onRange || closed || native.pointerType !== 'touch') return;
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     const rect = event.currentTarget.getBoundingClientRect();
                     const at =
@@ -312,8 +346,27 @@ export function TimeGrid({
                     className="pointer-events-none absolute inset-x-0 bottom-0 bg-canvas/80"
                     style={{ top: y(WORK_END) }}
                   />
+                  {/* A whole day of 休み: labelled every 3 hours, so a label shows wherever the
+                      grid is scrolled (11/17). */}
+                  {column.dayOff &&
+                    !column.off &&
+                    hours
+                      .filter(
+                        (hour) => hour % 3 === 0 && hour * 60 > dayStart && hour * 60 < dayEnd,
+                      )
+                      .map((hour) => (
+                        <span
+                          key={`off${hour}`}
+                          className="pointer-events-none absolute inset-x-0 flex justify-center"
+                          style={{ top: y(hour * 60) + 8 }}
+                        >
+                          <span className="border border-dayoff-line bg-surface/90 px-3 py-0.5 text-xs font-bold text-dayoff-ink">
+                            休み
+                          </span>
+                        </span>
+                      ))}
                   {/* Lunch break, in its own grey */}
-                  {!column.off && (
+                  {!closed && (
                     <div
                       className="pointer-events-none absolute inset-x-0 bg-lunch"
                       style={{ top: y(LUNCH_START), height: y(LUNCH_END) - y(LUNCH_START) }}
@@ -466,6 +519,70 @@ export function TimeGrid({
                         {hhmm(ghost.start)}–{hhmm(ghost.end)} ·{' '}
                         {hoursLabel(ghost.end - ghost.start)}
                       </span>
+                    </div>
+                  )}
+
+                  {quick && quick.key === column.key && (
+                    <div
+                      data-event
+                      data-quick
+                      className="absolute inset-x-1 z-[10] flex flex-col gap-1 border-2 border-main bg-surface p-1.5 shadow-(--shadow-raised)"
+                      style={{
+                        top: y(quick.start),
+                        minHeight: Math.max(76, y(quick.end) - y(quick.start)),
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                    >
+                      <span className="text-[11px] font-bold text-main tabular-nums">
+                        {hhmm(quick.start)}–{hhmm(quick.end)}
+                      </span>
+                      <input
+                        autoFocus
+                        aria-label="件名"
+                        placeholder="件名を入力してEnter"
+                        value={quick.title}
+                        disabled={quick.saving}
+                        maxLength={100}
+                        onChange={(event) => setQuick({ ...quick, title: event.target.value })}
+                        onKeyDown={(event) => {
+                          if (event.nativeEvent.isComposing) return;
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            saveQuick(column);
+                          }
+                          if (event.key === 'Escape') setQuick(null);
+                        }}
+                        className="h-8 w-full min-w-0 border border-line-strong bg-surface px-2 text-sm outline-none focus:border-main"
+                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={!quick.title.trim() || quick.saving}
+                          onClick={() => saveQuick(column)}
+                          className="h-7 cursor-pointer bg-main px-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {quick.saving ? '保存中…' : '保存'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onRange?.(column, hhmm(quick.start), hhmm(quick.end), quick.title);
+                            setQuick(null);
+                          }}
+                          className="h-7 cursor-pointer border border-line-strong px-2 text-xs font-bold text-ink hover:bg-column"
+                        >
+                          ＋詳細
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="閉じる"
+                          onClick={() => setQuick(null)}
+                          className="ml-auto h-7 cursor-pointer px-1.5 text-xs text-ink-sub hover:text-ink"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {quick.error && <p className="text-[11px] text-danger">{quick.error}</p>}
                     </div>
                   )}
 

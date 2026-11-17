@@ -241,6 +241,46 @@ function leafSprite(size, colors) {
   return canvas;
 }
 
+/** The three mountain ranges' ridge lines (far, middle, near), the same every time. */
+function rangesOf(top, tall, rand) {
+  return {
+    far: ridgeOf(top, tall, 0.0042, rand),
+    mid: ridgeOf(top, tall * 0.68, 0.0071, rand),
+    near: ridgeOf(top, tall * 0.22, 0.016, rand),
+  };
+}
+
+/**
+ * Which mountain is at this point of the screen (11/17), the front-most first: `near`, `mid`,
+ * `fuji` or `far`, with the screen y of its ridge right there — or null (sky or lake). The
+ * sign-in screen uses it to let MoraBot peek out from behind the mountain that was clicked.
+ */
+function mountainAt(x, y, width, height) {
+  var top = lakeTopOf(height);
+  if (y >= top) return null;
+  var tall = Math.min(200, height * 0.21);
+  var ranges = rangesOf(top, tall, seeded(1113));
+  var fuji = fujiOf(width, height);
+  var order = [
+    ['near', ranges.near],
+    ['mid', ranges.mid],
+    ['fuji', fuji.ridge],
+    ['far', ranges.far],
+  ];
+  for (var i = 0; i < order.length; i++) {
+    var ridge = order[i][1](x);
+    if (y >= ridge && ridge < top - 2) return { kind: order[i][0], ridge: ridge };
+  }
+  return null;
+}
+
+/** A range's ridge at screen x (used to cut a peeking MoraBot along that range). */
+function rangeRidge(kind, x, width, height) {
+  var top = lakeTopOf(height);
+  var tall = Math.min(200, height * 0.21);
+  return rangesOf(top, tall, seeded(1113))[kind](x);
+}
+
 /** Same numbers every time (mountains keep their shape when the window is resized). */
 function seeded(seed) {
   var a = seed >>> 0;
@@ -295,10 +335,11 @@ function buildScenery(width, height, top, ratio) {
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, width, top + 4);
   }
+  var ranges = rangesOf(top, tall, rand);
   var layers = [
-    { ridge: ridgeOf(top, tall, 0.0042, rand), from: '#dfe6ee', to: '#c9d4df' },
-    { ridge: ridgeOf(top, tall * 0.68, 0.0071, rand), from: '#b4c3d2', to: '#9cadbf' },
-    { ridge: ridgeOf(top, tall * 0.22, 0.016, rand), from: '#a5705e', to: '#7e5446' },
+    { ridge: ranges.far, from: '#dfe6ee', to: '#c9d4df' },
+    { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
+    { ridge: ranges.near, from: '#a5705e', to: '#7e5446' },
   ];
   var fallX = fallXOf(width);
   layers.forEach(function (layer, index) {
@@ -1362,17 +1403,52 @@ function drawStars(ctx, stars, t) {
  * curve in and steepen towards a short flat summit, blue-violet rock fading into haze below,
  * and a snow cap whose lower edge runs down the gullies in long white streaks.
  */
-function drawFuji(ctx, x, top, tall) {
+function fujiShape(x, top, tall) {
   var H = tall * 1.55;
   var half = tall * 2.7;
   var summit = half * 0.075;
-  var peak = top - H;
-  var heightAt = function (d) {
-    var a = Math.abs(d);
-    if (a <= summit) return H - 1.6 * Math.abs(Math.sin(d * 0.55));
-    var u = Math.min(1, (a - summit) / (half - summit));
-    return H * Math.pow(1 - u, 1.75);
+  return {
+    x: x,
+    top: top,
+    H: H,
+    half: half,
+    summit: summit,
+    heightAt: function (d) {
+      var a = Math.abs(d);
+      if (a <= summit) return H - 1.6 * Math.abs(Math.sin(d * 0.55));
+      var u = Math.min(1, (a - summit) / (half - summit));
+      return H * Math.pow(1 - u, 1.75);
+    },
   };
+}
+
+/**
+ * Where Mt. Fuji stands on a screen of this size (11/17), the same as drawn: the sign-in screen
+ * uses it so MoraBot can play hide-and-seek behind the slope. `ridge(x)` is the slope's screen y.
+ */
+function fujiOf(width, height) {
+  var top = lakeTopOf(height);
+  var tall = Math.min(200, height * 0.21);
+  var shape = fujiShape(toriiOf(width, height, top).x + 30, top, tall);
+  return {
+    x: shape.x,
+    top: top,
+    height: shape.H,
+    half: shape.half,
+    summit: shape.summit,
+    ridge: function (sx) {
+      return top - shape.heightAt(sx - shape.x);
+    },
+  };
+}
+
+function drawFuji(ctx, x, top, tall) {
+  var shape = fujiShape(x, top, tall);
+  var H = shape.H;
+  var half = shape.half;
+  var summit = shape.summit;
+  var peak = top - H;
+  var heightAt = shape.heightAt;
   var outline = function () {
     ctx.beginPath();
     ctx.moveTo(x - half, top + 2);
@@ -1717,7 +1793,8 @@ function startLeaves(canvas, options) {
   }
 
   for (var s = 0; s < 8; s++) {
-    var size = 15 + Math.random() * 12;
+    // A little smaller (11/17): 10–17px instead of 15–27px, so they don't crowd the scene.
+    var size = 10 + Math.random() * 7;
     // Drawn at the screen's pixel density, so the leaves stay sharp.
     sprites.push({
       size: size,

@@ -3,6 +3,7 @@ import {
   isWeekend,
   jstMinutesOfDay,
   Permission,
+  PlanStatus,
   Role,
   weekdayJa,
 } from '@telesales/shared';
@@ -34,10 +35,10 @@ import { Segmented } from '@/components/ui/Segmented';
 import { Select } from '@/components/ui/Select';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
-import { formatTime, monthRange, startOfWeek, todayJst } from '@/lib/format';
+import { formatTime, monthRange, startOfWeek, todayJst, toInstant } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { AgendaView } from './AgendaView';
-import { useSchedule } from './api';
+import { useSavePlan, useSchedule } from './api';
 import { existingListBookingHref } from './bookingLinks';
 import { useEventPeek } from './calendar/EventPeek';
 import { DayTimeline } from './calendar/DayTimeline';
@@ -54,6 +55,7 @@ import {
   EVENT_STYLE,
   type EventKind,
   eventsOn,
+  isDayOff,
   minutesWithin,
 } from './events';
 import { MonthView } from './MonthView';
@@ -173,7 +175,7 @@ export function SchedulePage() {
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [planDialog, setPlanDialog] = useState<{
     event?: CalendarEvent;
-    defaults?: { ownerId: string; date: string; time?: string; endTime?: string };
+    defaults?: { ownerId: string; date: string; time?: string; endTime?: string; title?: string };
   } | null>(null);
   const [timeOffDialog, setTimeOffDialog] = useState<{ userId: string; date: string } | null>(null);
   const [query, setQuery] = useState('');
@@ -363,8 +365,30 @@ export function SchedulePage() {
     .filter((event) => !event.allDay && minutesWithin(event.endsAt, now.date, 'end') > nowMinutes)
     .slice(0, 3);
 
-  const openRange = (ownerId: string, day: string, start: string, end: string) =>
-    setPlanDialog({ defaults: { ownerId, date: day, time: start, endTime: end } });
+  const openRange = (ownerId: string, day: string, start: string, end: string, title?: string) =>
+    setPlanDialog({ defaults: { ownerId, date: day, time: start, endTime: end, title } });
+
+  // Typed straight into the calendar (11/17): a 社内 plan with just a 件名; 「詳細」 opens the form.
+  const savePlan = useSavePlan();
+  const quickAdd = (ownerId: string, day: string, start: string, end: string, title: string) =>
+    savePlan.mutateAsync({
+      request: {
+        ownerId,
+        type: 'INTERNAL',
+        title,
+        companyName: null,
+        startsAt: toInstant(day, start),
+        endsAt: toInstant(day, end),
+        allDay: false,
+        status: PlanStatus.Fixed,
+        holidayWork: false,
+        note: '',
+        attendeeIds: [],
+        candidateGroupId: null,
+        repeat: null,
+        candidates: null,
+      },
+    });
 
   const bookingLink =
     'inline-flex h-10 items-center gap-2 border border-line-strong bg-surface px-3.5 text-sm font-bold text-ink transition-colors hover:border-main-line hover:bg-main-soft';
@@ -679,6 +703,10 @@ export function SchedulePage() {
               土日祝・会社の休日
             </p>
             <p className="mt-1 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
+              <span className="inline-block size-3 bg-dayoff ring-1 ring-line" aria-hidden="true" />
+              休み（終日）
+            </p>
+            <p className="mt-1 flex items-center gap-2 px-1 text-[11px] text-ink-sub">
               <span
                 aria-hidden="true"
                 className="inline-block size-3 ring-1 ring-line [background-image:repeating-linear-gradient(135deg,rgb(46_111_102/0.3)_0_2px,transparent_2px_5px)]"
@@ -742,7 +770,13 @@ export function SchedulePage() {
                     colorOrder={order}
                     onRange={
                       canWritePlans
-                        ? (ownerId, start, end) => openRange(ownerId, date, start, end)
+                        ? (ownerId, start, end, title) =>
+                            openRange(ownerId, date, start, end, title)
+                        : undefined
+                    }
+                    onQuickAdd={
+                      canWritePlans
+                        ? (ownerId, start, end, title) => quickAdd(ownerId, date, start, end, title)
                         : undefined
                     }
                   />
@@ -763,17 +797,28 @@ export function SchedulePage() {
                     columnLabel={(column) => `${column.date}の空き時間を選ぶ`}
                     onRange={
                       canWritePlans
-                        ? (column, start, end) => openRange(person.id, column.date, start, end)
+                        ? (column, start, end, title) =>
+                            openRange(person.id, column.date, start, end, title)
+                        : undefined
+                    }
+                    onQuickAdd={
+                      canWritePlans
+                        ? (column, start, end, title) =>
+                            quickAdd(person.id, column.date, start, end, title)
                         : undefined
                     }
                     columns={days.map((day) => {
                       const holiday = data.holidays.find((h) => h.date === day);
+                      const dayEvents = eventsOn(events, day, person.id);
+                      const off = isWeekend(day) || Boolean(holiday);
                       return {
                         key: day,
                         date: day,
                         personId: person.id,
-                        off: isWeekend(day) || Boolean(holiday),
-                        events: eventsOn(events, day, person.id),
+                        off,
+                        // A whole day of 休み shades the whole column (11/17).
+                        dayOff: !off && isDayOff(dayEvents),
+                        events: dayEvents,
                         header: (
                           <button
                             type="button"

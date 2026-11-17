@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot, type MoraBotMood } from '@/components/brand/MoraBot';
-import { MoraBotStory, type StoryStep } from '@/components/brand/MoraBotStory';
+import { MoraBotPeek } from '@/components/brand/MoraBotPeek';
 import { FallingLeaves } from '@/components/brand/FallingLeaves';
 import { isOnMoon } from '../../../outage/leaves.js';
 import { LastThemeProvider } from '@/components/brand/theme';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
+import { cn } from '@/components/ui/cn';
 import { ja } from '@/i18n/ja';
 
 interface AuthLayoutProps {
@@ -18,31 +19,10 @@ interface AuthLayoutProps {
   leaves?: boolean;
 }
 
-/** The work the app covers, in the spec's order (架電 → アポ → 打ち合わせ・結果). */
-const STEPS: StoryStep[] = [
-  {
-    title: '架電',
-    line: '架電の結果、記録しました！',
-    mood: 'callHappy',
-    look: 'sakura',
-  },
-  {
-    title: 'アポ',
-    line: 'アポ確定、営業に共有しました！',
-    mood: 'booked',
-    look: 'sakura',
-  },
-  {
-    title: '打ち合わせ・結果',
-    line: '結果まで入力済みです！',
-    mood: 'done',
-    look: 'standard',
-  },
-];
-
 /**
- * Signed-out screens: the app's flow (MoraBot acting out three steps) and a compact sign-in
- * box side by side in the middle of the grid — one group, the page is not divided.
+ * Signed-out screens: the headline and a compact sign-in box side by side in the middle.
+ * On the sign-in screen MoraBot plays hide-and-seek behind Mt. Fuji (11/17); elsewhere it
+ * stands under the headline.
  * The box is classic: accent bar on top, the brand as its header, the form, and the
  * notes in a grey foot. Phones and tablets show the box alone.
  */
@@ -55,28 +35,40 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <LastThemeProvider>
-      <div className="relative flex min-h-dvh items-center justify-center px-4 py-16">
+      <div data-scene className="relative flex min-h-dvh items-center justify-center px-4 py-16">
         {/* Leaves fall behind the sign-in box onto a lake under an evening sky (11/13). No grid
             here: only its click ripple, over the sky, fading out above the mountains. */}
         {leaves && <FallingLeaves className="z-0" lake />}
         {leaves ? (
           <GridBackdrop
             lines={false}
-            skipClick={(x, y) => isOnMoon(x, y, window.innerWidth)}
+            skipClick={(x, y) =>
+              isOnMoon(x, y, window.innerWidth) ||
+              Boolean(document.elementFromPoint(x, y)?.closest('[data-peek]'))
+            }
             className="z-0 [mask-image:linear-gradient(to_bottom,black_45%,transparent_62%)]"
           />
         ) : (
           <GridBackdrop />
         )}
+        {leaves && <MoraBotPeek />}
         <LanguageSwitch className="absolute top-4 right-4 z-10 w-32" />
 
-        <div className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16">
-          <section className="max-w-md flex-1 max-lg:hidden">
+        <div
+          data-scene
+          className="relative z-10 flex w-full max-w-[960px] items-center justify-center gap-16"
+        >
+          {/* With the lake, the headline sits at the top so MoraBot can peek out from behind
+              Fuji below it. */}
+          <section
+            data-scene
+            className={cn('max-w-md flex-1 max-lg:hidden', leaves && 'self-start')}
+          >
             <p className="text-2xl leading-snug font-bold text-ink">
               架電からアポ、打ち合わせの結果まで。
             </p>
             <p className="mt-1 mb-4 text-sm text-ink-sub">テレマと営業が、同じ情報で動けます。</p>
-            <MoraBotStory steps={STEPS} />
+            {!leaves && <MoraBot mood="happy" size={180} title="" className="mt-6" />}
           </section>
 
           <div className="w-full max-w-[420px] shrink-0 border border-t-4 border-line border-t-main bg-surface shadow-(--shadow-raised)">
