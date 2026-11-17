@@ -2,6 +2,7 @@ import { DayBeforeResult, jstMinutesOfDay, Permission } from '@telesales/shared'
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -34,29 +35,32 @@ export function DayBeforePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm font-bold">
-          確認する日
-          <DatePicker
-            value={date}
-            onChange={(e) => e.target.value && setDate(e.target.value)}
-            className="w-48"
-          />
-        </label>
-        {list.data && (
-          <p className="pb-2 text-sm text-ink-sub">
-            対象：{list.data.dates.map(formatDate).join('・')} のアポ（テレマが取ったアポのみ）
-          </p>
-        )}
-        {list.data?.allocated && (
-          <Checkbox
-            className="pb-2 sm:ml-auto"
-            label="自分の担当だけ"
-            checked={onlyMine}
-            onChange={(e) => setOnlyMine(e.target.checked)}
-          />
-        )}
-      </div>
+      {/* Stays in the section's fixed top while the list scrolls (11/17). */}
+      <StickyExtra>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm font-bold">
+            確認する日
+            <DatePicker
+              value={date}
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+              className="w-48"
+            />
+          </label>
+          {list.data && (
+            <p className="pb-2 text-sm text-ink-sub">
+              対象：{list.data.dates.map(formatDate).join('・')} のアポ（テレマが取ったアポのみ）
+            </p>
+          )}
+          {list.data?.allocated && (
+            <Checkbox
+              className="pb-2 sm:ml-auto"
+              label="自分の担当だけ"
+              checked={onlyMine}
+              onChange={(e) => setOnlyMine(e.target.checked)}
+            />
+          )}
+        </div>
+      </StickyExtra>
       {afterNoon && (
         <Alert tone="info">
           12時を過ぎました。翌日のアポのメール（N4）は送信済みです。これから確認したアポは「営業へ送る」で1件ずつ送ってください。

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { Alert } from '@/components/ui/Alert';
 import { Card } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -20,17 +21,20 @@ export function NextActionsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-4">
-        <p className="text-sm text-ink-sub">
-          自分が入れた打ち合わせ結果と、自分が担当のアポの「次回アクション」です。
-        </p>
-        <Checkbox
-          className="ml-auto"
-          label="済んだものも表示"
-          checked={includeDone}
-          onChange={(e) => setIncludeDone(e.target.checked)}
-        />
-      </div>
+      {/* Stays in the section's fixed top while the list scrolls (11/17). */}
+      <StickyExtra>
+        <div className="flex flex-wrap items-center gap-4">
+          <p className="text-sm text-ink-sub">
+            自分が入れた打ち合わせ結果と、自分が担当のアポの「次回アクション」です。
+          </p>
+          <Checkbox
+            className="ml-auto"
+            label="済んだものも表示"
+            checked={includeDone}
+            onChange={(e) => setIncludeDone(e.target.checked)}
+          />
+        </div>
+      </StickyExtra>
       {setDone.isError && <Alert tone="error">{errorMessageOf(setDone.error)}</Alert>}
       <QueryState query={query}>
         {(items) =>

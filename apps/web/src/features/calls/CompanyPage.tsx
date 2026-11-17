@@ -169,6 +169,7 @@ export function CompanyPage() {
       {(data) => (
         <>
           <PageHeader
+            sticky
             back={<BackLink to={paths.calls}>{ja.module.calls}へ戻る</BackLink>}
             title={
               <span className="flex flex-wrap items-center gap-2">

@@ -8,6 +8,7 @@ import { CheckCheck, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
@@ -72,37 +73,40 @@ export function AllocationPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm font-bold">
-          日付
-          <DatePicker
-            value={date}
-            onChange={(e) => e.target.value && setDate(e.target.value)}
-            className="w-48"
-          />
-        </label>
-        {manages && query.data && (
-          <div className="ml-auto flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              icon={<RefreshCw className="size-4" aria-hidden="true" />}
-              loading={calculate.isPending}
-              disabled={!query.data.businessDay}
-              onClick={() => (query.data.state === 'NONE' ? run() : setRecalculating(true))}
-            >
-              {query.data.state === 'NONE' ? '割り振りを計算する' : '計算し直す'}
-            </Button>
-            <Button
-              icon={<CheckCheck className="size-4" aria-hidden="true" />}
-              loading={confirm.isPending}
-              disabled={query.data.state !== 'DRAFT'}
-              onClick={() => confirm.mutate(date)}
-            >
-              確定して各自に知らせる
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* Stays in the section's fixed top while the list scrolls (11/17). */}
+      <StickyExtra>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm font-bold">
+            日付
+            <DatePicker
+              value={date}
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+              className="w-48"
+            />
+          </label>
+          {manages && query.data && (
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                icon={<RefreshCw className="size-4" aria-hidden="true" />}
+                loading={calculate.isPending}
+                disabled={!query.data.businessDay}
+                onClick={() => (query.data.state === 'NONE' ? run() : setRecalculating(true))}
+              >
+                {query.data.state === 'NONE' ? '割り振りを計算する' : '計算し直す'}
+              </Button>
+              <Button
+                icon={<CheckCheck className="size-4" aria-hidden="true" />}
+                loading={confirm.isPending}
+                disabled={query.data.state !== 'DRAFT'}
+                onClick={() => confirm.mutate(date)}
+              >
+                確定して各自に知らせる
+              </Button>
+            </div>
+          )}
+        </div>
+      </StickyExtra>
       {calculate.isError && <Alert tone="error">{calculateError(calculate.error)}</Alert>}
       {calculate.isSuccess && (
         <Alert tone="success">

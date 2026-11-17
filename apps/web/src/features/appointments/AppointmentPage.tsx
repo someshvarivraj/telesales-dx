@@ -101,6 +101,7 @@ export function AppointmentPage() {
         return (
           <>
             <PageHeader
+              sticky
               back={<BackLink to={paths.appointments}>{ja.module.appointments}へ戻る</BackLink>}
               title={appointment.company.name}
               actions={

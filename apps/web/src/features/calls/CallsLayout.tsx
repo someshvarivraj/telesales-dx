@@ -5,6 +5,7 @@ import { Outlet } from 'react-router';
 import { paths } from '@/app/paths';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { StickyTop } from '@/components/ui/StickyTop';
 import { type TabItem, Tabs } from '@/components/ui/Tabs';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { ja } from '@/i18n/ja';
@@ -26,19 +27,21 @@ export function CallsLayout() {
   ];
   return (
     <>
-      <PageHeader
-        title={ja.module.calls}
-        actions={
-          <Button
-            variant="secondary"
-            icon={<Download className="size-4" aria-hidden="true" />}
-            onClick={() => setExporting(true)}
-          >
-            架電結果をExcelで出す
-          </Button>
-        }
-      />
-      <Tabs items={tabs} />
+      <StickyTop>
+        <PageHeader
+          title={ja.module.calls}
+          actions={
+            <Button
+              variant="secondary"
+              icon={<Download className="size-4" aria-hidden="true" />}
+              onClick={() => setExporting(true)}
+            >
+              架電結果をExcelで出す
+            </Button>
+          }
+        />
+        <Tabs items={tabs} />
+      </StickyTop>
       <Outlet />
       {exporting && <CallExportDialog open onClose={() => setExporting(false)} />}
     </>

@@ -8,6 +8,7 @@ import { Download, Search } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
+import { StickyExtra } from '@/components/ui/StickyTop';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -65,89 +66,92 @@ export function AppointmentListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <FormField label="訪問日（から）">
-            {(c) => (
-              <DatePicker
-                {...c}
-                value={filters.from ?? ''}
-                onChange={(e) => set({ from: e.target.value || undefined })}
-                clearable
-              />
-            )}
-          </FormField>
-          <FormField label="訪問日（まで）">
-            {(c) => (
-              <DatePicker
-                {...c}
-                value={filters.to ?? ''}
-                onChange={(e) => set({ to: e.target.value || undefined })}
-                clearable
-              />
-            )}
-          </FormField>
-          <FormField label="担当営業">
-            {(c) => (
-              <Select
-                {...c}
-                value={filters.salesRepId ?? ''}
-                placeholder={ja.common.all}
-                options={(reps.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
-                onChange={(e) => set({ salesRepId: e.target.value || undefined })}
-              />
-            )}
-          </FormField>
-          <FormField label="アポ取得者">
-            {(c) => (
-              <Select
-                {...c}
-                value={filters.bookedById ?? ''}
-                placeholder={ja.common.all}
-                options={(telemas.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
-                onChange={(e) => set({ bookedById: e.target.value || undefined })}
-              />
-            )}
-          </FormField>
-          <FormField label="状態">
-            {(c) => (
-              <Select
-                {...c}
-                value={filters.status ?? ''}
-                placeholder={ja.common.all}
-                options={Object.entries(ja.appointmentStatus).map(([value, label]) => ({
-                  value,
-                  label,
-                }))}
-                onChange={(e) =>
-                  set({ status: (e.target.value || undefined) as AppointmentStatus | undefined })
-                }
-              />
-            )}
-          </FormField>
-          <FormField label="会社名・担当者">
-            {(c) => (
-              <TextInput
-                {...c}
-                value={filters.q ?? ''}
-                onChange={(e) => set({ q: e.target.value || undefined })}
-                onKeyDown={(e) => e.key === 'Enter' && (setApplied(filters), setPage(1))}
-              />
-            )}
-          </FormField>
-        </div>
-        <div className="mt-3 flex justify-end">
-          <Button
-            icon={<Search className="size-4" aria-hidden="true" />}
-            onClick={() => {
-              setApplied(filters);
-              setPage(1);
-            }}
-          >
-            検索
-          </Button>
-        </div>
-      </Card>
+      {/* Stays in the section's fixed top while the list scrolls (11/17). */}
+      <StickyExtra>
+        <Card>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <FormField label="訪問日（から）">
+              {(c) => (
+                <DatePicker
+                  {...c}
+                  value={filters.from ?? ''}
+                  onChange={(e) => set({ from: e.target.value || undefined })}
+                  clearable
+                />
+              )}
+            </FormField>
+            <FormField label="訪問日（まで）">
+              {(c) => (
+                <DatePicker
+                  {...c}
+                  value={filters.to ?? ''}
+                  onChange={(e) => set({ to: e.target.value || undefined })}
+                  clearable
+                />
+              )}
+            </FormField>
+            <FormField label="担当営業">
+              {(c) => (
+                <Select
+                  {...c}
+                  value={filters.salesRepId ?? ''}
+                  placeholder={ja.common.all}
+                  options={(reps.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                  onChange={(e) => set({ salesRepId: e.target.value || undefined })}
+                />
+              )}
+            </FormField>
+            <FormField label="アポ取得者">
+              {(c) => (
+                <Select
+                  {...c}
+                  value={filters.bookedById ?? ''}
+                  placeholder={ja.common.all}
+                  options={(telemas.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                  onChange={(e) => set({ bookedById: e.target.value || undefined })}
+                />
+              )}
+            </FormField>
+            <FormField label="状態">
+              {(c) => (
+                <Select
+                  {...c}
+                  value={filters.status ?? ''}
+                  placeholder={ja.common.all}
+                  options={Object.entries(ja.appointmentStatus).map(([value, label]) => ({
+                    value,
+                    label,
+                  }))}
+                  onChange={(e) =>
+                    set({ status: (e.target.value || undefined) as AppointmentStatus | undefined })
+                  }
+                />
+              )}
+            </FormField>
+            <FormField label="会社名・担当者">
+              {(c) => (
+                <TextInput
+                  {...c}
+                  value={filters.q ?? ''}
+                  onChange={(e) => set({ q: e.target.value || undefined })}
+                  onKeyDown={(e) => e.key === 'Enter' && (setApplied(filters), setPage(1))}
+                />
+              )}
+            </FormField>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              icon={<Search className="size-4" aria-hidden="true" />}
+              onClick={() => {
+                setApplied(filters);
+                setPage(1);
+              }}
+            >
+              検索
+            </Button>
+          </div>
+        </Card>
+      </StickyExtra>
 
       <Card flush>
         <QueryState query={query}>

@@ -1,7 +1,7 @@
 import { isRole, Role } from '@telesales/shared';
 import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
 import { type Theme, THEMES, useTheme } from '@/components/brand/theme';
 import { cn } from '@/components/ui/cn';
@@ -12,9 +12,7 @@ import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { LanguageSwitch } from '@/i18n/english/LanguageSwitch';
 import { ja } from '@/i18n/ja';
 import { BrandMark } from './BrandMark';
-import { isCallsPage, type NavItem, visibleNav } from './navItems';
-
-const STORAGE_KEY = 'telesales.sidebar';
+import { type NavItem, visibleNav } from './navItems';
 
 const SECTION_LABEL: Record<NavItem['group'], string | null> = {
   main: null,
@@ -31,14 +29,6 @@ const AVATAR_TONE: Record<Role, string> = {
   [Role.Viewer]: 'bg-role-viewer-soft text-role-viewer',
 };
 
-function readFolded(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === 'closed';
-  } catch {
-    return false;
-  }
-}
-
 /** First characters of the name: 「田中 花子」→「田中」, 「V Someshvari」→「VS」. */
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -53,29 +43,19 @@ function initialsOf(name: string): string {
 
 /**
  * The left menu on tablets and wider. Brand at the top, the screens grouped by
- * section, and the signed-in person at the foot. The fold button next to the name
- * (under the logo when folded) shrinks it to icons; the choice is remembered in this browser.
+ * section, and the signed-in person at the foot. It starts folded to icons on every screen
+ * (11/17); the fold button (under the logo when folded) opens it.
  */
 export function AppSidebar() {
   const user = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
   const items = visibleNav(user.permissions);
-  const [savedFolded, setSavedFolded] = useState(readFolded);
-  // 架電状況 folds the menu by itself so the list gets the room (request 11/12). Opening it
-  // there lasts until you leave; it does not change the choice remembered for other screens.
-  const onCalls = isCallsPage(useLocation().pathname);
-  const [openOnCalls, setOpenOnCalls] = useState(false);
-  const [wasOnCalls, setWasOnCalls] = useState(onCalls);
-  if (wasOnCalls !== onCalls) {
-    setWasOnCalls(onCalls);
-    setOpenOnCalls(false);
-  }
-  const folded = onCalls ? !openOnCalls : savedFolded;
-  const toggle = () => {
-    if (onCalls) setOpenOnCalls((open) => !open);
-    else setSavedFolded((value) => !value);
-  };
+  // Folded to icons on every screen by default (request 11/17); it opens only when someone
+  // opens it, and stays open while they move between screens until they fold it again.
+  const [open, setOpen] = useState(false);
+  const folded = !open;
+  const toggle = () => setOpen((value) => !value);
   const mainRole = user.roles.find(isRole) ?? Role.Viewer;
 
   useEffect(() => {
@@ -86,14 +66,6 @@ export function AppSidebar() {
       delete root.dataset.sidebar;
     };
   }, [folded]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, savedFolded ? 'closed' : 'open');
-    } catch {
-      // Storage can be unavailable (private window); the menu just starts open.
-    }
-  }, [savedFolded]);
 
   const handleLogout = () => {
     logout.mutate(undefined, { onSettled: () => navigate(paths.login, { replace: true }) });
