@@ -93,10 +93,11 @@
   /* 土日祝・会社の休日: grey with diagonal dashes, unlike anything that can be booked. */
   --color-off: #eceef1;
   --color-off-line: #cfd4db;
-  /* A person's whole day of 休み (11/17): hatched like a holiday, in its own lavender. */
-  --color-dayoff: #eeeaf7;
-  --color-dayoff-line: #cdc3e8;
-  --color-dayoff-ink: #6a5aa8;
+  /* A person's whole day of 休み (11/17): hatched like a holiday, in the 休み colour of the legend
+     (ink-sub), so it reads the same in every view and every theme. */
+  --color-dayoff: color-mix(in srgb, var(--color-ink-sub) 11%, var(--color-surface));
+  --color-dayoff-line: color-mix(in srgb, var(--color-ink-sub) 40%, transparent);
+  --color-dayoff-ink: var(--color-ink-sub);
   /* Lunch break: a warmer, solid grey so it is not mistaken for a day off. */
   --color-lunch: #e7e3dc;
   /* One distinct hue per kind of event (10/30: shades of one colour were confused). */
@@ -286,9 +287,6 @@ html[data-theme='eyecare'] {
 
   --color-off: #e9e2d3;
   --color-off-line: #cfc5b1;
-  --color-dayoff: #ebe4ec;
-  --color-dayoff-line: #cdbfd2;
-  --color-dayoff-ink: #6e5878;
   --color-lunch: #e6decb;
   --color-free: #e8f0e1;
 
@@ -303,6 +301,85 @@ html[data-theme='eyecare'] {
 }
 html[data-theme='eyecare'] .grid-backdrop {
   display: none;
+}
+
+/*
+ * ダーク (11/17): dark surfaces, light text. Every token keeps its meaning (the same hue for
+ * each kind of event, status and module), only lighter on dark. Native controls follow.
+ */
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-main: #d4561c;
+  --color-main-hover: #e96d2f;
+  --color-main-soft: #2c1d14;
+  --color-main-line: #6a3a1e;
+  --color-main-focus: #f08a4b;
+
+  --color-ink: #e7eaef;
+  --color-ink-sub: #a2acba;
+  --color-ink-disabled: #66707d;
+  --color-link: #86b7ee;
+
+  --color-canvas: #0f1318;
+  --color-surface: #171c23;
+  --color-column: #1b2129;
+  --color-hover: #212833;
+  --color-line: #2b323c;
+  --color-line-strong: #3a4350;
+  --color-head: #232b36;
+  --color-head-line: #3d4755;
+
+  --color-danger: #f2786b;
+  --color-danger-soft: #3a1c1a;
+  --color-warning: #e2b553;
+  --color-warning-soft: #33291a;
+  --color-warning-ink: #ecca7c;
+  --color-success: #62c181;
+  --color-success-soft: #15291d;
+
+  --color-calls: #5fb7aa;
+  --color-calls-soft: #14302c;
+  --color-schedule: #6ea7e3;
+  --color-schedule-soft: #172739;
+  --color-appointments: #d79f60;
+  --color-appointments-soft: #33261a;
+  --color-admin: #9ea7b5;
+  --color-admin-soft: #232a33;
+
+  --color-role-telema: #5fb7aa;
+  --color-role-telema-soft: #14302c;
+  --color-role-sales: #6ea7e3;
+  --color-role-sales-soft: #172739;
+  --color-role-viewer: #9ea7b5;
+  --color-role-viewer-soft: #232a33;
+  --color-role-admin: #8fa9d8;
+  --color-role-admin-soft: #1c2536;
+
+  --color-now: #ff6b6b;
+  --color-off: #1c2229;
+  --color-off-line: #313a45;
+  --color-lunch: #24231f;
+  --color-ev-telema: #3cc0b0;
+  --color-ev-telema-soft: #12332f;
+  --color-ev-sales: #e59c50;
+  --color-ev-sales-soft: #382816;
+  --color-ev-plan: #74a3f0;
+  --color-ev-plan-soft: #182840;
+  --color-ev-tentative: #a98ff0;
+  --color-ev-tentative-soft: #261f3c;
+  --color-ev-attend: #e27dab;
+  --color-ev-attend-soft: #381c29;
+  --color-saturday: #6ea7e3;
+  --color-sunday: #f2786b;
+  --color-free: #15291d;
+  --color-free-ink: #7fd39b;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-raised: 0 6px 16px rgb(0 0 0 / 0.5), 0 2px 4px rgb(0 0 0 / 0.35);
+  --shadow-popover:
+    0 0 0 1px rgb(255 255 255 / 0.06), 0 18px 40px -12px rgb(0 0 0 / 0.7),
+    0 4px 10px -4px rgb(0 0 0 / 0.4);
 }
 
 html[data-theme='sakura'] {
@@ -1511,7 +1588,7 @@ html[data-sidebar='closed'] .sidebar .sidebar-compact {
   );
 }
 
-/* A person's whole day of 休み (11/17): hatched like a holiday, but lavender. */
+/* A person's whole day of 休み (11/17): hatched like a holiday, in the 休み grey of the legend. */
 @utility bg-dayoff {
   background-color: var(--color-dayoff);
   background-image: repeating-linear-gradient(

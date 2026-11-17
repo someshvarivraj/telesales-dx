@@ -285,7 +285,8 @@ export function ShiftsPage() {
                                     editable
                                       ? 'cursor-pointer hover:outline-2 hover:outline-main hover:-outline-offset-2'
                                       : 'cursor-default',
-                                    shift?.kind === ShiftKind.Off && 'bg-danger-soft text-danger',
+                                    // 休み in the same grey hatching as in the schedule (11/17).
+                                    shift?.kind === ShiftKind.Off && 'bg-dayoff text-dayoff-ink',
                                     shift?.kind === ShiftKind.Work && 'bg-calls-soft text-calls',
                                     shift && past && !isToday && 'opacity-55',
                                     !shift &&
@@ -297,7 +298,7 @@ export function ShiftsPage() {
                                   )}
                                 >
                                   {shift?.kind === ShiftKind.Off && (
-                                    <span className="font-bold">休</span>
+                                    <span className="bg-surface/90 px-1 font-bold">休み</span>
                                   )}
                                   {shift?.kind === ShiftKind.Work && (
                                     <>
@@ -411,7 +412,7 @@ function Legend() {
         出勤
       </span>
       <span className={item}>
-        <span className={cn(swatch, 'border border-danger bg-danger-soft')} />
+        <span className={cn(swatch, 'border border-line-strong bg-dayoff')} />
         休み
       </span>
       <span className={item}>
