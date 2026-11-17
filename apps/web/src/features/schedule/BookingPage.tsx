@@ -60,6 +60,7 @@ import { ApiError } from '@/lib/api/ApiError';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useDraft } from '@/lib/drafts';
 import { celebrate } from '@/components/fun/celebrate';
+import { showDone } from '@/components/ui/feedback';
 import { AttendeePicker } from './AttendeePicker';
 import { type Candidate, CandidateEditor } from './CandidateEditor';
 import { defaultEndTime, formatDate, formatShortDate, todayJst, toInstant } from '@/lib/format';
@@ -333,7 +334,13 @@ function BookingForm(props: BookingFormProps) {
         celebrate();
         lock.forget();
         draft.reset();
-        navigate(paths.appointmentMail(appointment.id, 'booking'), { replace: true });
+        if (salesBooked) {
+          // A rep's own appointment: no mail to anyone (11/17), straight to the appointment.
+          showDone('アポを登録しました');
+          navigate(paths.appointment(appointment.id), { replace: true });
+        } else {
+          navigate(paths.appointmentMail(appointment.id, 'booking'), { replace: true });
+        }
       },
       onError: () => setConfirming(false),
     });
@@ -393,7 +400,7 @@ function BookingForm(props: BookingFormProps) {
     <Dialog
       open={confirming}
       onClose={() => setConfirming(false)}
-      title="この内容で登録しますか？"
+      title={salesBooked ? 'アポ登録をしますか？' : 'この内容で登録しますか？'}
       size="lg"
       footer={
         <>
@@ -453,7 +460,9 @@ function BookingForm(props: BookingFormProps) {
         ]}
       />
       <p className="mt-4 text-sm text-ink-sub">
-        登録すると担当営業に画面でお知らせし、続けて営業さんへのメール（N1）の確認画面を開きます。
+        {salesBooked
+          ? '登録すると予定表に入ります。メールは送られません。'
+          : '登録すると担当営業に画面でお知らせし、続けて営業さんへのメール（N1）の確認画面を開きます。'}
       </p>
     </Dialog>
   );

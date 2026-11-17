@@ -1,4 +1,4 @@
-import { Permission } from '@telesales/shared';
+import { Permission, Role } from '@telesales/shared';
 import {
   CalendarDays,
   ClipboardList,
@@ -80,4 +80,12 @@ export function visibleNav(permissions: readonly Permission[]): NavItem[] {
   return navItems.filter((item) =>
     item.anyOf.some((permission) => permissions.includes(permission)),
   );
+}
+
+/**
+ * 営業 only (no other role): they do not use the call lists or company pages (request 11/17),
+ * so 架電 is left out of their menus. Anyone with another role as well keeps it.
+ */
+export function isSalesOnly(roles: readonly string[]): boolean {
+  return roles.length > 0 && roles.every((role) => role === Role.Sales);
 }

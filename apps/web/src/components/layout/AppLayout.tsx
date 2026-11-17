@@ -5,6 +5,7 @@ import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
 import { Alert } from '@/components/ui/Alert';
+import { FeedbackProvider } from '@/components/ui/feedback';
 import { StickyTopProvider } from '@/components/ui/StickyTop';
 import { paths } from '@/app/paths';
 import { cn } from '@/components/ui/cn';
@@ -40,43 +41,48 @@ export function AppLayout() {
   }, [pathname]);
   return (
     <ThemeProvider userId={id} roles={roles}>
-      <div className="min-h-dvh">
-        <GridBackdrop />
-        <AppSidebar />
-        <div className="app-main flex min-h-dvh min-w-0 flex-col">
-          <AppHeader />
-          {/* A thin Teams-like top bar (11/17): language and theme as icons at the right. */}
-          <div className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex">
-            <TopBarMenus />
-          </div>
-          <PlannedOutageBanner outage={status.data?.plannedOutage} className="sticky top-0 z-20" />
-          {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
+      <FeedbackProvider>
+        <div className="min-h-dvh">
+          <GridBackdrop />
+          <AppSidebar />
+          <div className="app-main flex min-h-dvh min-w-0 flex-col">
+            <AppHeader />
+            {/* A thin Teams-like top bar (11/17): language and theme as icons at the right. */}
+            <div className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex">
+              <TopBarMenus />
+            </div>
+            <PlannedOutageBanner
+              outage={status.data?.plannedOutage}
+              className="sticky top-0 z-20"
+            />
+            {/* Bottom padding keeps the end of every page (paging, save buttons) clear of the
               MoraBot launcher in the corner. */}
-          <main
-            className={cn(
-              // Full width on every screen (11/17): content takes the room, little empty margin.
-              'w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:px-6 md:pt-4',
-              // The schedule fills the screen with one scroll inside the calendar (11/17).
-              pathname.startsWith(paths.schedule) ? 'md:pb-4' : 'md:pb-28',
-            )}
-          >
-            {maintenance && admin && (
-              <Alert tone="warning" className="mb-5">
-                メンテナンス中です。いまは管理者だけが使えます（管理 ＞ {ja.admin.apps}{' '}
-                で終えられます）。
-              </Alert>
-            )}
-            <StickyTopProvider>
-              <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
-            </StickyTopProvider>
-          </main>
+            <main
+              className={cn(
+                // Full width on every screen (11/17): content takes the room, little empty margin.
+                'w-full flex-1 px-4 pt-5 pb-40 sm:px-6 md:px-6 md:pt-4',
+                // The schedule fills the screen with one scroll inside the calendar (11/17).
+                pathname.startsWith(paths.schedule) ? 'md:pb-4' : 'md:pb-28',
+              )}
+            >
+              {maintenance && admin && (
+                <Alert tone="warning" className="mb-5">
+                  メンテナンス中です。いまは管理者だけが使えます（管理 ＞ {ja.admin.apps}{' '}
+                  で終えられます）。
+                </Alert>
+              )}
+              <StickyTopProvider>
+                <div ref={page}>{maintenance && !admin ? <MaintenanceNotice /> : <Outlet />}</div>
+              </StickyTopProvider>
+            </main>
+          </div>
+          <MobileNav />
+          <AssistantWidget />
+          <SessionExpiryWarning />
+          <NoticeToaster />
+          <OutageOverlay />
         </div>
-        <MobileNav />
-        <AssistantWidget />
-        <SessionExpiryWarning />
-        <NoticeToaster />
-        <OutageOverlay />
-      </div>
+      </FeedbackProvider>
     </ThemeProvider>
   );
 }

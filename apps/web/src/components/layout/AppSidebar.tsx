@@ -9,7 +9,7 @@ import { useCurrentUser, useLogout } from '@/features/auth/hooks/useSession';
 import { FeedbackButton } from '@/features/feedback/FeedbackButton';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { ja } from '@/i18n/ja';
-import { type NavItem, visibleNav } from './navItems';
+import { isSalesOnly, type NavItem, visibleNav } from './navItems';
 
 /** Avatar colour follows the person's main role (same tones as the role badges). */
 const AVATAR_TONE: Record<Role, string> = {
@@ -42,7 +42,9 @@ export function AppSidebar() {
   const user = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
-  const items = visibleNav(user.permissions);
+  const items = visibleNav(user.permissions).filter(
+    (item) => !(item.to === paths.calls && isSalesOnly(user.roles)),
+  );
   const mainRole = user.roles.find(isRole) ?? Role.Viewer;
 
   // The rail styles hang on html[data-sidebar='closed'].
