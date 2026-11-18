@@ -4,6 +4,7 @@ import {
   AppointmentStatus,
   isTelemaSource,
   Permission,
+  PlanStatus,
   Role,
 } from '@telesales/shared';
 
@@ -26,6 +27,9 @@ export interface AppointmentFacts {
 export interface PlanFacts {
   ownerId: string;
   appointmentId: string | null;
+  /** Who put it on the calendar (a 仮予定 on another rep's calendar stays theirs to change). */
+  createdById?: string;
+  status?: string;
 }
 
 /**
@@ -112,18 +116,26 @@ export class AccessPolicy {
     };
   }
 
-  /**
-   * Sales add and change their own and other reps' plans (not appointments).
-   * Plans that are appointments are only moved through the appointment.
-   */
-  /** Confirming a tentative plan; a tentative appointment by its rep or an admin (11/13). */
-  canConfirmPlan(actor: Actor, plan: PlanFacts): boolean {
-    if (plan.appointmentId) {
-      return plan.ownerId === actor.id || this.isAdmin(actor);
-    }
-    return this.canEditPlan(actor, plan);
+  /** May write plans at all: sales (and anyone granted it) and admins. */
+  canWritePlans(actor: Actor): boolean {
+    return this.isAdmin(actor) || actor.can(Permission.WriteSalesPlans);
   }
 
+  /**
+   * Whose calendar a plan may go on (11/18): a rep's own plans freely; on another rep's calendar
+   * only a 仮予定 (tentative), which that rep then confirms or not. Admins anywhere.
+   */
+  canPlacePlan(actor: Actor, ownerId: string, status: string): boolean {
+    if (this.isAdmin(actor)) return true;
+    if (!actor.can(Permission.WriteSalesPlans)) return false;
+    return ownerId === actor.id || status === PlanStatus.Tentative;
+  }
+
+  /**
+   * Changing or deleting a plan (11/18: own plans only). A rep changes the plans on their own
+   * calendar, and the 仮予定 they put on someone else's while it is still tentative. Admins any.
+   * Plans that are appointments are only moved through the appointment.
+   */
   canEditPlan(actor: Actor, plan: PlanFacts): boolean {
     if (plan.appointmentId) {
       return false;
@@ -131,7 +143,27 @@ export class AccessPolicy {
     if (this.isAdmin(actor)) {
       return true;
     }
-    return actor.can(Permission.WriteSalesPlans);
+    if (!actor.can(Permission.WriteSalesPlans)) {
+      return false;
+    }
+    return (
+      plan.ownerId === actor.id ||
+      (plan.createdById === actor.id && plan.status === PlanStatus.Tentative)
+    );
+  }
+
+  /**
+   * Confirming a 仮予定 (11/13, 11/18): the rep whose calendar it is, or an admin — not the one
+   * who proposed it on someone else's calendar.
+   */
+  canConfirmPlan(actor: Actor, plan: PlanFacts): boolean {
+    if (this.isAdmin(actor)) {
+      return true;
+    }
+    if (plan.appointmentId) {
+      return plan.ownerId === actor.id;
+    }
+    return plan.ownerId === actor.id && actor.can(Permission.WriteSalesPlans);
   }
 
   /** Time off: sales for any rep; telemarketers for themselves and absences they were told about. */

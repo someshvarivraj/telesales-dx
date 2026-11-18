@@ -419,7 +419,8 @@ export function SchedulePage() {
         startsAt: toInstant(day, start),
         endsAt: toInstant(day, end),
         allDay: false,
-        status: PlanStatus.Fixed,
+        // Typed into another rep's calendar: a 仮予定 they confirm (11/18).
+        status: ownerId === user.id || isAdmin ? PlanStatus.Fixed : PlanStatus.Tentative,
         holidayWork: false,
         note: '',
         attendeeIds: [],

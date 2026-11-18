@@ -4,6 +4,7 @@ import {
   PLAN_TYPES_WITH_COMPANY,
   type PlanDto,
   type PlanRequest,
+  Permission,
   PlanStatus,
   Role,
 } from '@telesales/shared';
@@ -28,6 +29,8 @@ import { Select } from '@/components/ui/Select';
 import { Switch } from '@/components/ui/Switch';
 import { TextInput } from '@/components/ui/TextInput';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { usePermission } from '@/features/auth/hooks/usePermission';
+import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useCompanySearch } from '@/features/calls/api';
 import { Textarea } from '@/components/ui/Textarea';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
@@ -84,12 +87,17 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
     },
   );
   const values = draft.value;
+  // Another rep's calendar takes only a 仮予定; that rep confirms it (11/18). Admins anything.
+  const me = useCurrentUser();
+  const isAdmin = usePermission(Permission.Administer);
+  const forOther = !isAdmin && Boolean(values.ownerId) && values.ownerId !== me.id;
+  const status = forOther ? PlanStatus.Tentative : values.status;
   const setValues = draft.set;
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
   const withCompany = PLAN_TYPES_WITH_COMPANY.includes(values.type);
   // Several candidate dates: only for a new, timed 仮予定.
-  const canAddCandidates = !plan && values.status === PlanStatus.Tentative && !values.allDay;
+  const canAddCandidates = !plan && status === PlanStatus.Tentative && !values.allDay;
   // A draft saved before 候補日 existed has none.
   const candidates = values.candidates ?? [];
   const withCandidates = canAddCandidates && candidates.length > 0;
@@ -112,7 +120,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       startsAt,
       endsAt,
       allDay: values.allDay,
-      status: values.status,
+      status,
       holidayWork: values.holidayWork,
       note: values.note,
       attendeeIds: values.attendeeIds,
@@ -300,7 +308,13 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
               <Switch label="終日" checked={values.allDay} onChange={(v) => set('allDay', v)} />
               <Switch
                 label="仮予定（候補日）"
-                checked={values.status === PlanStatus.Tentative}
+                description={
+                  forOther
+                    ? 'ほかの営業の予定は仮予定で入れます。確定するのは本人です。'
+                    : undefined
+                }
+                checked={status === PlanStatus.Tentative}
+                disabled={forOther}
                 onChange={(v) => set('status', v ? PlanStatus.Tentative : PlanStatus.Fixed)}
               />
               <Switch

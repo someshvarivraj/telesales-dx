@@ -218,6 +218,10 @@ export class ScheduleService {
 
   async createPlan(actor: Actor, input: PlanCommand): Promise<PlanDto[]> {
     this.assertCanWritePlans(actor);
+    // On another rep's calendar only a 仮予定 (11/18).
+    if (!this.policy.canPlacePlan(actor, input.ownerId, input.status)) {
+      throw new ForbiddenError();
+    }
     await this.assertPlanType(input.type);
     const occurrences = this.occurrences(input);
     for (const occurrence of occurrences) {
@@ -287,6 +291,10 @@ export class ScheduleService {
       throw new NotFoundError();
     }
     if (!this.policy.canEditPlan(actor, before)) {
+      throw new ForbiddenError();
+    }
+    // Moved to or confirmed on another rep's calendar: still only as a 仮予定 (11/18).
+    if (!this.policy.canPlacePlan(actor, input.ownerId, input.status)) {
       throw new ForbiddenError();
     }
     await this.assertPlanType(input.type);
@@ -604,7 +612,7 @@ export class ScheduleService {
   }
 
   private assertCanWritePlans(actor: Actor): void {
-    if (!this.policy.canEditPlan(actor, { ownerId: '', appointmentId: null })) {
+    if (!this.policy.canWritePlans(actor)) {
       throw new ForbiddenError();
     }
   }

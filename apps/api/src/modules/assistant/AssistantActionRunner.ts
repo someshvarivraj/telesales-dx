@@ -4,7 +4,9 @@ import {
   createAppointmentRequestSchema,
   createCallRecordRequestSchema,
   jstDate,
+  Permission,
   planRequestSchema,
+  PlanStatus,
 } from '@telesales/shared';
 import { z } from 'zod';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
@@ -39,7 +41,12 @@ export class AssistantActionRunner {
   ): Promise<string> {
     switch (action.kind) {
       case 'plan': {
-        const input = parseWith(planRequestSchema, parseWith(bodyOf, action.payload).body);
+        const parsed = parseWith(planRequestSchema, parseWith(bodyOf, action.payload).body);
+        // On another rep's calendar only a 仮予定 (11/18): proposed that way instead of failing.
+        const input =
+          parsed.ownerId !== actor.id && !actor.can(Permission.Administer)
+            ? { ...parsed, status: PlanStatus.Tentative }
+            : parsed;
         await this.deps.schedule.createPlan(actor, input);
         return `/schedule?date=${jstDate(new Date(input.startsAt))}`;
       }
