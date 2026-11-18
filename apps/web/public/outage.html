@@ -344,6 +344,21 @@ function buildScenery(width, height, top, ratio) {
     { ridge: ranges.far, from: '#dfe6ee', to: '#c9d4df' },
     { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
   ];
+  // The テレマ MoraBot rising from behind the far range above the city (11/18: among the
+  // buildings it looked crowded): drawn first, so the mountains cover everything below its face.
+  if (STATUE) {
+    var harborAt = harborOf(width, top, tall);
+    if (harborAt.H > 30) {
+      var peakX = harborAt.towerX + harborAt.H * 0.6;
+      for (var px = peakX; px <= harborAt.towerX + harborAt.H * 1.5; px += 4) {
+        if (ranges.far(px) < ranges.far(peakX)) peakX = px;
+      }
+      var size = tall * 0.78;
+      // His face stays above both the ridge and the tallest buildings, whatever the screen.
+      var line = Math.min(ranges.far(peakX), top - harborAt.H * 0.95);
+      drawStatue(ctx, STATUE, peakX, line + size * 0.42, size);
+    }
+  }
   layers.forEach(function (layer, index) {
     var highest = top - (index === 0 ? tall : index === 1 ? tall * 0.68 : tall * 0.22);
     var fill = ctx.createLinearGradient(0, highest, 0, top);
@@ -417,9 +432,9 @@ function harborOf(width, top, tall) {
 }
 
 /**
- * The テレマ MoraBot statue (11/18): the pink MoraBot artwork standing among the buildings east of
- * the tower like the great robot statue in Shin-Nagata, the low blocks in front hiding its body.
- * Toned a little by the evening haze, lit warm from below. Drawn only once the artwork has loaded
+ * The テレマ MoraBot (11/18): the pink MoraBot artwork, big and far away, its face rising over
+ * the far range behind Kobe like a giant watching the harbour. Toned by the evening haze, as
+ * distant as the mountains. Drawn only once the artwork has loaded
  * (the sign-in screen passes it in; the outage page has none).
  */
 var STATUE = null;
@@ -427,11 +442,6 @@ var STATUE = null;
 function drawStatue(ctx, image, cx, base, S) {
   if (!image || !(S > 30)) return;
   var w = (S * image.naturalWidth) / image.naturalHeight;
-  var glow = ctx.createRadialGradient(cx, base - S * 0.3, 0, cx, base - S * 0.3, S * 0.8);
-  glow.addColorStop(0, 'rgba(255, 220, 170, 0.45)');
-  glow.addColorStop(1, 'rgba(255, 220, 170, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(cx - S * 0.8, base - S * 1.1, S * 1.6, S * 1.1);
   // The artwork with a light veil of haze on it only (not on the sky around it).
   var off = document.createElement('canvas');
   var scale = 2;
@@ -441,7 +451,7 @@ function drawStatue(ctx, image, cx, base, S) {
   if (!o) return;
   o.drawImage(image, 0, 0, off.width, off.height);
   o.globalCompositeOperation = 'source-atop';
-  o.fillStyle = 'rgba(214, 206, 232, 0.2)';
+  o.fillStyle = 'rgba(214, 210, 232, 0.32)';
   o.fillRect(0, 0, off.width, off.height);
   ctx.drawImage(off, cx - w / 2, base - S, w, S);
 }
@@ -486,8 +496,6 @@ function drawWaterfront(ctx, harbor, rand) {
     ctx.fillRect(bx, base - bh, bw, bh);
     drawWindows(ctx, bx, base - bh, bw, bh, rand, 0.3);
   }
-  // The テレマ MoraBot statue among the buildings east of the tower; the low blocks hide its body.
-  drawStatue(ctx, STATUE, X + H * 1.02, base, H * 1.15);
   // Sannomiya: the tall ones behind, west of the tower; lower blocks to the east.
   var blocks = [
     [-2.75, 0.17, 0.42],
