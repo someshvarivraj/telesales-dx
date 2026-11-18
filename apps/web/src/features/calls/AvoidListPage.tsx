@@ -16,6 +16,7 @@ import { MoraBotProgress } from '@/components/brand/MoraBot';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDateTime } from '@/lib/format';
 import { useAvoidList, useImportAvoidList, useRemoveAvoidPhone } from './api';
+import { useViewState } from '@/lib/viewState';
 
 /**
  * 回避企業 (Sano 10/28 ⑥, 10/30): numbers never called or imported again. The team's Excel is
@@ -23,7 +24,7 @@ import { useAvoidList, useImportAvoidList, useRemoveAvoidPhone } from './api';
  */
 export function AvoidListPage() {
   const canManage = usePermission(Permission.ManageAvoidList);
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useViewState('calls.avoid.keyword', '');
   const deferred = useDeferredValue(keyword.trim());
   const query = useAvoidList(deferred);
   const [importing, setImporting] = useState(false);

@@ -24,13 +24,14 @@ import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDateTime } from '@/lib/format';
 import { useAdminFeedback, useUpdateFeedback } from './api';
 import { FeedbackFiles, STATUS_TONE } from './FeedbackButton';
+import { useViewState } from '@/lib/viewState';
 
 type Filter = FeedbackStatus | 'ALL';
 
 /** 管理 → ご意見: every report and where it stands; resolving mails what was done. */
 export function FeedbackAdminPage() {
   const [params, setParams] = useSearchParams();
-  const [filter, setFilter] = useState<Filter>('ALL');
+  const [filter, setFilter] = useViewState<Filter>('admin.feedback.filter', 'ALL');
   const query = useAdminFeedback(filter === 'ALL' ? undefined : filter);
   const openId = params.get('id');
   const close = () =>

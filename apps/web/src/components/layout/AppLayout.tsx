@@ -1,6 +1,6 @@
 import { Permission } from '@telesales/shared';
 import { useEffect, useRef } from 'react';
-import { Outlet, useLocation } from 'react-router';
+import { Outlet, ScrollRestoration, useLocation } from 'react-router';
 import { GridBackdrop } from '@/components/brand/GridBackdrop';
 import { MoraBot } from '@/components/brand/MoraBot';
 import { ThemeProvider } from '@/components/brand/theme';
@@ -85,6 +85,8 @@ export function AppLayout() {
               </main>
             </div>
             <MobileNav />
+            {/* 戻る comes back to where the list was scrolled to (11/18). */}
+            <ScrollRestoration />
             <AssistantWidget />
             <SessionExpiryWarning />
             <NoticeToaster />

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { StickyExtra } from '@/components/ui/StickyTop';
@@ -11,10 +10,11 @@ import { QueryState } from '@/components/ui/QueryState';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, todayJst } from '@/lib/format';
 import { useNextActions, useSetNextActionDone } from './api';
+import { useViewState } from '@/lib/viewState';
 
 /** A rep's own next actions from meeting results (spec §6, priority 2). */
 export function NextActionsPage() {
-  const [includeDone, setIncludeDone] = useState(false);
+  const [includeDone, setIncludeDone] = useViewState('nextActions.includeDone', false);
   const query = useNextActions(includeDone);
   const setDone = useSetNextActionDone();
   const today = todayJst();

@@ -32,6 +32,7 @@ import {
   ConfirmedBadge,
   FormatBadge,
 } from './AppointmentBadges';
+import { useViewState } from '@/lib/viewState';
 
 function monthStart(): string {
   return `${todayJst().slice(0, 8)}01`;
@@ -42,10 +43,17 @@ export function AppointmentListPage() {
   const reps = usePeople(Role.Sales);
   const telemas = usePeople(Role.Telema);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
-  const [filters, setFilters] = useState<AppointmentListQuery>({ from: todayJst() });
-  const [applied, setApplied] = useState<AppointmentListQuery>({ from: todayJst() });
-  const [page, setPage] = useState(1);
-  const [report, setReport] = useState({ from: monthStart(), to: todayJst() });
+  const [filters, setFilters] = useViewState<AppointmentListQuery>('appointments.filters', {
+    from: todayJst(),
+  });
+  const [applied, setApplied] = useViewState<AppointmentListQuery>('appointments.applied', {
+    from: todayJst(),
+  });
+  const [page, setPage] = useViewState('appointments.page', 1);
+  const [report, setReport] = useViewState('appointments.report', {
+    from: monthStart(),
+    to: todayJst(),
+  });
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<unknown>(null);
   const query = useAppointments({ ...applied, page, pageSize: 50 });

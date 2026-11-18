@@ -1,6 +1,7 @@
 import type { ChangePasswordRequest, LoginRequest, SessionUser } from '@telesales/shared';
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clearDrafts } from '@/lib/drafts';
+import { clearViewState } from '@/lib/viewState';
 import { authApi } from '../api/AuthApi';
 
 export const sessionQueryKey = ['auth', 'session'] as const;
@@ -49,6 +50,8 @@ export function useLogout() {
     onSettled: () => {
       const user = queryClient.getQueryData<SessionUser | null>(sessionQueryKey);
       if (user) clearDrafts(user.id);
+      // What each screen was showing (search, filters) is forgotten too (11/18).
+      clearViewState();
       queryClient.clear();
       queryClient.setQueryData(sessionQueryKey, null);
     },
