@@ -48,11 +48,14 @@ const listInclude = {
     select: {
       calledAt: true,
       grade: true,
+      resultCode: true,
       nextCallDate: true,
       avoidUntil: true,
       telemarketer: userRefSelect,
     },
   },
+  // 回数 in the 架電用 list: calls made (E 回避 is not a call).
+  _count: { select: { callRecords: { where: { grade: { not: 'E' } } } } },
 } satisfies Prisma.CompanyInclude;
 
 type CompanyWithLastCall = Prisma.CompanyGetPayload<{ include: typeof listInclude }>;
@@ -996,6 +999,11 @@ export class CompanyService {
       id: row.id,
       name: row.name,
       office: row.office,
+      telemaIdNo: row.telemaIdNo,
+      department: row.department,
+      address: row.address,
+      nearestStation: row.nearestStation,
+      callCount: row._count.callRecords,
       phone: row.phone,
       prefecture: row.prefecture,
       city: row.city,
@@ -1010,6 +1018,7 @@ export class CompanyService {
         ? {
             calledAt: iso(last.calledAt),
             grade: last.grade,
+            resultCode: last.resultCode,
             telemarketer: userRef(last.telemarketer),
             avoidUntil: dateOnly(last.avoidUntil),
           }

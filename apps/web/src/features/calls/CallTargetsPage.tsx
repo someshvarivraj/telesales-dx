@@ -27,8 +27,10 @@ import { Pagination } from '@/components/ui/Pagination';
 import { QueryState } from '@/components/ui/QueryState';
 import { Table, Td, Th } from '@/components/ui/Table';
 import { usePermission } from '@/features/auth/hooks/usePermission';
+import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { cn } from '@/components/ui/cn';
+import { Segmented } from '@/components/ui/Segmented';
 import { Select } from '@/components/ui/Select';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatDateKanji, formatDateTime, todayJst } from '@/lib/format';
@@ -40,6 +42,7 @@ import {
   useSetCallTargets,
 } from './api';
 import { AssignDialog } from './AssignDialog';
+import { CallSheet } from './CallSheet';
 import { BulkEditDialog, BulkEditHistoryDialog } from './BulkEditDialog';
 import { FlagBadge, GradeBadge, SAreaBadge } from './CallBadges';
 import {
@@ -95,6 +98,13 @@ export function CallTargetsPage() {
   const [page, setPage] = useViewState('calls.page', 1, { fresh });
   // 並び替え (テレマ 11/18): by address (north to south), address then name, or name.
   const [sort, setSort] = useViewState<CompanySort>('calls.sort', 'UPDATED');
+  // 架電用の一覧 (資料A, 11/18): every item in its own column, as telemarketing asked; the
+  // grouped rows stay for everyone else. Telemarketers start with the 架電用 one.
+  const me = useCurrentUser();
+  const [layout, setLayout] = useViewState<'sheet' | 'cards'>(
+    'calls.layout',
+    me.roles.some((role) => role === Role.Telema || role === Role.TelemaLead) ? 'sheet' : 'cards',
+  );
   const grades = useOptionList(OptionCategory.CallGrade);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const ranks = useOptionList(OptionCategory.CompanyRank);
@@ -367,6 +377,17 @@ export function CallTargetsPage() {
                       }}
                     />
                   </label>
+                  <Segmented
+                    size="sm"
+                    aria-label="表示"
+                    className="ml-3"
+                    value={layout}
+                    onChange={setLayout}
+                    options={[
+                      { value: 'sheet', label: '架電用' },
+                      { value: 'cards', label: 'まとめて' },
+                    ]}
+                  />
                   <div className="min-w-0 flex-1">
                     <Pagination
                       page={data.page}
@@ -376,57 +397,74 @@ export function CallTargetsPage() {
                     />
                   </div>
                 </div>
-                <Table stickyHeader>
-                  <thead>
-                    <tr>
-                      {selectable && (
-                        <Th className="w-0 pl-4">
-                          <input
-                            type="checkbox"
-                            className="check-input"
-                            aria-label="このページをすべて選ぶ"
-                            checked={data.items.every((item) => picked.has(item.id))}
-                            onChange={(event) =>
-                              setPicked((current) => {
-                                const next = new Set(current);
-                                for (const item of data.items) {
-                                  if (event.target.checked) next.add(item.id);
-                                  else next.delete(item.id);
-                                }
-                                return next;
-                              })
-                            }
-                          />
-                        </Th>
-                      )}
-                      <Th className={selectable ? undefined : 'pl-4'}>会社名</Th>
-                      <Th>エリア</Th>
-                      <Th className="max-md:hidden">業種・ランク・資本金</Th>
-                      <Th className="max-xl:hidden">リスト名</Th>
-                      <Th>最新の架電</Th>
-                      <Th className="pr-4">B次回架電日</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.items.map((company) => (
-                      <CompanyRow
-                        key={company.id}
-                        company={company}
-                        gradeLabel={grades.labelOf(company.lastCall?.grade)}
-                        rankLabel={company.companyRank ? ranks.labelOf(company.companyRank) : null}
-                        picked={selectable ? picked.has(company.id) : undefined}
-                        onPick={(on) =>
-                          setPicked((current) => {
-                            const next = new Set(current);
-                            if (on) next.add(company.id);
-                            else next.delete(company.id);
-                            return next;
-                          })
-                        }
-                      />
-                    ))}
-                  </tbody>
-                </Table>
+                {layout === 'sheet' ? (
+                  <CallSheet
+                    items={data.items}
+                    sort={sort}
+                    onSort={(next) => {
+                      setSort(next);
+                      setPage(1);
+                    }}
+                    gradeLabelOf={grades.labelOf}
+                    resultLabelOf={results.labelOf}
+                    picked={selectable ? picked : undefined}
+                    setPicked={selectable ? setPicked : undefined}
+                  />
+                ) : (
+                  <Table stickyHeader>
+                    <thead>
+                      <tr>
+                        {selectable && (
+                          <Th className="w-0 pl-4">
+                            <input
+                              type="checkbox"
+                              className="check-input"
+                              aria-label="このページをすべて選ぶ"
+                              checked={data.items.every((item) => picked.has(item.id))}
+                              onChange={(event) =>
+                                setPicked((current) => {
+                                  const next = new Set(current);
+                                  for (const item of data.items) {
+                                    if (event.target.checked) next.add(item.id);
+                                    else next.delete(item.id);
+                                  }
+                                  return next;
+                                })
+                              }
+                            />
+                          </Th>
+                        )}
+                        <Th className={selectable ? undefined : 'pl-4'}>会社名</Th>
+                        <Th>エリア</Th>
+                        <Th className="max-md:hidden">業種・ランク・資本金</Th>
+                        <Th className="max-xl:hidden">リスト名</Th>
+                        <Th>最新の架電</Th>
+                        <Th className="pr-4">B次回架電日</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.items.map((company) => (
+                        <CompanyRow
+                          key={company.id}
+                          company={company}
+                          gradeLabel={grades.labelOf(company.lastCall?.grade)}
+                          rankLabel={
+                            company.companyRank ? ranks.labelOf(company.companyRank) : null
+                          }
+                          picked={selectable ? picked.has(company.id) : undefined}
+                          onPick={(on) =>
+                            setPicked((current) => {
+                              const next = new Set(current);
+                              if (on) next.add(company.id);
+                              else next.delete(company.id);
+                              return next;
+                            })
+                          }
+                        />
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
                 <div className="border-t border-line">
                   <Pagination
                     page={data.page}
