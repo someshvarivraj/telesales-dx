@@ -48,9 +48,9 @@ describe('MoraBot 確定', () => {
       },
     });
     expect(link).toBe('/schedule?date=2026-11-04');
-    // For another rep it goes in as a 仮予定 they confirm (11/18).
+    // A plan "with" another rep is the person's own plan with that rep as 同席者 (11/18).
     expect(calls).toMatchObject([
-      ['plan', { ownerId: REP, title: '打ち合わせ', allDay: false, status: 'TENTATIVE' }],
+      ['plan', { ownerId: 'u1', attendeeIds: [REP], title: '打ち合わせ', allDay: false }],
     ]);
   });
 

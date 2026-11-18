@@ -4,7 +4,6 @@ import {
   AppointmentStatus,
   isTelemaSource,
   Permission,
-  PlanStatus,
   Role,
 } from '@telesales/shared';
 
@@ -27,9 +26,6 @@ export interface AppointmentFacts {
 export interface PlanFacts {
   ownerId: string;
   appointmentId: string | null;
-  /** Who put it on the calendar (a 仮予定 on another rep's calendar stays theirs to change). */
-  createdById?: string;
-  status?: string;
 }
 
 /**
@@ -122,19 +118,18 @@ export class AccessPolicy {
   }
 
   /**
-   * Whose calendar a plan may go on (11/18): a rep's own plans freely; on another rep's calendar
-   * only a 仮予定 (tentative), which that rep then confirms or not. Admins anywhere.
+   * Whose calendar a plan may go on (11/18): a rep puts plans only on their own calendar; other
+   * reps join it as 同席者. Admins anywhere.
    */
-  canPlacePlan(actor: Actor, ownerId: string, status: string): boolean {
+  canPlacePlan(actor: Actor, ownerId: string): boolean {
     if (this.isAdmin(actor)) return true;
-    if (!actor.can(Permission.WriteSalesPlans)) return false;
-    return ownerId === actor.id || status === PlanStatus.Tentative;
+    return actor.can(Permission.WriteSalesPlans) && ownerId === actor.id;
   }
 
   /**
-   * Changing or deleting a plan (11/18: own plans only). A rep changes the plans on their own
-   * calendar, and the 仮予定 they put on someone else's while it is still tentative. Admins any.
-   * Plans that are appointments are only moved through the appointment.
+   * Changing or deleting a plan (11/18: own plans only): the rep whose plan it is, or an admin.
+   * Being 同席者 on someone's plan does not make it yours to change. Plans that are appointments
+   * are only moved through the appointment.
    */
   canEditPlan(actor: Actor, plan: PlanFacts): boolean {
     if (plan.appointmentId) {
@@ -143,19 +138,10 @@ export class AccessPolicy {
     if (this.isAdmin(actor)) {
       return true;
     }
-    if (!actor.can(Permission.WriteSalesPlans)) {
-      return false;
-    }
-    return (
-      plan.ownerId === actor.id ||
-      (plan.createdById === actor.id && plan.status === PlanStatus.Tentative)
-    );
+    return actor.can(Permission.WriteSalesPlans) && plan.ownerId === actor.id;
   }
 
-  /**
-   * Confirming a 仮予定 (11/13, 11/18): the rep whose calendar it is, or an admin — not the one
-   * who proposed it on someone else's calendar.
-   */
+  /** Confirming a 仮予定 (11/13): the rep whose plan it is, or an admin. */
   canConfirmPlan(actor: Actor, plan: PlanFacts): boolean {
     if (this.isAdmin(actor)) {
       return true;

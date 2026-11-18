@@ -6,7 +6,6 @@ import {
   jstDate,
   Permission,
   planRequestSchema,
-  PlanStatus,
 } from '@telesales/shared';
 import { z } from 'zod';
 import type { Actor } from '../../domain/access/AccessPolicy.js';
@@ -42,10 +41,15 @@ export class AssistantActionRunner {
     switch (action.kind) {
       case 'plan': {
         const parsed = parseWith(planRequestSchema, parseWith(bodyOf, action.payload).body);
-        // On another rep's calendar only a 仮予定 (11/18): proposed that way instead of failing.
+        // Plans go on one's own calendar (11/18): a plan "with" another rep becomes the
+        // person's own plan with that rep as 同席者, instead of failing.
         const input =
           parsed.ownerId !== actor.id && !actor.can(Permission.Administer)
-            ? { ...parsed, status: PlanStatus.Tentative }
+            ? {
+                ...parsed,
+                ownerId: actor.id,
+                attendeeIds: [...new Set([...parsed.attendeeIds, parsed.ownerId])],
+              }
             : parsed;
         await this.deps.schedule.createPlan(actor, input);
         return `/schedule?date=${jstDate(new Date(input.startsAt))}`;

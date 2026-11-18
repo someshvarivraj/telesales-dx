@@ -218,8 +218,8 @@ export class ScheduleService {
 
   async createPlan(actor: Actor, input: PlanCommand): Promise<PlanDto[]> {
     this.assertCanWritePlans(actor);
-    // On another rep's calendar only a 仮予定 (11/18).
-    if (!this.policy.canPlacePlan(actor, input.ownerId, input.status)) {
+    // Only on one's own calendar; other reps join as 同席者 (11/18).
+    if (!this.policy.canPlacePlan(actor, input.ownerId)) {
       throw new ForbiddenError();
     }
     await this.assertPlanType(input.type);
@@ -293,8 +293,8 @@ export class ScheduleService {
     if (!this.policy.canEditPlan(actor, before)) {
       throw new ForbiddenError();
     }
-    // Moved to or confirmed on another rep's calendar: still only as a 仮予定 (11/18).
-    if (!this.policy.canPlacePlan(actor, input.ownerId, input.status)) {
+    // Cannot be handed over to another rep's calendar either (11/18).
+    if (!this.policy.canPlacePlan(actor, input.ownerId)) {
       throw new ForbiddenError();
     }
     await this.assertPlanType(input.type);

@@ -33,8 +33,8 @@ describe('仮予定・同席者 on a rep’s own appointment (11/13)', () => {
     );
   });
 
-  it('lets only the calendar owner (or an admin) confirm a 仮予定 that is not an appointment', () => {
-    const plan = { ownerId: REP, appointmentId: null, createdById: OTHER, status: 'TENTATIVE' };
+  it('lets only the plan’s owner (or an admin) confirm a 仮予定 that is not an appointment', () => {
+    const plan = { ownerId: REP, appointmentId: null };
     expect(policy.canConfirmPlan(actor(REP, Permission.WriteSalesPlans), plan)).toBe(true);
     expect(policy.canConfirmPlan(actor(OTHER, Permission.WriteSalesPlans), plan)).toBe(false);
     expect(policy.canConfirmPlan(actor(OTHER, Permission.Administer), plan)).toBe(true);
@@ -198,43 +198,29 @@ describe('候補日 on a rep’s own 仮予定アポ (11/16)', () => {
   });
 });
 
-describe('own plans only; 仮予定 on another rep’s calendar (11/18)', () => {
+describe('own plans only; other reps join as 同席者 (11/18)', () => {
   const policy = new AccessPolicy();
   const rep = actor(REP, Permission.WriteSalesPlans);
   const other = actor(OTHER, Permission.WriteSalesPlans);
   const admin = actor(OTHER, Permission.Administer);
 
   it('lets a rep change their own plans, not other reps’ plans', () => {
-    const own = { ownerId: REP, appointmentId: null, createdById: REP, status: 'FIXED' };
+    const own = { ownerId: REP, appointmentId: null };
     expect(policy.canEditPlan(rep, own)).toBe(true);
     expect(policy.canEditPlan(other, own)).toBe(false);
     expect(policy.canEditPlan(admin, own)).toBe(true);
+    expect(policy.canEditPlan(actor(REP), own)).toBe(false);
   });
 
-  it('lets a rep change the 仮予定 they put on another rep’s calendar while it is tentative', () => {
-    const proposed = { ownerId: REP, appointmentId: null, createdById: OTHER, status: 'TENTATIVE' };
-    expect(policy.canEditPlan(other, proposed)).toBe(true);
-    // The calendar's owner may change it too.
-    expect(policy.canEditPlan(rep, proposed)).toBe(true);
-    // Once confirmed it belongs to the owner alone.
-    expect(policy.canEditPlan(other, { ...proposed, status: 'FIXED' })).toBe(false);
-  });
-
-  it('allows only a 仮予定 on another rep’s calendar', () => {
-    expect(policy.canPlacePlan(other, REP, 'TENTATIVE')).toBe(true);
-    expect(policy.canPlacePlan(other, REP, 'FIXED')).toBe(false);
-    expect(policy.canPlacePlan(other, OTHER, 'FIXED')).toBe(true);
-    expect(policy.canPlacePlan(admin, REP, 'FIXED')).toBe(true);
-    expect(policy.canPlacePlan(actor(OTHER), OTHER, 'FIXED')).toBe(false);
+  it('puts plans only on the rep’s own calendar (admins anywhere)', () => {
+    expect(policy.canPlacePlan(rep, REP)).toBe(true);
+    expect(policy.canPlacePlan(rep, OTHER)).toBe(false);
+    expect(policy.canPlacePlan(admin, REP)).toBe(true);
+    expect(policy.canPlacePlan(actor(REP), REP)).toBe(false);
   });
 
   it('never lets anyone edit a plan that is an appointment directly', () => {
-    const appointment = {
-      ownerId: REP,
-      appointmentId: 'appt-1',
-      createdById: REP,
-      status: 'FIXED',
-    };
+    const appointment = { ownerId: REP, appointmentId: 'appt-1' };
     expect(policy.canEditPlan(rep, appointment)).toBe(false);
     expect(policy.canEditPlan(admin, appointment)).toBe(false);
   });

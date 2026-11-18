@@ -203,7 +203,14 @@ export function SchedulePage() {
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [planDialog, setPlanDialog] = useState<{
     event?: CalendarEvent;
-    defaults?: { ownerId: string; date: string; time?: string; endTime?: string; title?: string };
+    defaults?: {
+      ownerId: string;
+      date: string;
+      time?: string;
+      endTime?: string;
+      title?: string;
+      attendeeIds?: string[];
+    };
   } | null>(null);
   const [timeOffDialog, setTimeOffDialog] = useState<{ userId: string; date: string } | null>(null);
   const [query, setQuery] = useState('');
@@ -404,26 +411,32 @@ export function SchedulePage() {
     .filter((event) => !event.allDay && minutesWithin(event.endsAt, now.date, 'end') > nowMinutes)
     .slice(0, 3);
 
-  const openRange = (ownerId: string, day: string, start: string, end: string, title?: string) =>
-    setPlanDialog({ defaults: { ownerId, date: day, time: start, endTime: end, title } });
+  // A rep's plans go on their own calendar (11/18): a time picked in another rep's row becomes
+  // the rep's own plan with that person as 同席者. Admins put plans on anyone's calendar.
+  const placeFor = (rowOwnerId: string) =>
+    isAdmin || rowOwnerId === user.id
+      ? { ownerId: rowOwnerId, attendeeIds: [] as string[] }
+      : { ownerId: user.id, attendeeIds: [rowOwnerId] };
+  const openRange = (rowOwnerId: string, day: string, start: string, end: string, title?: string) =>
+    setPlanDialog({
+      defaults: { ...placeFor(rowOwnerId), date: day, time: start, endTime: end, title },
+    });
 
   // Typed straight into the calendar (11/17): a 社内 plan with just a 件名; 「詳細」 opens the form.
   const savePlan = useSavePlan();
-  const quickAdd = (ownerId: string, day: string, start: string, end: string, title: string) =>
+  const quickAdd = (rowOwnerId: string, day: string, start: string, end: string, title: string) =>
     savePlan.mutateAsync({
       request: {
-        ownerId,
+        ...placeFor(rowOwnerId),
         type: 'INTERNAL',
         title,
         companyName: null,
         startsAt: toInstant(day, start),
         endsAt: toInstant(day, end),
         allDay: false,
-        // Typed into another rep's calendar: a 仮予定 they confirm (11/18).
-        status: ownerId === user.id || isAdmin ? PlanStatus.Fixed : PlanStatus.Tentative,
+        status: PlanStatus.Fixed,
         holidayWork: false,
         note: '',
-        attendeeIds: [],
         candidateGroupId: null,
         repeat: null,
         candidates: null,

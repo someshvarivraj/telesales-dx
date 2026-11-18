@@ -50,7 +50,15 @@ interface PlanDialogProps {
   onClose: () => void;
   /** Editing an existing plan, or defaults for a new one. */
   plan?: PlanDto;
-  defaults?: { ownerId: string; date: string; time?: string; endTime?: string; title?: string };
+  defaults?: {
+    ownerId: string;
+    date: string;
+    time?: string;
+    endTime?: string;
+    title?: string;
+    /** Opened from another rep's row: that rep joins as 同席者 (11/18). */
+    attendeeIds?: string[];
+  };
 }
 
 /** Sales plans other than appointments (spec §6): own and other reps, attendees, repeats. */
@@ -80,18 +88,18 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       status: plan?.status ?? PlanStatus.Fixed,
       holidayWork: plan?.holidayWork ?? false,
       note: plan?.note ?? '',
-      attendeeIds: plan?.attendees.map((attendee) => attendee.id) ?? [],
+      attendeeIds: plan?.attendees.map((attendee) => attendee.id) ?? defaults?.attendeeIds ?? [],
       repeatWeeks: 1,
       /** More candidate dates for a new 仮予定 (request 11/12). */
       candidates: [] as Candidate[],
     },
   );
   const values = draft.value;
-  // Another rep's calendar takes only a 仮予定; that rep confirms it (11/18). Admins anything.
+  // A rep's plans go on their own calendar; other reps join as 同席者 (11/18). Admins choose.
   const me = useCurrentUser();
   const isAdmin = usePermission(Permission.Administer);
-  const forOther = !isAdmin && Boolean(values.ownerId) && values.ownerId !== me.id;
-  const status = forOther ? PlanStatus.Tentative : values.status;
+  const ownerId = isAdmin ? values.ownerId : (plan?.owner.id ?? me.id);
+  const status = values.status;
   const setValues = draft.set;
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -112,7 +120,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
       : toInstant(values.date, values.end);
     const company = withCompany ? values.companyName.trim() : '';
     const request: PlanRequest = {
-      ownerId: values.ownerId,
+      ownerId,
       type: values.type,
       // A visit needs no separate 件名: the company name stands in.
       title: values.title.trim() || company,
@@ -168,7 +176,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
             onClick={submit}
             loading={save.isPending}
             disabled={
-              !values.ownerId ||
+              !ownerId ||
               !(values.title.trim() || (withCompany && values.companyName.trim())) ||
               !values.date ||
               (withCandidates && !candidatesValid)
@@ -308,13 +316,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
               <Switch label="終日" checked={values.allDay} onChange={(v) => set('allDay', v)} />
               <Switch
                 label="仮予定（候補日）"
-                description={
-                  forOther
-                    ? 'ほかの営業の予定は仮予定で入れます。確定するのは本人です。'
-                    : undefined
-                }
                 checked={status === PlanStatus.Tentative}
-                disabled={forOther}
                 onChange={(v) => set('status', v ? PlanStatus.Tentative : PlanStatus.Fixed)}
               />
               <Switch
@@ -333,7 +335,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
             label={`候補日（${candidates.length + 1}件・1つを確定すると、残りは消えます）`}
           >
             <CandidateEditor
-              ownerId={values.ownerId}
+              ownerId={ownerId}
               first={{ date: values.date, start: values.start, end: values.end }}
               candidates={candidates}
               onChange={(next) => set('candidates', next)}
@@ -342,19 +344,36 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
         )}
 
         <Row icon={<UserRound className="size-4" />} label="誰の予定">
-          <Select
-            aria-label="誰の予定"
-            aria-required
-            className="max-w-xs"
-            value={values.ownerId}
-            placeholder="選択してください"
-            options={(sales.data ?? []).map((p) => ({
-              value: p.id,
-              label: p.name,
-              icon: <Avatar size="sm" name={p.name} color={personColor(p.id, order)} />,
-            }))}
-            onChange={(e) => set('ownerId', e.target.value)}
-          />
+          {isAdmin ? (
+            <Select
+              aria-label="誰の予定"
+              aria-required
+              className="max-w-xs"
+              value={values.ownerId}
+              placeholder="選択してください"
+              options={(sales.data ?? []).map((p) => ({
+                value: p.id,
+                label: p.name,
+                icon: <Avatar size="sm" name={p.name} color={personColor(p.id, order)} />,
+              }))}
+              onChange={(e) => set('ownerId', e.target.value)}
+            />
+          ) : (
+            // Own plans only (11/18): who else takes part is chosen under 同席者.
+            <div className="flex flex-col gap-1">
+              <span className="flex items-center gap-2 text-sm font-bold">
+                <Avatar
+                  size="sm"
+                  name={plan?.owner.name ?? me.name}
+                  color={personColor(ownerId, order)}
+                />
+                {plan?.owner.name ?? me.name}（自分）
+              </span>
+              <span className="text-xs text-ink-sub">
+                ほかの営業と一緒の予定は、下の「同席者」に追加してください。
+              </span>
+            </div>
+          )}
         </Row>
 
         <Row
@@ -362,7 +381,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
           label={`同席者${values.attendeeIds.length ? `（${values.attendeeIds.length}人）` : ''}`}
         >
           <AttendeePicker
-            ownerId={values.ownerId}
+            ownerId={ownerId}
             value={values.attendeeIds}
             onChange={(ids) => set('attendeeIds', ids)}
           />
