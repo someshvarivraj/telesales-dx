@@ -10,6 +10,9 @@ import { type CalendarEvent, eventsOn, isDayOff } from './events';
 
 interface DayViewProps {
   date: string;
+  /** Type an all-day plan into the 終日 row (11/18). */
+  onQuickAddAllDay?: (personId: string, title: string) => Promise<unknown>;
+  onAllDayDetail?: (personId: string, title: string) => void;
   people: UserRef[];
   events: CalendarEvent[];
   holidays: CalendarDayDto[];
@@ -52,6 +55,8 @@ export function DayView({
   maxHeight,
   step,
   clickMinutes,
+  onQuickAddAllDay,
+  onAllDayDetail,
 }: DayViewProps) {
   const holiday = holidays.find((day) => day.date === date);
   const off = isWeekend(date) || Boolean(holiday);
@@ -91,6 +96,12 @@ export function DayView({
           onQuickAdd
             ? (column, start, end, title) => onQuickAdd(column.personId, start, end, title)
             : undefined
+        }
+        onQuickAddAllDay={
+          onQuickAddAllDay ? (column, title) => onQuickAddAllDay(column.personId, title) : undefined
+        }
+        onAllDayDetail={
+          onAllDayDetail ? (column, title) => onAllDayDetail(column.personId, title) : undefined
         }
         columns={people.map((person) => {
           const personEvents = eventsOn(events, date, person.id);

@@ -2,7 +2,7 @@ import {
   type AssistantStreamEvent,
   assistantChatRequestSchema,
   ErrorCode,
-  operatorRoleLabel,
+  Role,
   Permission,
 } from '@telesales/shared';
 import { Router } from 'express';
@@ -19,6 +19,20 @@ import type { AssistantService } from './AssistantService.js';
  * MoraBot: chat (streamed, so people see each step), history, and the 確定 / やめる of
  * its proposal cards. Everything is the signed-in person's own.
  */
+/** Every role the person has, in the words the guide uses (「テレマリーダー・営業」), so MoraBot
+ * explains what this person can do. */
+const ROLE_NAMES: Record<Role, string> = {
+  [Role.Telema]: 'テレマ',
+  [Role.TelemaLead]: 'テレマリーダー',
+  [Role.Sales]: '営業',
+  [Role.Viewer]: '閲覧のみ',
+  [Role.Admin]: '管理者',
+};
+
+function roleNamesOf(roles: readonly Role[]): string {
+  return roles.map((role) => ROLE_NAMES[role]).join('・') || '閲覧のみ';
+}
+
 export function createAssistantRouter(deps: {
   authenticator: Authenticator;
   assistant: AssistantService;
@@ -75,7 +89,7 @@ export function createAssistantRouter(deps: {
     try {
       await deps.conversations.chat(
         user,
-        { name: user.name, roleLabel: operatorRoleLabel(user.roles) },
+        { name: user.name, roleLabel: roleNamesOf(user.roles) },
         body,
         emit,
       );

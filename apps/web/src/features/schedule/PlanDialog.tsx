@@ -58,6 +58,8 @@ interface PlanDialogProps {
     title?: string;
     /** Opened from another rep's row: that rep joins as 同席者 (11/18). */
     attendeeIds?: string[];
+    /** Start as an all-day plan (typed into the 終日 row, 11/18). */
+    allDay?: boolean;
   };
 }
 
@@ -84,7 +86,7 @@ export function PlanDialog({ open, onClose, plan, defaults }: PlanDialogProps) {
         plan && !plan.allDay
           ? formatTime(plan.endsAt)
           : (defaults?.endTime ?? defaultPlanEndTime(defaults?.time ?? '10:00')),
-      allDay: plan?.allDay ?? false,
+      allDay: plan?.allDay ?? defaults?.allDay ?? false,
       status: plan?.status ?? PlanStatus.Fixed,
       holidayWork: plan?.holidayWork ?? false,
       note: plan?.note ?? '',

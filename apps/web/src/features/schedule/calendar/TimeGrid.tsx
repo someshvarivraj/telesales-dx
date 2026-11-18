@@ -63,6 +63,12 @@ interface TimeGridProps {
   columnLabel?: (column: GridColumn) => string;
   /** Minutes a click or drag snaps to (30). */
   step?: number;
+  /**
+   * Type an all-day plan straight into the 終日 row (11/18), as into the hours: a click on the
+   * empty part of a day's cell opens a box; Enter saves, 「＋詳細」 opens the full form.
+   */
+  onQuickAddAllDay?: (column: GridColumn, title: string) => Promise<unknown>;
+  onAllDayDetail?: (column: GridColumn, title: string) => void;
   /** Length of the range a single click makes (30 minutes). */
   clickMinutes?: number;
 }
@@ -103,6 +109,8 @@ export function TimeGrid({
   columnLabel,
   step = BOOKING_STEP_MINUTES,
   clickMinutes = DEFAULT_PLAN_MINUTES,
+  onQuickAddAllDay,
+  onAllDayDetail,
 }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const now = useNow();
@@ -163,7 +171,30 @@ export function TimeGrid({
     );
   };
 
-  const allDayRow = columns.some((column) => column.events.some((event) => event.allDay));
+  const [allDayQuick, setAllDayQuick] = useState<{
+    key: string;
+    title: string;
+    saving: boolean;
+    error: string | null;
+  } | null>(null);
+  const saveAllDay = (column: GridColumn) => {
+    if (!allDayQuick || !onQuickAddAllDay || allDayQuick.saving) return;
+    const title = allDayQuick.title.trim();
+    if (!title) return;
+    setAllDayQuick({ ...allDayQuick, saving: true, error: null });
+    onQuickAddAllDay(column, title).then(
+      () => setAllDayQuick(null),
+      (error: unknown) =>
+        setAllDayQuick((current) =>
+          current ? { ...current, saving: false, error: errorMessageOf(error) } : current,
+        ),
+    );
+  };
+
+  // Always there when all-day plans can be typed in, so the row is a place to write.
+  const allDayRow =
+    Boolean(onQuickAddAllDay) ||
+    columns.some((column) => column.events.some((event) => event.allDay));
 
   return (
     <div>
@@ -218,6 +249,86 @@ export function TimeGrid({
                           )}
                         >
                           {event.title}
+                        </button>
+                      ))}
+                    {onQuickAddAllDay &&
+                      !column.off &&
+                      (allDayQuick?.key === column.key ? (
+                        <div data-quick className="flex flex-col gap-1">
+                          <input
+                            autoFocus
+                            aria-label="終日の予定の件名"
+                            placeholder="終日の予定（Enterで保存）"
+                            value={allDayQuick.title}
+                            disabled={allDayQuick.saving}
+                            maxLength={100}
+                            onChange={(event) =>
+                              setAllDayQuick({ ...allDayQuick, title: event.target.value })
+                            }
+                            onKeyDown={(event) => {
+                              if (event.nativeEvent.isComposing) return;
+                              if (event.key === 'Enter') {
+                                event.preventDefault();
+                                saveAllDay(column);
+                              }
+                              if (event.key === 'Escape') setAllDayQuick(null);
+                            }}
+                            onBlur={(event) => {
+                              // Leaving an empty box closes it; typed text waits for Enter.
+                              const inside = event.relatedTarget?.closest('[data-quick]');
+                              if (!inside && !allDayQuick.title.trim()) setAllDayQuick(null);
+                            }}
+                            className="h-6 w-full min-w-0 border border-main bg-surface px-1.5 text-[11px] text-ink outline-none"
+                          />
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={!allDayQuick.title.trim() || allDayQuick.saving}
+                              onClick={() => saveAllDay(column)}
+                              className="h-5 cursor-pointer bg-main px-2 text-[10px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {allDayQuick.saving ? '保存中…' : '保存'}
+                            </button>
+                            {onAllDayDetail && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onAllDayDetail(column, allDayQuick.title);
+                                  setAllDayQuick(null);
+                                }}
+                                className="h-5 cursor-pointer border border-line-strong px-1.5 text-[10px] font-bold text-ink hover:bg-column"
+                              >
+                                ＋詳細
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              aria-label="閉じる"
+                              onClick={() => setAllDayQuick(null)}
+                              className="ml-auto h-5 cursor-pointer px-1 text-[10px] text-ink-sub hover:text-ink"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          {allDayQuick.error && (
+                            <p className="text-[10px] text-danger">{allDayQuick.error}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={`${column.date}：終日の予定を入力`}
+                          onClick={() =>
+                            setAllDayQuick({
+                              key: column.key,
+                              title: '',
+                              saving: false,
+                              error: null,
+                            })
+                          }
+                          className="group min-h-5 flex-1 cursor-text px-1.5 text-left text-[11px] text-transparent hover:bg-hover hover:text-ink-disabled focus-visible:text-ink-disabled"
+                        >
+                          ＋ 終日の予定
                         </button>
                       ))}
                   </div>

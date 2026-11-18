@@ -85,11 +85,14 @@ export const ACTION_DEFINITIONS = [
     function: {
       name: 'propose_plan',
       description:
-        'スケジュールに予定（アポ以外）を入れる提案カードを出す。保存はされず、本人が「確定」を押したときだけ登録される。',
+        'スケジュールに本人の予定（アポ以外）を入れる提案カードを出す。保存はされず、本人が「確定」を押したときだけ登録される。予定は本人のものとして入り、person にほかの営業を入れるとその人は同席者になる（ほかの人の予定は作れない。管理者を除く）。',
       parameters: {
         type: 'object',
         properties: {
-          person: { type: 'string', description: '予定の持ち主（名前の一部、または「自分」）' },
+          person: {
+            type: 'string',
+            description: '「自分」、または一緒に行く営業（名前の一部。同席者として入る）',
+          },
           date: { type: 'string', description: 'YYYY-MM-DD' },
           start: { type: 'string', description: '開始 HH:MM（15分刻み）' },
           end: { type: 'string', description: '終了 HH:MM（15分刻み）' },
