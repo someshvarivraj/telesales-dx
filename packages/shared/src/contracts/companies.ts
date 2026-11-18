@@ -244,6 +244,13 @@ export interface CompanyListItem {
   id: string;
   name: string;
   office: string | null;
+  /** テレマIDNo., 部署, 住所, 最寄駅: shown in the 架電用 list (テレマ 11/18, 資料A). */
+  telemaIdNo: string | null;
+  department: string | null;
+  address: string | null;
+  nearestStation: string | null;
+  /** Calls made (A–D; E 回避 is not a call). */
+  callCount: number;
   phone: string | null;
   prefecture: string | null;
   city: string | null;
@@ -257,6 +264,8 @@ export interface CompanyListItem {
   lastCall: {
     calledAt: string;
     grade: string;
+    /** 最新テレマ結果 (option code under the grade). */
+    resultCode: string | null;
     telemarketer: UserRef;
     /** C架電回避目安: shown as 「○年○月○日までは架電回避」; nothing happens by itself when it ends. */
     avoidUntil: string | null;
