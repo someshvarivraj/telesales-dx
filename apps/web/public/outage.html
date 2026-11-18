@@ -416,112 +416,34 @@ function harborOf(width, top, tall) {
   };
 }
 
-/** A rounded rectangle path (not every browser has ctx.roundRect). */
-function roundedRect(ctx, x, y, w, h, r) {
-  r = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
 /**
- * The MoraBot statue (11/18): MoraBot as a city landmark, S tall from its pedestal on the quay —
- * blue head with its white face and lit eyes, orange ears and antenna ball, green body, one arm
- * raised as if waving to the harbour. Colours a little muted by the evening haze, lit warm from
- * below by floodlights. Part of the still scenery, so the lake reflects it.
+ * The テレマ MoraBot statue (11/18): the pink MoraBot artwork standing among the buildings east of
+ * the tower like the great robot statue in Shin-Nagata, the low blocks in front hiding its body.
+ * Toned a little by the evening haze, lit warm from below. Drawn only once the artwork has loaded
+ * (the sign-in screen passes it in; the outage page has none).
  */
-function drawMoraStatue(ctx, cx, base, S) {
-  if (!(S > 30)) return;
-  ctx.save();
-  // Floodlight glow at its feet, rising up the statue.
-  var glow = ctx.createRadialGradient(cx, base - S * 0.2, 0, cx, base - S * 0.2, S * 0.75);
-  glow.addColorStop(0, 'rgba(255, 220, 160, 0.4)');
-  glow.addColorStop(1, 'rgba(255, 220, 160, 0)');
+var STATUE = null;
+
+function drawStatue(ctx, image, cx, base, S) {
+  if (!image || !(S > 30)) return;
+  var w = (S * image.naturalWidth) / image.naturalHeight;
+  var glow = ctx.createRadialGradient(cx, base - S * 0.3, 0, cx, base - S * 0.3, S * 0.8);
+  glow.addColorStop(0, 'rgba(255, 220, 170, 0.45)');
+  glow.addColorStop(1, 'rgba(255, 220, 170, 0)');
   ctx.fillStyle = glow;
-  ctx.fillRect(cx - S * 0.75, base - S * 0.95, S * 1.5, S * 0.95);
-  // Pedestal.
-  ctx.fillStyle = '#8f8a94';
-  ctx.fillRect(cx - S * 0.2, base - S * 0.09, S * 0.4, S * 0.09);
-  // Legs.
-  ctx.fillStyle = '#3a5aa6';
-  ctx.fillRect(cx - S * 0.11, base - S * 0.21, S * 0.07, S * 0.13);
-  ctx.fillRect(cx + S * 0.04, base - S * 0.21, S * 0.07, S * 0.13);
-  // Arms: the left one down at its side, the right one raised.
-  ctx.strokeStyle = '#4b70c4';
-  ctx.lineCap = 'round';
-  ctx.lineWidth = S * 0.055;
-  ctx.beginPath();
-  ctx.moveTo(cx - S * 0.15, base - S * 0.42);
-  ctx.lineTo(cx - S * 0.22, base - S * 0.27);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + S * 0.15, base - S * 0.42);
-  ctx.lineTo(cx + S * 0.27, base - S * 0.6);
-  ctx.lineTo(cx + S * 0.3, base - S * 0.74);
-  ctx.stroke();
-  ctx.fillStyle = '#e9edf5';
-  ctx.beginPath();
-  ctx.arc(cx + S * 0.3, base - S * 0.76, S * 0.045, 0, Math.PI * 2);
-  ctx.fill();
-  // Body: green, with a lighter round badge.
-  var body = ctx.createLinearGradient(cx - S * 0.17, 0, cx + S * 0.17, 0);
-  body.addColorStop(0, '#2f7a36');
-  body.addColorStop(0.45, '#47a04c');
-  body.addColorStop(1, '#2a6a31');
-  ctx.fillStyle = body;
-  roundedRect(ctx, cx - S * 0.16, base - S * 0.47, S * 0.32, S * 0.27, S * 0.07);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(220, 240, 214, 0.85)';
-  ctx.beginPath();
-  ctx.arc(cx, base - S * 0.34, S * 0.05, 0, Math.PI * 2);
-  ctx.fill();
-  // Antenna and its orange ball.
-  ctx.strokeStyle = '#3a5aa6';
-  ctx.lineWidth = Math.max(1, S * 0.022);
-  ctx.beginPath();
-  ctx.moveTo(cx, base - S * 0.84);
-  ctx.lineTo(cx, base - S * 0.93);
-  ctx.stroke();
-  ctx.fillStyle = '#f2994a';
-  ctx.beginPath();
-  ctx.arc(cx, base - S * 0.95, S * 0.035, 0, Math.PI * 2);
-  ctx.fill();
-  // Ears.
-  ctx.fillStyle = '#f2994a';
-  roundedRect(ctx, cx - S * 0.25, base - S * 0.72, S * 0.05, S * 0.12, S * 0.02);
-  ctx.fill();
-  roundedRect(ctx, cx + S * 0.2, base - S * 0.72, S * 0.05, S * 0.12, S * 0.02);
-  ctx.fill();
-  // Head: blue, shaded like a solid shape.
-  var head = ctx.createLinearGradient(cx - S * 0.22, 0, cx + S * 0.22, 0);
-  head.addColorStop(0, '#2c4f9e');
-  head.addColorStop(0.4, '#4a72c8');
-  head.addColorStop(1, '#27468e');
-  ctx.fillStyle = head;
-  roundedRect(ctx, cx - S * 0.22, base - S * 0.85, S * 0.44, S * 0.37, S * 0.1);
-  ctx.fill();
-  // The white face and two lit eyes.
-  ctx.fillStyle = '#eef1f8';
-  roundedRect(ctx, cx - S * 0.16, base - S * 0.78, S * 0.32, S * 0.2, S * 0.07);
-  ctx.fill();
-  ctx.fillStyle = '#ffd98a';
-  ctx.shadowColor = 'rgba(255, 210, 120, 0.9)';
-  ctx.shadowBlur = S * 0.06;
-  ctx.beginPath();
-  ctx.arc(cx - S * 0.07, base - S * 0.69, S * 0.04, 0, Math.PI * 2);
-  ctx.arc(cx + S * 0.07, base - S * 0.69, S * 0.04, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#1b2f63';
-  ctx.beginPath();
-  ctx.arc(cx - S * 0.07, base - S * 0.69, S * 0.018, 0, Math.PI * 2);
-  ctx.arc(cx + S * 0.07, base - S * 0.69, S * 0.018, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  ctx.fillRect(cx - S * 0.8, base - S * 1.1, S * 1.6, S * 1.1);
+  // The artwork with a light veil of haze on it only (not on the sky around it).
+  var off = document.createElement('canvas');
+  var scale = 2;
+  off.width = Math.max(1, Math.round(w * scale));
+  off.height = Math.max(1, Math.round(S * scale));
+  var o = off.getContext('2d');
+  if (!o) return;
+  o.drawImage(image, 0, 0, off.width, off.height);
+  o.globalCompositeOperation = 'source-atop';
+  o.fillStyle = 'rgba(214, 206, 232, 0.2)';
+  o.fillRect(0, 0, off.width, off.height);
+  ctx.drawImage(off, cx - w / 2, base - S, w, S);
 }
 
 /** Lit and dark windows in rows over a building's face. */
@@ -564,9 +486,8 @@ function drawWaterfront(ctx, harbor, rand) {
     ctx.fillRect(bx, base - bh, bw, bh);
     drawWindows(ctx, bx, base - bh, bw, bh, rand, 0.3);
   }
-  // A giant MoraBot statue standing among the buildings east of the tower (11/18), the way the
-  // great robot statue stands in Shin-Nagata: the low blocks in front hide its legs.
-  drawMoraStatue(ctx, X + H * 1.02, base, H * 1.02);
+  // The テレマ MoraBot statue among the buildings east of the tower; the low blocks hide its body.
+  drawStatue(ctx, STATUE, X + H * 1.02, base, H * 1.15);
   // Sannomiya: the tall ones behind, west of the tower; lower blocks to the east.
   var blocks = [
     [-2.75, 0.17, 0.42],
@@ -2296,6 +2217,17 @@ function drawShootingStar(ctx, star) {
  * stays clean; a click or tap on the water sends a ripple that pushes the nearby leaves away and
  * keeps them a few seconds more.
  */
+/** Loads the statue artwork once, then has the scenery drawn again with it. */
+function loadStatue(src, redraw) {
+  if (!src || STATUE) return;
+  var image = new Image();
+  image.onload = function () {
+    STATUE = image;
+    redraw();
+  };
+  image.src = src;
+}
+
 function startLeaves(canvas, options) {
   var opts = options || {};
   var ctx = canvas.getContext('2d');
@@ -2326,6 +2258,7 @@ function startLeaves(canvas, options) {
       drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
     };
     still();
+    loadStatue(opts.statue, still);
     window.addEventListener('resize', still);
     return function () {
       window.removeEventListener('resize', still);
@@ -2804,6 +2737,10 @@ function startLeaves(canvas, options) {
   }
 
   resize();
+  if (lake)
+    loadStatue(opts.statue, function () {
+      if (width > 0) scenery = buildScenery(width, height, lakeTop, ratio);
+    });
   window.addEventListener('resize', resize);
   document.addEventListener('visibilitychange', visibility);
   if (lake) {

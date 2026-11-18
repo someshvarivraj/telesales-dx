@@ -93,14 +93,14 @@ export function AuthLayout({
               // Over the lake (11/18): frosted glass, so the evening scene shows through softly
               // while the blur and a light veil keep every word as easy to read as on white.
               leaves
-                ? 'border-line/60 bg-surface/70 shadow-[0_28px_64px_-24px_rgb(40_36_90/0.5),inset_0_1px_0_rgb(255_255_255/0.55)] backdrop-blur-xl backdrop-saturate-150'
+                ? 'border-white/50 bg-surface/40 shadow-[0_28px_64px_-24px_rgb(40_36_90/0.45),inset_0_1px_0_rgb(255_255_255/0.6)] backdrop-blur-md backdrop-saturate-150'
                 : 'border-line bg-surface shadow-(--shadow-raised)',
             )}
           >
             <header
               className={cn(
                 'flex items-center gap-3 border-b px-6 py-4 max-sm:px-5',
-                leaves ? 'border-line/50' : 'border-line',
+                leaves ? 'border-white/40' : 'border-line',
               )}
             >
               <MoraBot mood={mood} size={56} title="" />
@@ -118,7 +118,7 @@ export function AuthLayout({
             <footer
               className={cn(
                 'flex flex-col gap-1 border-t px-6 py-3 text-xs text-ink-sub max-sm:px-5',
-                leaves ? 'border-line/50 bg-column/45' : 'border-line bg-column',
+                leaves ? 'border-white/40 bg-surface/25' : 'border-line bg-column',
               )}
             >
               {footer && <p>{footer}</p>}

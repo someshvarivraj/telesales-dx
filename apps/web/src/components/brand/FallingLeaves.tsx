@@ -13,7 +13,11 @@ export function FallingLeaves({ className, lake = false }: { className?: string;
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     if (!ref.current) return;
-    return startLeaves(ref.current, { lake });
+    return startLeaves(ref.current, {
+      lake,
+      // The テレマ MoraBot statue in Kobe's waterfront (11/18).
+      statue: `${import.meta.env.BASE_URL}morabot/girl/girl.webp`,
+    });
   }, [lake]);
   return (
     <canvas
