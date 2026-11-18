@@ -1527,8 +1527,8 @@ function moonFaceOf(r) {
       c.translate(ox, oy);
       c.scale(sx, sy);
       var patch = c.createRadialGradient(0, 0, 0, 0, 0, 1);
-      patch.addColorStop(0, 'rgba(132, 138, 162, 0.3)');
-      patch.addColorStop(0.65, 'rgba(132, 138, 162, 0.2)');
+      patch.addColorStop(0, 'rgba(132, 138, 162, 0.2)');
+      patch.addColorStop(0.65, 'rgba(132, 138, 162, 0.13)');
       patch.addColorStop(1, 'rgba(132, 138, 162, 0)');
       c.fillStyle = patch;
       c.beginPath();
@@ -1570,6 +1570,10 @@ function moonFaceOf(r) {
   return canvas;
 }
 
+/** The mallet (杵): pointing at the mortar when down, raised over the rabbit's head when up. */
+var MALLET_DOWN = Math.PI + 0.06;
+var MALLET_UP = Math.PI + 1.5;
+
 /** A little four-pointed sparkle. */
 function sparkle(ctx, x, y, size) {
   ctx.beginPath();
@@ -1581,10 +1585,41 @@ function sparkle(ctx, x, y, size) {
   ctx.fill();
 }
 
+/** One rabbit sitting up, facing right (`face` 1) or left (-1), in the moon's unit size. */
+function moonRabbit(ctx, x, y, face, lean) {
+  ctx.save();
+  ctx.translate(x, y + 0.26);
+  ctx.rotate(lean * face);
+  ctx.translate(0, -0.26);
+  ctx.scale(face, 1);
+  // Body, feet and the round tail.
+  ctx.beginPath();
+  ctx.ellipse(0, 0.04, 0.16, 0.24, 0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0.03, 0.27, 0.14, 0.05, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-0.13, 0.13, 0.065, 0, Math.PI * 2);
+  ctx.fill();
+  // Head and two long ears, leaning back a little.
+  ctx.beginPath();
+  ctx.ellipse(0.07, -0.26, 0.11, 0.1, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-0.04, -0.47, 0.04, 0.16, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0.06, -0.5, 0.04, 0.16, -0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /**
- * The full moon (11/18: a real moon, flat 2-D): a pale disc with the real seas on it — the shape
- * seen in Japan as the rabbit making mochi — and a soft silver glow that breathes slowly.
- * `poked`: seconds since the moon was clicked — it bounces, glows brighter and sparkles fly.
+ * The full moon (11/18: a real moon, flat 2-D): a pale disc with the real seas on it, and on it
+ * the two rabbits making mochi — the right one swings the mallet, the left one turns the mochi
+ * between strikes — with a soft silver glow that breathes slowly.
+ * `poked`: seconds since the moon was clicked — it bounces, the rabbits hop and sparkles fly.
  */
 function drawSun(ctx, sun, t, poked) {
   var r = sun.r;
@@ -1624,6 +1659,101 @@ function drawSun(ctx, sun, t, poked) {
   ctx.scale(bounce, bounce);
   var face = moonFaceOf(r);
   if (face) ctx.drawImage(face, -r, -r, r * 2, r * 2);
+
+  // The two rabbits making mochi (11/18: kept on the real moon), flat soft shadows in the
+  // colour of its seas.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.98, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.scale(r, r);
+  // Rabbits and mortar: soft blue-grey shadows on the silver, the 月のうさぎ people see in the
+  // real moon; where they overlap they look a little deeper.
+  ctx.save();
+  ctx.translate(0, -0.04);
+  ctx.scale(1.14, 1.14);
+  var mark = 'rgba(118, 126, 154, 0.5)';
+  ctx.fillStyle = mark;
+  ctx.strokeStyle = mark;
+  ctx.lineCap = 'round';
+  // After a click both rabbits hop.
+  var hop = p >= 0 && p < 0.6 ? -0.12 * Math.sin((p / 0.6) * Math.PI) : 0;
+
+  // Pounding: a slow lift (65% of the beat), then a quick strike.
+  var beat = (t * 0.7) % 1;
+  var lift = beat < 0.65 ? Math.sin((beat / 0.65) * Math.PI * 0.5) : 1 - (beat - 0.65) / 0.35;
+  var hit = beat > 0.96 || beat < 0.05 ? 1 : 0;
+  var angle = MALLET_DOWN + (MALLET_UP - MALLET_DOWN) * lift;
+  // The turner reaches in while the mallet is up and pulls back before it comes down.
+  var reach = beat > 0.12 && beat < 0.62 ? Math.sin(((beat - 0.12) / 0.5) * Math.PI) : 0;
+
+  // Mortar (臼) in the middle, with the mochi on top.
+  ctx.beginPath();
+  ctx.moveTo(-0.2, 0.12);
+  ctx.lineTo(0.2, 0.12);
+  ctx.lineTo(0.16, 0.56);
+  ctx.lineTo(-0.16, 0.56);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(0, 0.12, 0.22, 0.05, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.98)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0.09 + hit * 0.01, 0.14 + hit * 0.03, 0.05 - hit * 0.012, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = mark;
+
+  // Left rabbit: kneels at the mortar and turns the mochi.
+  moonRabbit(ctx, -0.46, 0.22 + hop, 1, 0.12 + reach * 0.22);
+  ctx.lineWidth = 0.07;
+  ctx.beginPath();
+  ctx.moveTo(-0.36, 0.14 + hop);
+  ctx.quadraticCurveTo(
+    -0.26 + reach * 0.06,
+    0.02 + hop,
+    -0.24 + reach * 0.2,
+    0.08 + hop - reach * 0.02,
+  );
+  ctx.stroke();
+
+  // Right rabbit: stands and swings the mallet.
+  moonRabbit(ctx, 0.5, 0.2 + hop, -1, -0.04 + lift * 0.08);
+  var px = 0.34;
+  var py = 0.04 + hop;
+  ctx.lineWidth = 0.07;
+  ctx.beginPath();
+  ctx.moveTo(0.44, 0.1 + hop);
+  ctx.lineTo(px, py);
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(angle);
+  ctx.lineWidth = 0.045;
+  ctx.beginPath();
+  ctx.moveTo(-0.05, 0);
+  ctx.lineTo(0.27, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(0.31, 0, 0.06, 0.09, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // A small puff of flour at each strike.
+  if (hit) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    [
+      [-0.16, 0.0],
+      [0.15, -0.02],
+      [0.0, -0.06],
+    ].forEach(function (d) {
+      ctx.beginPath();
+      ctx.arc(d[0], d[1], 0.025, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  ctx.restore();
+  ctx.restore();
   ctx.restore();
   drawSusuki(ctx, sun, t);
 }
@@ -1632,7 +1762,7 @@ function drawSun(ctx, sun, t, poked) {
  * すすき (11/17, 11/18): pampas grass inside the moon, along its lower right edge, as in every
  * お月見 picture with the moon, the rabbits and the mochi (11/18: drawn outside the moon it looked
  * like strings hanging in the air). A few stalks leaning to the right with feathery plumes,
- * swaying a little, cut to the moon's disc. Soft silhouettes, so the moon's seas stay in view.
+ * swaying a little, cut to the moon's disc. Soft silhouettes, so the rabbits stay in view.
  */
 function drawSusuki(ctx, sun, t) {
   var r = sun.r;
@@ -2494,7 +2624,7 @@ function startLeaves(canvas, options) {
   /** Lake: a click or tap on the water. */
   function poke(event) {
     if (!lake) return;
-    // A click on the moon: it bounces, glows brighter and sparkles fly.
+    // A click on the moon: it bounces, the rabbits hop and sparkles fly.
     var mx = event.clientX - sun.x;
     var my = event.clientY - sun.y;
     if (Math.sqrt(mx * mx + my * my) <= sun.r * 1.1) {
