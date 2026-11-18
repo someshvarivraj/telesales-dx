@@ -30,6 +30,7 @@ import {
   TONE_BAR,
   TONE_CLASS,
 } from './noticeKinds';
+import { useViewState } from '@/lib/viewState';
 
 const BOXES: { value: NoticeBox; label: string; icon: typeof Inbox }[] = [
   { value: 'inbox', label: '受信箱', icon: Inbox },
@@ -48,10 +49,10 @@ function stripLabel(item: NotificationDto): string {
  * U unread, Enter open).
  */
 export function ActivityPage() {
-  const [box, setBox] = useState<NoticeBox>('inbox');
-  const [search, setSearch] = useState('');
-  const [q, setQ] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
+  const [box, setBox] = useViewState<NoticeBox>('activity.box', 'inbox');
+  const [search, setSearch] = useViewState('activity.search', '');
+  const [q, setQ] = useViewState('activity.q', '');
+  const [category, setCategory] = useViewState<string | null>('activity.category', null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const navigate = useNavigate();
   const listRef = useRef<HTMLUListElement>(null);

@@ -10,6 +10,7 @@ import { cn } from '@/components/ui/cn';
 import { TextInput } from '@/components/ui/TextInput';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useAdminOptions, useCreateOption, useUpdateOption } from './api';
+import { useViewState } from '@/lib/viewState';
 
 const CATEGORY_LABEL: Record<OptionCategory, string> = {
   call_grade: '架電結果の判定',
@@ -99,7 +100,10 @@ export function OptionsPage() {
   const options = useAdminOptions();
   const create = useCreateOption();
   const update = useUpdateOption();
-  const [category, setCategory] = useState<OptionCategory>('call_grade');
+  const [category, setCategory] = useViewState<OptionCategory>(
+    'admin.options.category',
+    'call_grade',
+  );
   const [draft, setDraft] = useState({ code: '', label: '' });
 
   return (

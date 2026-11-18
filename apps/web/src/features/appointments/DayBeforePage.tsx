@@ -19,6 +19,7 @@ import { formatDate, formatRange, todayJst } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useDayBeforeCheck, useDayBeforeList } from './api';
 import { DayBeforeBadge, FormatBadge } from './AppointmentBadges';
+import { useViewState } from '@/lib/viewState';
 
 /**
  * Day-before checks (spec §7): telemarketing appointments of the next business day.
@@ -26,9 +27,10 @@ import { DayBeforeBadge, FormatBadge } from './AppointmentBadges';
  */
 export function DayBeforePage() {
   const [params] = useSearchParams();
-  const [date, setDate] = useState(todayJst());
+  const fresh = params.get('mine') === '1';
+  const [date, setDate] = useViewState('dayBefore.date', todayJst, { fresh });
   // Confirmed allocation (priority 2); the home tile links here with ?mine=1.
-  const [onlyMine, setOnlyMine] = useState(params.get('mine') === '1');
+  const [onlyMine, setOnlyMine] = useViewState('dayBefore.onlyMine', fresh, { fresh });
   const { id: userId } = useCurrentUser();
   const list = useDayBeforeList(date);
   const check = useDayBeforeCheck();

@@ -15,7 +15,6 @@ import {
   UserCog,
   Users,
 } from 'lucide-react';
-import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -30,6 +29,7 @@ import { formatDate, todayJst } from '@/lib/format';
 import { Avatar } from '@/features/schedule/calendar/Avatar';
 import { personColor } from '@/features/schedule/calendar/people';
 import { useAdminUsers, useAuditLog } from './api';
+import { useViewState } from '@/lib/viewState';
 
 /** What the entry was about. Empty filter = everything. */
 const TARGETS: Record<string, string> = {
@@ -309,15 +309,15 @@ type Period = '1' | '7' | '30' | 'custom';
  * extracted on request by an engineer.
  */
 export function AuditPage() {
-  const [filter, setFilter] = useState({
+  const [filter, setFilter] = useViewState('admin.audit.filter', () => ({
     targetType: '',
     actorId: '',
     from: daysAgo(6),
     to: todayJst(),
-  });
-  const [period, setPeriod] = useState<Period>('7');
-  const [category, setCategory] = useState<string | null>(null);
-  const [text, setText] = useState('');
+  }));
+  const [period, setPeriod] = useViewState<Period>('admin.audit.period', '7');
+  const [category, setCategory] = useViewState<string | null>('admin.audit.category', null);
+  const [text, setText] = useViewState('admin.audit.text', '');
   const users = useAdminUsers();
   const order = (users.data ?? []).map((user) => user.id);
   const query = useAuditLog({

@@ -34,6 +34,7 @@ import {
   useSaveAreaRule,
   useSaveCompanyGroup,
 } from './api';
+import { useViewState } from '@/lib/viewState';
 
 const CONDITIONS = [
   { value: '', label: '条件なし' },
@@ -293,7 +294,7 @@ export function AreaTablePage() {
   const groups = useCompanyGroups();
   const [editing, setEditing] = useState<AreaRuleDto | 'new' | null>(null);
   const [editingGroup, setEditingGroup] = useState<CompanyGroupDto | 'new' | null>(null);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useViewState('admin.area.filter', '');
   const today = todayJst();
 
   return (

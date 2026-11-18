@@ -33,6 +33,7 @@ import {
   useUnlockUser,
   useUpdateUser,
 } from './api';
+import { useViewState } from '@/lib/viewState';
 
 /** Individual exceptions kept as data (spec §4, §10). */
 const GRANTABLE: Permission[] = [
@@ -309,8 +310,8 @@ export function UsersPage() {
   const [editing, setEditing] = useState<AdminUserDto | 'new' | null>(null);
   const [temporary, setTemporary] = useState<TemporaryPasswordResponse | null>(null);
   // Search and role filter (request 11/17), kept in the fixed top with the add button.
-  const [search, setSearch] = useState('');
-  const [role, setRole] = useState<Role | 'all'>('all');
+  const [search, setSearch] = useViewState('admin.users.search', '');
+  const [role, setRole] = useViewState<Role | 'all'>('admin.users.role', 'all');
   const words = search.trim().toLowerCase();
   const matches = (user: AdminUserDto) =>
     (role === 'all' || user.roles.includes(role)) &&

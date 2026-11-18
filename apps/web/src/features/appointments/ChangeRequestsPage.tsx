@@ -15,6 +15,7 @@ import { formatDateTime, formatRange } from '@/lib/format';
 import { useAppointment, useChangeRequestAction, useChangeRequests } from './api';
 import { ChangeRequestBadge } from './AppointmentBadges';
 import { RescheduleDialog } from './AppointmentDialogs';
+import { useViewState } from '@/lib/viewState';
 
 function RescheduleFromRequest({
   request,
@@ -40,7 +41,7 @@ function RescheduleFromRequest({
  */
 export function ChangeRequestsPage() {
   const user = useCurrentUser();
-  const [openOnly, setOpenOnly] = useState(true);
+  const [openOnly, setOpenOnly] = useViewState('changeRequests.openOnly', true);
   const list = useChangeRequests(openOnly);
   const action = useChangeRequestAction();
   const canHandle = usePermission(Permission.HandleChangeRequests);

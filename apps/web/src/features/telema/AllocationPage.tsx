@@ -30,6 +30,7 @@ import {
   useMoveAllocation,
 } from './api';
 import { formatMinutes, useTelemaAccess } from './telemaAccess';
+import { useViewState } from '@/lib/viewState';
 
 const SHOWN = 300;
 
@@ -59,10 +60,12 @@ function calculateError(error: unknown): string {
 export function AllocationPage() {
   const [params] = useSearchParams();
   // 検索結果をテレマに割り振る opens the day it filled.
-  const [date, setDate] = useState(() => {
-    const asked = params.get('date');
-    return asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : todayJst();
-  });
+  const askedDate = params.get('date');
+  const [date, setDate] = useViewState(
+    'telema.allocation.date',
+    () => (askedDate && /^\d{4}-\d{2}-\d{2}$/.test(askedDate) ? askedDate : todayJst()),
+    { fresh: Boolean(askedDate) },
+  );
   const query = useAllocation(date);
   const { manages } = useTelemaAccess();
   const calculate = useCalculateAllocation();
@@ -245,7 +248,7 @@ interface ItemListProps {
 function ItemList({ title, date, items, people, manages }: ItemListProps) {
   const { userId } = useTelemaAccess();
   const move = useMoveAllocation();
-  const [filter, setFilter] = useState(manages ? '' : userId);
+  const [filter, setFilter] = useViewState('telema.allocation.filter', manages ? '' : userId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [target, setTarget] = useState('');
   const visible = items.filter((item) => !filter || item.assignee.id === filter);

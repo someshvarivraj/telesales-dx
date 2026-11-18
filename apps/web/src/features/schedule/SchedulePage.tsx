@@ -67,6 +67,7 @@ import { MonthView } from './MonthView';
 import { PlanDialog } from './PlanDialog';
 import { TimeOffDialog } from './TimeOffDialog';
 import { WeekView } from './WeekView';
+import { useViewState } from '@/lib/viewState';
 
 type View = 'day' | 'workweek' | 'week' | 'month' | 'list';
 
@@ -212,7 +213,7 @@ export function SchedulePage() {
     };
   } | null>(null);
   const [timeOffDialog, setTimeOffDialog] = useState<{ userId: string; date: string } | null>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useViewState('schedule.query', '');
   const [zoom, setZoom] = usePref('zoom', 1);
   const [showFree, setShowFree] = usePref('free', false);
   const [hidden, setHidden] = usePref<EventKind[]>('hiddenKinds', []);

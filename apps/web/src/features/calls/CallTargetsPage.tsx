@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
+import { useViewState } from '@/lib/viewState';
 import { AreaPicker } from './AreaPicker';
 import { useCompanyFocus, useSalesPanel } from './SalesPanel';
 import { CalendarDays, X } from 'lucide-react';
@@ -52,14 +53,21 @@ const OFFICE_WORDS = ['本社', '支社', '支店', '営業所', '事業所', '�
 export function CallTargetsPage() {
   const [params] = useSearchParams();
   const initialList = params.get('list');
-  const [name, setName] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const [chips, setChips] = useState<FilterChip[]>(
+  // The search and filters come back after opening a company and pressing 戻る (11/18). A link
+  // that asks for a particular list (?list=, ?targets=, ?mine=) starts from that instead.
+  const fresh = Boolean(initialList || params.get('targets') || params.get('mine'));
+  const [name, setName] = useViewState('calls.name', '', { fresh });
+  const [keyword, setKeyword] = useViewState('calls.keyword', '', { fresh });
+  const [chips, setChips] = useViewState<FilterChip[]>(
+    'calls.chips',
     initialList ? [{ key: 1, field: 'listName', value: initialList, values: [] }] : [],
+    { fresh },
   );
-  const [match, setMatch] = useState<'AND' | 'OR'>('AND');
-  const [list, setList] = useState<CallList>(
+  const [match, setMatch] = useViewState<'AND' | 'OR'>('calls.match', 'AND', { fresh });
+  const [list, setList] = useViewState<CallList>(
+    'calls.list',
     params.get('targets') === 'later' ? 'NON_TARGETS' : 'TARGETS',
+    { fresh },
   );
   const canImport = usePermission(Permission.ImportLists);
   const isAdmin = usePermission(Permission.Administer);
@@ -77,8 +85,10 @@ export function CallTargetsPage() {
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const move = useSetCallTargets();
   // Today's confirmed allocation (priority 2); the home tile links here with ?mine=1.
-  const [onlyMine, setOnlyMine] = useState(params.get('mine') === '1');
-  const [page, setPage] = useState(1);
+  const [onlyMine, setOnlyMine] = useViewState('calls.onlyMine', params.get('mine') === '1', {
+    fresh,
+  });
+  const [page, setPage] = useViewState('calls.page', 1, { fresh });
   const grades = useOptionList(OptionCategory.CallGrade);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const ranks = useOptionList(OptionCategory.CompanyRank);
@@ -94,11 +104,14 @@ export function CallTargetsPage() {
   // The list follows the keyword box shortly after typing stops.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setKeyword(name.trim());
+      const next = name.trim();
+      // Only a new keyword goes back to page 1 (coming back keeps the page you were on).
+      if (next === keyword) return;
+      setKeyword(next);
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);
-  }, [name]);
+  }, [name, keyword, setKeyword, setPage]);
   const changed =
     <T,>(set: (value: T) => void) =>
     (value: T) => {

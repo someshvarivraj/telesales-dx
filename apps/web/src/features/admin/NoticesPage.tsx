@@ -48,6 +48,7 @@ import {
   useRunJob,
   useUpdateNotice,
 } from './api';
+import { useViewState } from '@/lib/viewState';
 
 function isRunnable(code: string): code is RunnableJob {
   return (RUNNABLE_JOBS as readonly string[]).includes(code);
@@ -432,8 +433,8 @@ function RunNowButton({ code }: { code: RunnableJob }) {
 export function NoticesPage() {
   const query = useNoticeSettings();
   const [selected, setSelected] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useViewState('admin.notices.search', '');
+  const [filter, setFilter] = useViewState<Filter>('admin.notices.filter', 'all');
   return (
     <QueryState query={query}>
       {(items) => {
