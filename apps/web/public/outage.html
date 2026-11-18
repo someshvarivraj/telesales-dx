@@ -259,6 +259,12 @@ function mountainAt(x, y, width, height) {
   var top = lakeTopOf(height);
   if (y >= top) return null;
   var tall = Math.min(200, height * 0.21);
+  // Not the city (11/18: a MoraBot face popping out of a building or the tower looked wrong),
+  // nor the torii (MoraBot came up from Fuji right inside the gate).
+  var harbor = harborOf(width, top, tall);
+  if (harbor.H > 30 && x >= harbor.towerX - harbor.H * 3.3) return null;
+  var torii = toriiOf(width, height, top);
+  if (Math.abs(x - torii.x) <= torii.h * 0.9 && y >= torii.y - torii.h - 12) return null;
   var ranges = rangesOf(top, tall, seeded(1113));
   var fuji = fujiOf(width, height);
   var order = [
@@ -410,6 +416,114 @@ function harborOf(width, top, tall) {
   };
 }
 
+/** A rounded rectangle path (not every browser has ctx.roundRect). */
+function roundedRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/**
+ * The MoraBot statue (11/18): MoraBot as a city landmark, S tall from its pedestal on the quay —
+ * blue head with its white face and lit eyes, orange ears and antenna ball, green body, one arm
+ * raised as if waving to the harbour. Colours a little muted by the evening haze, lit warm from
+ * below by floodlights. Part of the still scenery, so the lake reflects it.
+ */
+function drawMoraStatue(ctx, cx, base, S) {
+  if (!(S > 30)) return;
+  ctx.save();
+  // Floodlight glow at its feet, rising up the statue.
+  var glow = ctx.createRadialGradient(cx, base - S * 0.2, 0, cx, base - S * 0.2, S * 0.75);
+  glow.addColorStop(0, 'rgba(255, 220, 160, 0.4)');
+  glow.addColorStop(1, 'rgba(255, 220, 160, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - S * 0.75, base - S * 0.95, S * 1.5, S * 0.95);
+  // Pedestal.
+  ctx.fillStyle = '#8f8a94';
+  ctx.fillRect(cx - S * 0.2, base - S * 0.09, S * 0.4, S * 0.09);
+  // Legs.
+  ctx.fillStyle = '#3a5aa6';
+  ctx.fillRect(cx - S * 0.11, base - S * 0.21, S * 0.07, S * 0.13);
+  ctx.fillRect(cx + S * 0.04, base - S * 0.21, S * 0.07, S * 0.13);
+  // Arms: the left one down at its side, the right one raised.
+  ctx.strokeStyle = '#4b70c4';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = S * 0.055;
+  ctx.beginPath();
+  ctx.moveTo(cx - S * 0.15, base - S * 0.42);
+  ctx.lineTo(cx - S * 0.22, base - S * 0.27);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + S * 0.15, base - S * 0.42);
+  ctx.lineTo(cx + S * 0.27, base - S * 0.6);
+  ctx.lineTo(cx + S * 0.3, base - S * 0.74);
+  ctx.stroke();
+  ctx.fillStyle = '#e9edf5';
+  ctx.beginPath();
+  ctx.arc(cx + S * 0.3, base - S * 0.76, S * 0.045, 0, Math.PI * 2);
+  ctx.fill();
+  // Body: green, with a lighter round badge.
+  var body = ctx.createLinearGradient(cx - S * 0.17, 0, cx + S * 0.17, 0);
+  body.addColorStop(0, '#2f7a36');
+  body.addColorStop(0.45, '#47a04c');
+  body.addColorStop(1, '#2a6a31');
+  ctx.fillStyle = body;
+  roundedRect(ctx, cx - S * 0.16, base - S * 0.47, S * 0.32, S * 0.27, S * 0.07);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(220, 240, 214, 0.85)';
+  ctx.beginPath();
+  ctx.arc(cx, base - S * 0.34, S * 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  // Antenna and its orange ball.
+  ctx.strokeStyle = '#3a5aa6';
+  ctx.lineWidth = Math.max(1, S * 0.022);
+  ctx.beginPath();
+  ctx.moveTo(cx, base - S * 0.84);
+  ctx.lineTo(cx, base - S * 0.93);
+  ctx.stroke();
+  ctx.fillStyle = '#f2994a';
+  ctx.beginPath();
+  ctx.arc(cx, base - S * 0.95, S * 0.035, 0, Math.PI * 2);
+  ctx.fill();
+  // Ears.
+  ctx.fillStyle = '#f2994a';
+  roundedRect(ctx, cx - S * 0.25, base - S * 0.72, S * 0.05, S * 0.12, S * 0.02);
+  ctx.fill();
+  roundedRect(ctx, cx + S * 0.2, base - S * 0.72, S * 0.05, S * 0.12, S * 0.02);
+  ctx.fill();
+  // Head: blue, shaded like a solid shape.
+  var head = ctx.createLinearGradient(cx - S * 0.22, 0, cx + S * 0.22, 0);
+  head.addColorStop(0, '#2c4f9e');
+  head.addColorStop(0.4, '#4a72c8');
+  head.addColorStop(1, '#27468e');
+  ctx.fillStyle = head;
+  roundedRect(ctx, cx - S * 0.22, base - S * 0.85, S * 0.44, S * 0.37, S * 0.1);
+  ctx.fill();
+  // The white face and two lit eyes.
+  ctx.fillStyle = '#eef1f8';
+  roundedRect(ctx, cx - S * 0.16, base - S * 0.78, S * 0.32, S * 0.2, S * 0.07);
+  ctx.fill();
+  ctx.fillStyle = '#ffd98a';
+  ctx.shadowColor = 'rgba(255, 210, 120, 0.9)';
+  ctx.shadowBlur = S * 0.06;
+  ctx.beginPath();
+  ctx.arc(cx - S * 0.07, base - S * 0.69, S * 0.04, 0, Math.PI * 2);
+  ctx.arc(cx + S * 0.07, base - S * 0.69, S * 0.04, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#1b2f63';
+  ctx.beginPath();
+  ctx.arc(cx - S * 0.07, base - S * 0.69, S * 0.018, 0, Math.PI * 2);
+  ctx.arc(cx + S * 0.07, base - S * 0.69, S * 0.018, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /** Lit and dark windows in rows over a building's face. */
 function drawWindows(ctx, x, y, w, h, rand, lit) {
   var cell = Math.max(2.4, w / 6);
@@ -450,6 +564,9 @@ function drawWaterfront(ctx, harbor, rand) {
     ctx.fillRect(bx, base - bh, bw, bh);
     drawWindows(ctx, bx, base - bh, bw, bh, rand, 0.3);
   }
+  // A giant MoraBot statue standing among the buildings east of the tower (11/18), the way the
+  // great robot statue stands in Shin-Nagata: the low blocks in front hide its legs.
+  drawMoraStatue(ctx, X + H * 1.02, base, H * 1.02);
   // Sannomiya: the tall ones behind, west of the tower; lower blocks to the east.
   var blocks = [
     [-2.75, 0.17, 0.42],
@@ -1625,60 +1742,70 @@ function drawSun(ctx, sun, t, poked) {
 }
 
 /**
- * すすき (11/17): pampas grass in front of the lower right of the moon, as in every お月見
- * picture with the moon, the rabbits and the mochi. A few stalks with feathery plumes, swaying
- * a little in the evening air. Soft dark silhouettes, so the moon stays the bright thing.
+ * すすき (11/17, 11/18): pampas grass inside the moon, along its lower right edge, as in every
+ * お月見 picture with the moon, the rabbits and the mochi (11/18: drawn outside the moon it looked
+ * like strings hanging in the air). A few stalks leaning to the right with feathery plumes,
+ * swaying a little, cut to the moon's disc. Soft silhouettes, so the rabbits stay in view.
  */
 function drawSusuki(ctx, sun, t) {
   var r = sun.r;
   ctx.save();
-  ctx.translate(sun.x + r * 0.95, sun.y + r * 1.25);
+  ctx.translate(sun.x, sun.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2);
+  ctx.clip();
   ctx.lineCap = 'round';
-  // Off to the lower right of the moon, so the rabbits stay in view; only the plumes cross its edge.
+  // [foot x, height, lean, sway phase] in moon radii; the feet sit below the disc's edge.
   var stalks = [
-    [-0.15, 1.35, -0.3, 0],
-    [0.08, 1.55, -0.16, 1.3],
-    [0.3, 1.3, -0.02, 2.1],
-    [0.5, 1.05, 0.14, 3.4],
+    [0.02, 0.62, 0.42, 0],
+    [0.18, 0.74, 0.5, 1.3],
+    [0.34, 0.66, 0.6, 2.1],
+    [0.5, 0.52, 0.66, 3.4],
   ];
+  var footY = r * 1.02;
   stalks.forEach(function (s) {
-    var sway = Math.sin(t * 0.9 + s[3]) * 0.06;
+    var sway = Math.sin(t * 0.9 + s[3]) * 0.05;
     var baseX = s[0] * r;
     var tall = s[1] * r;
     var lean = s[2] + sway;
     var tipX = baseX + Math.sin(lean) * tall;
-    var tipY = -Math.cos(lean) * tall;
+    var tipY = footY - Math.cos(lean) * tall;
     // The stalk, curving a little.
-    ctx.strokeStyle = 'rgba(92, 84, 104, 0.75)';
-    ctx.lineWidth = Math.max(1, r * 0.025);
+    ctx.strokeStyle = 'rgba(86, 80, 102, 0.7)';
+    ctx.lineWidth = Math.max(1, r * 0.022);
     ctx.beginPath();
-    ctx.moveTo(baseX, 0);
-    ctx.quadraticCurveTo(baseX + (tipX - baseX) * 0.2, tipY * 0.55, tipX, tipY);
+    ctx.moveTo(baseX, footY);
+    ctx.quadraticCurveTo(baseX + (tipX - baseX) * 0.2, footY - (footY - tipY) * 0.6, tipX, tipY);
     ctx.stroke();
-    // The plume: soft feathers drooping from the top, pale against the sky.
-    for (var f = 0; f < 7; f++) {
-      var u = f / 6;
-      var fx = tipX - Math.sin(lean) * u * r * 0.32;
-      var fy = tipY + Math.cos(lean) * u * r * 0.32;
+    // The plume: soft feathers drooping from the top, warm gold against the silver.
+    for (var f = 0; f < 6; f++) {
+      var u = f / 5;
+      var fx = tipX - Math.sin(lean) * u * r * 0.22;
+      var fy = tipY + Math.cos(lean) * u * r * 0.22;
       var side = f % 2 ? 1 : -1;
-      ctx.strokeStyle = 'rgba(214, 196, 176, ' + (0.85 - u * 0.3).toFixed(3) + ')';
-      ctx.lineWidth = Math.max(1, r * 0.03);
+      ctx.strokeStyle = 'rgba(176, 142, 98, ' + (0.85 - u * 0.3).toFixed(3) + ')';
+      ctx.lineWidth = Math.max(1, r * 0.024);
       ctx.beginPath();
       ctx.moveTo(fx, fy);
       ctx.quadraticCurveTo(
-        fx + side * r * 0.1,
-        fy + r * 0.02,
-        fx + side * r * (0.12 + sway),
-        fy + r * 0.12,
+        fx + side * r * 0.07,
+        fy + r * 0.015,
+        fx + side * r * (0.08 + sway * 0.5),
+        fy + r * 0.09,
       );
       ctx.stroke();
     }
     // One long leaf from the foot.
-    ctx.strokeStyle = 'rgba(92, 84, 104, 0.55)';
-    ctx.lineWidth = Math.max(1, r * 0.02);
+    ctx.strokeStyle = 'rgba(86, 80, 102, 0.5)';
+    ctx.lineWidth = Math.max(1, r * 0.018);
     ctx.beginPath();
-    ctx.moveTo(baseX, 0);
-    ctx.quadraticCurveTo(baseX + r * 0.15, -tall * 0.35, baseX + r * (0.45 + sway), -tall * 0.25);
+    ctx.moveTo(baseX, footY);
+    ctx.quadraticCurveTo(
+      baseX - r * 0.12,
+      footY - tall * 0.4,
+      baseX - r * (0.3 - sway),
+      footY - tall * 0.28,
+    );
     ctx.stroke();
   });
   ctx.restore();
