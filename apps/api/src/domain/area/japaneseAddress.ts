@@ -19,7 +19,13 @@ export function splitJapaneseAddress(address: string | null | undefined): Addres
   }
   const rest = text.slice(prefecture.length);
   const match = /^((?:[^市区町村]+?郡)?.+?[市区町村])/.exec(rest);
-  return { prefecture, city: match?.[1] ?? null };
+  const city = match?.[1] ?? null;
+  // 政令指定都市 keep their ward (11/18): 「神戸市中央区」, 「大阪市北区」 — the 営業担当表 assigns
+  // reps by ward, and 「神戸市」 alone matched none of them.
+  const ward = city?.endsWith('市')
+    ? /^[^市区町村\d０-９\-－]{1,4}区/.exec(rest.slice(city.length))
+    : null;
+  return { prefecture, city: ward ? `${city}${ward[0]}` : city };
 }
 
 /** Words at the end of an address that are not part of it, e.g. 「…6F上場」 (spec §9-2). */

@@ -269,9 +269,14 @@ export class AreaTableService {
         throw new NotFoundError();
       }
       const parts = splitJapaneseAddress(company.address);
+      // The address may say more than the stored city (「神戸市」 → 「神戸市中央区」, 11/18).
+      const detailed =
+        parts.city && (!company.city || parts.city.startsWith(company.city))
+          ? parts.city
+          : company.city;
       query = {
         prefecture: input.prefecture ?? company.prefecture ?? parts.prefecture,
-        city: input.city ?? company.city ?? parts.city,
+        city: input.city ?? detailed ?? parts.city,
         customerType: input.customerType ?? company.customerType,
         companyGroupId:
           input.companyGroupId ?? company.companyGroupId ?? (await this.groupByName(company.name)),
