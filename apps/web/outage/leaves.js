@@ -2184,10 +2184,13 @@ function drawShootingStar(ctx, star) {
  * Birds (11/18): a small flock in a loose V crossing the evening sky now and then, flapping and
  * gliding in turn. `top` is where the lake starts; they keep to the sky well above it.
  */
-function newFlock(width, top) {
+function newFlock(width, top, moon) {
   var dir = Math.random() < 0.5 ? 1 : -1;
   var count = 4 + Math.floor(Math.random() * 4);
-  var y = top * (0.12 + Math.random() * 0.28);
+  // Below the moon (11/18: not across it), well above the mountains.
+  var low = moon.y + moon.r * 1.4 + 42;
+  var high = Math.max(low, top * 0.45);
+  var y = low + Math.random() * (high - low);
   var speed = 34 + Math.random() * 18;
   var x0 = dir > 0 ? -30 : width + 30;
   var list = [];
@@ -2209,8 +2212,16 @@ function newFlock(width, top) {
 }
 
 /** Moves the birds; returns those still on the screen. */
-function flyBirds(birds, dt, t, width) {
+function flyBirds(birds, dt, t, width, moon) {
   return birds.filter(function (b) {
+    // Startled birds climbing towards the moon turn aside below it.
+    var mx = b.x - moon.x;
+    var my = b.y - moon.y;
+    var md = Math.sqrt(mx * mx + my * my);
+    if (md < moon.r * 1.8) {
+      b.vy = Math.max(b.vy, 30);
+      b.y += (moon.r * 1.8 - md) * dt * 3;
+    }
     if (b.scared > 0) {
       b.scared -= dt;
       b.vy *= Math.pow(0.55, dt);
@@ -2330,8 +2341,9 @@ export function startLeaves(canvas, options) {
   var raf = 0;
   var last = 0;
   var nextSpawn = 0;
-  var maxFalling = opts.maxFalling || 18;
-  var every = opts.every || 900;
+  // Over the lake fewer leaves, falling less often (11/18).
+  var maxFalling = opts.maxFalling || (lake ? 9 : 18);
+  var every = opts.every || (lake ? 1800 : 900);
   // Lake mode.
   var lakeTop = 0;
   var floating = [];
@@ -2357,7 +2369,7 @@ export function startLeaves(canvas, options) {
   var nextBite = 5;
   var birds = [];
   var feathers = [];
-  var nextFlock = 1.5;
+  var nextFlock = 4;
   var biteAt = -10;
 
   function resize() {
@@ -2396,9 +2408,12 @@ export function startLeaves(canvas, options) {
 
   function spawn() {
     var sprite = sprites[Math.floor(Math.random() * sprites.length)];
+    // Over the lake none fall across the moon (11/18): they start right of its column, far enough
+    // that their drift and sway never carry them over it.
+    var from = lake ? Math.min(width * 0.5, sun.x + sun.r * 1.2 + 130) : 0;
     falling.push({
       sprite: sprite,
-      x: Math.random() * width,
+      x: from + Math.random() * (width - from),
       y: -sprite.size * 2,
       vy: 26 + Math.random() * 30,
       drift: (Math.random() - 0.5) * 18,
@@ -2642,10 +2657,10 @@ export function startLeaves(canvas, options) {
       drawSun(ctx, sun, clock, clock - moonPokedAt);
       // Birds now and then; never more than two flocks at once.
       if (clock >= nextFlock) {
-        if (birds.length < 12) birds = birds.concat(newFlock(width, lakeTop));
-        nextFlock = clock + 9 + Math.random() * 9;
+        if (birds.length < 12) birds = birds.concat(newFlock(width, lakeTop, sun));
+        nextFlock = clock + 24 + Math.random() * 16;
       }
-      birds = flyBirds(birds, dt, clock, width);
+      birds = flyBirds(birds, dt, clock, width, sun);
       drawBirds(ctx, birds, clock);
       feathers = feathers.filter(function (f) {
         f.age += dt;
