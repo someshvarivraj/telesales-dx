@@ -35,7 +35,12 @@ export function MemberPicker({
   const [query, setQuery] = useState('');
   const [naming, setNaming] = useState<string | null>(null);
   const order = people.map((person) => person.id);
-  const everyone = chosen.length === 0;
+  // 「すべて外す」 (11/18): every tick cleared to pick a few. The ticks are collected here and
+  // shown with 「○人を表示」 — applying each one at once would redraw the calendar (and close
+  // this menu) after every click.
+  const [draft, setDraft] = useState<string[] | null>(null);
+  const cleared = draft !== null;
+  const everyone = chosen.length === 0 && !cleared;
   const chosenPeople = everyone ? [] : people.filter((person) => chosen.includes(person.id));
   const needle = query.trim().toLowerCase();
   const results = needle
@@ -45,14 +50,31 @@ export function MemberPicker({
     : [];
   const isMe = people.some((person) => person.id === meId);
 
-  const toggle = (id: string) => {
-    const next = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
-    onChange(next.length === people.length ? [] : next);
+  const choose = (ids: string[]) => {
+    setDraft(null);
+    onChange(ids.length === people.length ? [] : ids);
   };
+  const toggle = (id: string) => {
+    if (draft !== null) {
+      setDraft(draft.includes(id) ? draft.filter((x) => x !== id) : [...draft, id]);
+      return;
+    }
+    choose(chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]);
+  };
+  // すべて選ぶ / すべて外す: the people listed (the search results while searching).
+  const listed = (needle ? results : people).map((person) => person.id);
+  const shownNow = draft ?? (everyone ? order : chosen);
+  const selectAll = () => {
+    const ids = order.filter((id) => shownNow.includes(id) || listed.includes(id));
+    if (draft !== null && ids.length < people.length) setDraft(ids);
+    else choose(ids);
+  };
+  const clearAll = () =>
+    setDraft(needle ? order.filter((id) => shownNow.includes(id) && !listed.includes(id)) : []);
   // A tick on/off. From 全員, taking one person off keeps all the others.
   const check = (id: string) => {
     if (everyone) {
-      onChange(order.filter((x) => x !== id));
+      choose(order.filter((x) => x !== id));
       return;
     }
     toggle(id);
@@ -78,14 +100,14 @@ export function MemberPicker({
   return (
     <div className="flex flex-col gap-2.5 select-none">
       <div className="flex flex-wrap gap-1.5">
-        {preset('全員', everyone, () => onChange([]), people.length)}
-        {isMe && preset('自分', sameAs([meId]), () => onChange([meId]))}
+        {preset('全員', everyone, () => choose([]), people.length)}
+        {isMe && preset('自分', sameAs([meId]), () => choose([meId]))}
         {groups.map((group) => (
           <span key={group.name} className="group/g relative flex">
             {preset(
               group.name,
               sameAs(group.ids),
-              () => onChange(group.ids.filter((id) => order.includes(id))),
+              () => choose(group.ids.filter((id) => order.includes(id))),
               group.ids.length,
             )}
             <button
@@ -125,24 +147,35 @@ export function MemberPicker({
       {/* Everyone as a checkbox list (11/17: テレマ choosing several 営業 had to search one
           name at a time). Typing above narrows the list. */}
       <div>
-        <p className="mb-1 flex items-center px-0.5 text-[11px] font-bold text-ink-sub">
-          {everyone ? `全員（${people.length}人）を表示中` : `表示中 ${chosenPeople.length}人`}
-          {!everyone && (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="ml-auto h-6 cursor-pointer px-1.5 font-bold text-ink-sub transition-colors hover:bg-hover hover:text-ink"
-            >
-              全員に戻す
-            </button>
-          )}
+        <p className="mb-1 flex items-center gap-1 px-0.5 text-[11px] font-bold text-ink-sub">
+          <span className="mr-auto min-w-0 truncate whitespace-nowrap">
+            {cleared
+              ? `選択中 ${draft.length}人`
+              : everyone
+                ? `全員（${people.length}人）を表示中`
+                : `表示中 ${chosenPeople.length}人`}
+          </span>
+          <button
+            type="button"
+            onClick={selectAll}
+            className="h-6 shrink-0 cursor-pointer border border-line px-1.5 font-bold whitespace-nowrap text-ink-sub transition-colors hover:bg-hover hover:text-ink"
+          >
+            すべて選ぶ
+          </button>
+          <button
+            type="button"
+            onClick={clearAll}
+            className="h-6 shrink-0 cursor-pointer border border-line px-1.5 font-bold whitespace-nowrap text-ink-sub transition-colors hover:bg-hover hover:text-ink"
+          >
+            すべて外す
+          </button>
         </p>
         <ul className="scroll-quiet max-h-72 overflow-y-auto border border-line bg-surface">
           {needle && results.length === 0 && (
             <li className="px-3 py-2 text-sm text-ink-sub">見つかりません</li>
           )}
           {(needle ? results : people).map((person) => {
-            const on = everyone || chosen.includes(person.id);
+            const on = draft ? draft.includes(person.id) : everyone || chosen.includes(person.id);
             return (
               <li key={person.id}>
                 <label className="flex min-h-9 w-full cursor-pointer items-center gap-2 px-2.5 text-sm hover:bg-hover">
@@ -164,6 +197,25 @@ export function MemberPicker({
             );
           })}
         </ul>
+        {draft !== null && (
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              disabled={draft.length === 0}
+              onClick={() => choose(order.filter((id) => draft.includes(id)))}
+              className="h-8 flex-1 cursor-pointer bg-main px-3 text-xs font-bold text-white hover:bg-main-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {draft.length > 0 ? `${draft.length}人を表示` : '表示する人を選んでください'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraft(null)}
+              className="h-8 cursor-pointer border border-line-strong px-3 text-xs font-bold text-ink-sub hover:text-ink"
+            >
+              やめる
+            </button>
+          </div>
+        )}
         {!everyone &&
           (naming === null ? (
             !groups.some((group) => sameAs(group.ids)) &&

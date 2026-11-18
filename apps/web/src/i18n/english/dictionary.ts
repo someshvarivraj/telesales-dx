@@ -50,6 +50,9 @@ export const EXACT: Readonly<Record<string, string>> = {
   // Company page (request 10/29)
   テレマメモ: 'Telemarketing memo',
   メモを保存: 'Save memo',
+  すべて選ぶ: 'Select all',
+  すべて外す: 'Clear all',
+  表示する人を選んでください: 'Choose the people to show',
   'メモはありません。': 'No memo.',
   保存しました: 'Saved',
   企業ランク: 'Company rank',
@@ -1951,6 +1954,8 @@ export const EXACT: Readonly<Record<string, string>> = {
 };
 
 export const PATTERNS: readonly (readonly [string, string])[] = [
+  ['選択中 {0}人', '{0} selected'],
+  ['{0}人を表示', 'Show {0} people'],
   ['{0}さんの担当エリア（{1}）の企業を表示中', "Showing companies in {0}'s area ({1})"],
   ['{0}さんの担当エリア（{1}）', "{0}'s area ({1})"],
   ['担当営業：{0}（右の予定に表示中）', 'Rep: {0} (shown on the right)'],
