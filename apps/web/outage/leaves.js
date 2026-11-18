@@ -1018,7 +1018,7 @@ function drawFish(ctx, fish) {
   ctx.save();
   ctx.translate(fish.x, fish.y);
   ctx.scale(fish.dir, 1);
-  ctx.rotate(Math.cos(fish.wander) * 0.05);
+  ctx.rotate(Math.cos(fish.wander) * 0.05 + (fish.tilt || 0));
   // Just under the water: a little softer further away.
   ctx.globalAlpha = 0.72 + 0.25 * fish.depth;
 
@@ -1164,7 +1164,7 @@ function drawFish(ctx, fish) {
 }
 
 /** Moves the fish; they swim back in from the side they left, at a new depth. */
-function swimFish(list, dt, width, height, top) {
+function swimFish(list, dt, width, height, top, croc) {
   for (var i = 0; i < list.length; i++) {
     var f = list[i];
     f.wander += dt * 0.6;
@@ -1172,6 +1172,24 @@ function swimFish(list, dt, width, height, top) {
     f.boost *= Math.pow(0.3, dt);
     f.x += f.dir * (f.speed + f.boost) * dt;
     f.y += Math.sin(f.wander) * 6 * dt;
+    // Around the crocodile (11/18: fish swam right over it): a fish heading its way turns up and
+    // passes above it, more sharply the closer it gets, its nose tilting up as it climbs.
+    var climb = 0;
+    if (croc) {
+      var cs = croc.scale;
+      var rx = 105 * cs + f.length * 0.6;
+      var ry = 30 * cs + 10;
+      var cx = croc.x + 14 * cs;
+      var cy = croc.y - 4 * cs;
+      var nx = (f.x - cx) / rx;
+      var ny = (f.y - cy) / ry;
+      var d = Math.sqrt(nx * nx + ny * ny);
+      var coming = (cx - f.x) * f.dir > -rx * 0.4;
+      if (d < 1.8 && coming) climb = ((1.8 - d) / 0.8) * 46 + (d < 1 ? 70 : 0);
+    }
+    f.y -= climb * dt;
+    var tilt = climb > 0 ? -Math.min(0.45, climb / 120) : 0;
+    f.tilt = (f.tilt || 0) + (tilt - (f.tilt || 0)) * Math.min(1, dt * 4);
     f.y = Math.max(top + 18, Math.min(height - 14, f.y));
     if (f.x < -f.length * 3 || f.x > width + f.length * 3)
       list[i] = newFish(width, height, top, false);
@@ -2572,7 +2590,7 @@ export function startLeaves(canvas, options) {
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawHarborLights(ctx, scenery && scenery.harbor, clock);
       drawTorii(ctx, torii, clock);
-      swimFish(fish, dt, width, height, lakeTop);
+      swimFish(fish, dt, width, height, lakeTop, croc);
       fish.sort(function (a, b) {
         return a.y - b.y;
       });
