@@ -12,6 +12,7 @@ import {
   CalendarOff,
   ChevronLeft,
   ChevronRight,
+  Clock,
   FileUp,
   Keyboard,
   Maximize2,
@@ -217,6 +218,9 @@ export function SchedulePage() {
   const [query, setQuery] = useViewState('schedule.query', '');
   const [zoom, setZoom] = usePref('zoom', 1);
   const [showFree, setShowFree] = usePref('free', false);
+  // 9:00〜18:00 only, with taller hours filling the view (テレマ 11/18).
+  const [workHours, setWorkHours] = usePref('workHours', false);
+  const gridHours = workHours ? { dayStart: WORK_START, dayEnd: WORK_END, fit: true } : {};
   const [hidden, setHidden] = usePref<EventKind[]>('hiddenKinds', []);
   const [railOpen, setRailOpen] = usePref('rail', true);
   const [sort, setSort] = usePref<'name' | 'free' | 'busy'>('sort', 'name');
@@ -657,6 +661,23 @@ export function SchedulePage() {
                 空き時間
               </button>
               {(view === 'day' || (view === 'week' && people.length === 1)) && (
+                <button
+                  type="button"
+                  aria-pressed={workHours}
+                  onClick={() => setWorkHours(!workHours)}
+                  title="9:00〜18:00だけを大きく表示"
+                  className={cn(
+                    'inline-flex h-10 cursor-pointer items-center gap-1.5 border px-3 text-sm font-bold transition-colors',
+                    workHours
+                      ? 'border-main-line bg-main-soft text-main'
+                      : 'border-line-strong bg-surface text-ink-sub hover:text-ink',
+                  )}
+                >
+                  <Clock aria-hidden="true" className="size-4" />
+                  9〜18時
+                </button>
+              )}
+              {(view === 'day' || (view === 'week' && people.length === 1)) && (
                 <div
                   className="flex items-center border border-line-strong bg-surface"
                   title="時間の幅（+ / −）"
@@ -911,6 +932,7 @@ export function SchedulePage() {
                       showFree={showFree}
                       bufferMinutes={data.travelBufferMinutes}
                       pxPerMin={zoom}
+                      {...gridHours}
                       // 5:00–24:00 scrolls inside the view instead of making the page very tall.
                       maxHeight={fill}
                       colorOrder={order}
@@ -947,6 +969,7 @@ export function SchedulePage() {
                     <TimeGrid
                       maxHeight={fill}
                       pxPerMin={zoom}
+                      {...gridHours}
                       onEvent={setSelected}
                       peek={peek.bind}
                       showFree={showFree}

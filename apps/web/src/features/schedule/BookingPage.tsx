@@ -146,6 +146,8 @@ function initialValues(
     listName: company?.listName ?? '',
     contactName: latest?.contactName ?? '',
     contactDepartment: company?.department ?? '',
+    // The number just called (11/18): filled in, and can be changed for a direct line.
+    contactPhone: company?.phone ?? '',
     handoverNotes: [latest?.resultDetail, latest?.notes].filter(Boolean).join('\n'),
     isNewAppointment: source === AppointmentSource.CallStatus,
   };

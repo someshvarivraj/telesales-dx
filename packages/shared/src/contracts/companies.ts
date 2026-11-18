@@ -193,6 +193,15 @@ export function splitRange(value: string): { from: string; to: string } {
 }
 export type CompanyFilterCondition = z.infer<typeof companyFilterConditionSchema>;
 
+export const COMPANY_SORTS = ['UPDATED', 'ADDRESS', 'ADDRESS_NAME', 'NAME'] as const;
+export type CompanySort = (typeof COMPANY_SORTS)[number];
+export const COMPANY_SORT_LABELS: Record<CompanySort, string> = {
+  UPDATED: '更新が新しい順',
+  ADDRESS: '住所順（都道府県・市区町村）',
+  ADDRESS_NAME: '住所順 → 会社名順',
+  NAME: '会社名順',
+};
+
 export const companySearchRequestSchema = z.object({
   /** Words searched across every company field; all words must match (request 10/30). */
   keyword: z.string().max(200).default(''),
@@ -213,6 +222,11 @@ export const companySearchRequestSchema = z.object({
     )
     .max(200)
     .default([]),
+  /**
+   * Order of the list (テレマ 11/18): newest change first, by address (都道府県 in the usual
+   * north-to-south order, then 市区町村), by address then company name, or by company name.
+   */
+  sort: z.enum(COMPANY_SORTS).default('UPDATED'),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(200).default(50),
 });
@@ -248,6 +262,8 @@ export interface CompanyListItem {
     avoidUntil: string | null;
   } | null;
   nextCallDate: string | null;
+  /** In the viewer's confirmed call allocation for today (shown coloured in the list, 11/18). */
+  mineToday?: boolean;
 }
 
 export interface CompanyDetail extends CompanyListItem {
@@ -415,6 +431,11 @@ export const commitListImportRequestSchema = z.object({
   autoAllocate: z.boolean().default(true),
   /** Same name, another department / office: grouped under that company, not 要確認 (11/2). */
   groupDepartments: z.boolean().default(true),
+  /**
+   * Rows whose phone number is already registered are left out (テレマ 11/18), instead of being
+   * imported as 「重複」 to sort out later.
+   */
+  skipDuplicates: z.boolean().default(true),
   /** Corrections made on the import screen, by Excel row. */
   fixes: z
     .array(

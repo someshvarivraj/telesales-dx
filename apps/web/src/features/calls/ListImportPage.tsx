@@ -28,6 +28,8 @@ const UNREADABLE: Record<string, string> = {
   broken_csv: 'CSVの形式が正しくありません。',
   empty: 'データが入っていません。',
   no_valid_rows: '登録できる行がありません。',
+  all_duplicates:
+    'すべての行の電話番号が登録済みです。取り込む場合は「電話番号が登録済みの行は取り込まない」を外してください。',
   too_many_rows: '行が多すぎます（1回に20,000行まで）。ファイルを分けて取り込んでください。',
 };
 
@@ -63,6 +65,7 @@ export function ListImportPage() {
     listName: string;
     autoAllocate: boolean;
     groupDepartments: boolean;
+    skipDuplicates: boolean;
     edits: RowEdits;
   }>('list-import', {
     result: null,
@@ -70,9 +73,12 @@ export function ListImportPage() {
     listName: '',
     autoAllocate: true,
     groupDepartments: true,
+    skipDuplicates: true,
     edits: {},
   });
   const { result, purpose, listName, autoAllocate, groupDepartments, edits } = draft.value;
+  // Older drafts did not have it: on unless switched off.
+  const skipDuplicates = draft.value.skipDuplicates ?? true;
   const field =
     <K extends keyof typeof draft.value>(key: K) =>
     (next: SetStateAction<(typeof draft.value)[K]>) =>
@@ -87,12 +93,14 @@ export function ListImportPage() {
   const setListName = field('listName');
   const setAutoAllocate = field('autoAllocate');
   const setGroupDepartments = field('groupDepartments');
+  const setSkipDuplicates = field('skipDuplicates');
   const setEdits = field('edits');
   const checked = useMemo(() => (result ? checkRows(result, edits) : []), [result, edits]);
   const fixes = checked
     .filter((row) => edits[row.source.row] && row.problems.length === 0 && !row.noPhone)
     .map((row) => ({ row: row.source.row, ...row.values }));
-  const importCount = (result?.validCount ?? 0) + fixes.length;
+  const importCount =
+    (result?.validCount ?? 0) + fixes.length - (skipDuplicates ? (result?.duplicateCount ?? 0) : 0);
   const savedName = datedListName(listName || 'リスト名', jstDate(new Date()));
 
   const onFiles = (files: File[]) => {
@@ -118,8 +126,9 @@ export function ListImportPage() {
           <MoraBot mood="done" size={128} title="" />
           <p className="text-lg font-bold">「{done.listName}」を取り込みました。</p>
           <p className="text-sm text-ink-sub">
-            登録 {done.createdCount}件（重複 {done.duplicateCount}件・要確認 {done.checkCount}件）／
-            取り込まなかった行 {done.errorCount}件
+            {skipDuplicates
+              ? `登録 ${done.createdCount}件（要確認 ${done.checkCount}件）／電話番号が登録済みで取り込まなかった行 ${done.duplicateCount}件／取り込まなかった行 ${done.errorCount}件`
+              : `登録 ${done.createdCount}件（重複 ${done.duplicateCount}件・要確認 ${done.checkCount}件）／取り込まなかった行 ${done.errorCount}件`}
           </p>
           {done.avoidedCount + done.noPhoneCount > 0 && (
             <p className="text-sm text-ink-sub">
@@ -237,6 +246,14 @@ export function ListImportPage() {
                   />
                 </fieldset>
               )}
+              {result.duplicateCount > 0 && (
+                <Checkbox
+                  label={`電話番号が登録済みの ${result.duplicateCount}件は取り込まない`}
+                  description="外すと「重複」として取り込み、「重複・要確認」で扱いを決めるまで架電対象から外れます。"
+                  checked={skipDuplicates}
+                  onChange={(event) => setSkipDuplicates(event.target.checked)}
+                />
+              )}
               {result.departmentCount > 0 && (
                 <Checkbox
                   label={`会社名が同じで部署・事業所が違う ${result.departmentCount}件を、同じ会社の部署としてまとめる`}
@@ -273,6 +290,7 @@ export function ListImportPage() {
                         listName: listName.trim(),
                         autoAllocate,
                         groupDepartments,
+                        skipDuplicates,
                         fixes,
                       },
                       { onSuccess: draft.reset },

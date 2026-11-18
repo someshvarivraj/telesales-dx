@@ -169,6 +169,16 @@ export class ListImportService {
         }
       }
     }
+    // Already registered phone numbers left out (テレマ 11/18): recorded as 重複, not imported.
+    const skipped = input.skipDuplicates
+      ? analysis.valid.filter((row) => row.flag === CompanyFlag.Duplicate)
+      : [];
+    if (skipped.length > 0) {
+      analysis.valid = analysis.valid.filter((row) => row.flag !== CompanyFlag.Duplicate);
+      if (analysis.valid.length === 0) {
+        throw new FileUnreadableError({ reason: 'all_duplicates' });
+      }
+    }
     const listName = datedListName(input.listName, jstDate(new Date()));
     const customerTypes = await this.optionCodes(OptionCategory.CustomerType);
     const ranks = await this.optionCodes(OptionCategory.CompanyRank);
@@ -185,7 +195,9 @@ export class ListImportService {
             importedById: actor.id,
             rowCount: analysis.rowCount,
             createdCount: analysis.valid.length,
-            duplicateCount: analysis.valid.filter((r) => r.flag === CompanyFlag.Duplicate).length,
+            duplicateCount:
+              skipped.length ||
+              analysis.valid.filter((r) => r.flag === CompanyFlag.Duplicate).length,
             checkCount: analysis.valid.filter((r) => r.flag === CompanyFlag.NeedsCheck).length,
             errorCount: analysis.problems.length,
             avoidedCount: analysis.avoided.length,
@@ -219,6 +231,13 @@ export class ListImportService {
               rawData: row.raw,
               status: ListImportRowStatus.Invalid,
               errorMessage: row.problems.map((problem) => problem.message).join('／'),
+            })),
+            ...skipped.map((row) => ({
+              listImportId: listImport.id,
+              rowNumber: row.row,
+              rawData: row.raw,
+              status: ListImportRowStatus.Duplicate,
+              errorMessage: '電話番号が登録済みのため取り込まず',
             })),
             ...analysis.avoided.map((row) => ({
               listImportId: listImport.id,
