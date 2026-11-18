@@ -10,7 +10,7 @@ import {
   Permission,
 } from '@telesales/shared';
 import { Building2, CalendarPlus, MessageSquare, Pencil, Plus } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -162,14 +162,19 @@ export function CompanyPage() {
     const latest = justSavedA ?? records.data?.find((record) => record.grade === 'A') ?? null;
     panel.openFor({ id, name: company.data.name, callRecordId: latest?.id ?? null });
   };
-  // Already open beside the page: it follows to the company being called.
-  const follow = panel?.openFor;
-  const shown = panel?.company?.id;
-  const open = panel !== null && ['float', 'split', 'max'].includes(panel.mode);
+  // Opening a company opens its 担当営業's schedule beside it at once (11/18): docked on the
+  // left unless the person keeps it floating or full screen. Once per company, so minimising it
+  // here is respected until the next company.
+  const openedFor = useRef<string | null>(null);
   const name = company.data?.name;
+  const recordsReady = !records.isPending;
   useEffect(() => {
-    if (open && follow && name && shown !== id) follow({ id, name });
-  }, [open, follow, name, shown, id]);
+    if (!panelOn || !name || !recordsReady || openedFor.current === id) return;
+    openedFor.current = id;
+    const latest = records.data?.find((record) => record.grade === 'A') ?? null;
+    panel.openFor({ id, name, callRecordId: latest?.id ?? null });
+    if (panel.mode === 'min') panel.setMode('split');
+  }, [panelOn, panel, name, recordsReady, records.data, id]);
   const openSchedule = (repId: string, webOnly: boolean) => {
     const latest = justSavedA ?? records.data?.find((record) => record.grade === 'A') ?? null;
     const params = new URLSearchParams({
@@ -207,8 +212,11 @@ export function CompanyPage() {
                     企業情報を編集
                   </Button>
                 )}
+                {/* Wide screens open the schedule by themselves (11/18); a phone cannot show it
+                    beside the company, so it keeps the button there. */}
                 {canBook && (
                   <Button
+                    className="md:hidden"
                     icon={<CalendarPlus className="size-4" aria-hidden="true" />}
                     onClick={findRep}
                   >
@@ -264,149 +272,160 @@ export function CompanyPage() {
           </div>
 
           {/* Request 10/29: company information on the left (60%), the call result on the right (40%). */}
-          <div className="grid gap-5 lg:grid-cols-5">
-            <div className="flex flex-col gap-5 lg:col-span-3">
-              <Card title="企業情報">
-                <DescriptionList
-                  items={[
-                    {
-                      label: '電話番号',
-                      value: data.phone ? (
-                        <div className="flex flex-col">
-                          <a
-                            className="self-start text-link tabular-nums"
-                            href={`tel:${data.phone}`}
-                          >
-                            {data.phone}
-                          </a>
-                          <AvoidCheckbox company={data} />
-                        </div>
-                      ) : null,
-                    },
-                    {
-                      label: 'URL',
-                      value: <ExternalLink value={data.url} />,
-                      wide: true,
-                    },
-                    {
-                      label: '掲載元のURL',
-                      value: <ExternalLink value={data.sourceUrl} />,
-                      wide: true,
-                    },
-                    { label: '郵便番号', value: data.postalCode },
-                    { label: '住所', value: data.address, wide: true },
-                    { label: '事業所', value: data.office },
-                    { label: '部署', value: data.department },
-                    { label: '最寄駅', value: stationLabel(data.nearestStation, data.walkMinutes) },
-                    { label: '業種', value: data.industry },
-                    { label: '資本金', value: formatCapital(data.capital) },
-                    {
-                      label: '企業ランク',
-                      value:
-                        data.companyRank || data.parentName ? (
-                          <span className="flex flex-col">
-                            <span>{ranks.labelOf(data.companyRank)}</span>
-                            {data.parentName && (
-                              <span className="text-sm text-ink-sub">
-                                親会社名：{data.parentName}
-                              </span>
-                            )}
-                          </span>
+          {/* Two columns only when the page itself is wide enough (11/18): with the sales schedule
+              docked beside it, the screen can be wide while the page is not. */}
+          <div className="@container">
+            <div className="grid gap-5 @4xl:grid-cols-5">
+              <div className="flex flex-col gap-5 @4xl:col-span-3">
+                <Card title="企業情報">
+                  <DescriptionList
+                    items={[
+                      {
+                        label: '電話番号',
+                        value: data.phone ? (
+                          <div className="flex flex-col">
+                            <a
+                              className="self-start text-link tabular-nums"
+                              href={`tel:${data.phone}`}
+                            >
+                              {data.phone}
+                            </a>
+                            <AvoidCheckbox company={data} />
+                          </div>
                         ) : null,
-                    },
-                    { label: '取引区分', value: customerTypes.labelOf(data.customerType) },
-                    { label: 'クライアントNo', value: data.clientNo },
-                    {
-                      label:
-                        data.imports.length > 1 ? `リスト（${data.imports.length}件）` : 'リスト名',
-                      value:
-                        data.imports.length > 0 ? (
-                          <ul className="flex flex-col gap-0.5">
-                            {data.imports.map((entry) => (
-                              <li key={`${entry.listImportId}:${entry.rowNumber}`}>
-                                {entry.listName}
-                                <span className="ml-2 text-xs text-ink-sub">
-                                  {formatDate(jstDate(new Date(entry.importedAt)))}・
-                                  {entry.rowNumber}行目
-                                  {entry.status !== 'IMPORTED' &&
-                                    `・${ja.importRowStatus[entry.status]}`}
+                      },
+                      {
+                        label: 'URL',
+                        value: <ExternalLink value={data.url} />,
+                        wide: true,
+                      },
+                      {
+                        label: '掲載元のURL',
+                        value: <ExternalLink value={data.sourceUrl} />,
+                        wide: true,
+                      },
+                      { label: '郵便番号', value: data.postalCode },
+                      { label: '住所', value: data.address, wide: true },
+                      { label: '事業所', value: data.office },
+                      { label: '部署', value: data.department },
+                      {
+                        label: '最寄駅',
+                        value: stationLabel(data.nearestStation, data.walkMinutes),
+                      },
+                      { label: '業種', value: data.industry },
+                      { label: '資本金', value: formatCapital(data.capital) },
+                      {
+                        label: '企業ランク',
+                        value:
+                          data.companyRank || data.parentName ? (
+                            <span className="flex flex-col">
+                              <span>{ranks.labelOf(data.companyRank)}</span>
+                              {data.parentName && (
+                                <span className="text-sm text-ink-sub">
+                                  親会社名：{data.parentName}
                                 </span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          data.listName
-                        ),
-                      wide: true,
-                    },
-                    { label: '旧社名', value: data.formerNames.join('、'), wide: true },
-                    ...Object.entries(data.extra ?? {}).map(([label, value]) => ({
-                      label,
-                      value,
-                      wide: true,
-                    })),
-                  ]}
-                />
-              </Card>
-              <CompanyGroupCard company={data} />
-              <TelemaMemoCard company={data} canWrite={canCall || canEdit} />
-              <Card title="この会社のアポ">
-                {companyAppointments.length === 0 ? (
-                  <EmptyState scene="schedule">まだアポはありません。</EmptyState>
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {companyAppointments.map((item) => (
-                      <li key={item.id}>
-                        <Link
-                          to={paths.appointment(item.id)}
-                          className="flex flex-wrap items-center gap-2 rounded-(--radius-control) border border-line px-3 py-2 hover:bg-canvas"
-                        >
-                          <span className="text-sm font-bold">{formatDateTime(item.startsAt)}</span>
-                          <span className="text-sm">{item.salesRep.name}</span>
-                          <AppointmentStatusBadge status={item.status} />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            </div>
-            <div className="flex flex-col gap-5 lg:col-span-2">
-              {canCall && (
-                <Card
-                  title="架電結果を入力"
-                  actions={
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      icon={<Plus className="size-4" aria-hidden="true" />}
-                      onClick={() => setOfficeOpen(true)}
-                    >
-                      別の事業所・支店を登録
-                    </Button>
-                  }
-                >
-                  <CallRecordForm
-                    companyId={id}
-                    onSaved={(record) => setJustSavedA(record.grade === 'A' ? record : null)}
+                              )}
+                            </span>
+                          ) : null,
+                      },
+                      { label: '取引区分', value: customerTypes.labelOf(data.customerType) },
+                      { label: 'クライアントNo', value: data.clientNo },
+                      {
+                        label:
+                          data.imports.length > 1
+                            ? `リスト（${data.imports.length}件）`
+                            : 'リスト名',
+                        value:
+                          data.imports.length > 0 ? (
+                            <ul className="flex flex-col gap-0.5">
+                              {data.imports.map((entry) => (
+                                <li key={`${entry.listImportId}:${entry.rowNumber}`}>
+                                  {entry.listName}
+                                  <span className="ml-2 text-xs text-ink-sub">
+                                    {formatDate(jstDate(new Date(entry.importedAt)))}・
+                                    {entry.rowNumber}行目
+                                    {entry.status !== 'IMPORTED' &&
+                                      `・${ja.importRowStatus[entry.status]}`}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            data.listName
+                          ),
+                        wide: true,
+                      },
+                      { label: '旧社名', value: data.formerNames.join('、'), wide: true },
+                      ...Object.entries(data.extra ?? {}).map(([label, value]) => ({
+                        label,
+                        value,
+                        wide: true,
+                      })),
+                    ]}
                   />
                 </Card>
-              )}
-              <Card title="これまでの架電">
-                <QueryState query={records}>
-                  {(list) =>
-                    list.length === 0 ? (
-                      <EmptyState scene="calling">まだ架電記録はありません。</EmptyState>
-                    ) : (
-                      <ul className="flex flex-col gap-4">
-                        {list.map((record) => (
-                          <CallRecordItem key={record.id} record={record} companyId={id} />
-                        ))}
-                      </ul>
-                    )
-                  }
-                </QueryState>
-              </Card>
+                <CompanyGroupCard company={data} />
+                <TelemaMemoCard company={data} canWrite={canCall || canEdit} />
+                <Card title="この会社のアポ">
+                  {companyAppointments.length === 0 ? (
+                    <EmptyState scene="schedule">まだアポはありません。</EmptyState>
+                  ) : (
+                    <ul className="flex flex-col gap-2">
+                      {companyAppointments.map((item) => (
+                        <li key={item.id}>
+                          <Link
+                            to={paths.appointment(item.id)}
+                            className="flex flex-wrap items-center gap-2 rounded-(--radius-control) border border-line px-3 py-2 hover:bg-canvas"
+                          >
+                            <span className="text-sm font-bold">
+                              {formatDateTime(item.startsAt)}
+                            </span>
+                            <span className="text-sm">{item.salesRep.name}</span>
+                            <AppointmentStatusBadge status={item.status} />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              </div>
+              <div className="flex flex-col gap-5 @4xl:col-span-2">
+                {canCall && (
+                  <Card
+                    title="架電結果を入力"
+                    actions={
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<Plus className="size-4" aria-hidden="true" />}
+                        onClick={() => setOfficeOpen(true)}
+                      >
+                        別の事業所・支店を登録
+                      </Button>
+                    }
+                  >
+                    <CallRecordForm
+                      companyId={id}
+                      onSaved={(record) => setJustSavedA(record.grade === 'A' ? record : null)}
+                    />
+                  </Card>
+                )}
+                <Card title="これまでの架電">
+                  <QueryState query={records}>
+                    {(list) =>
+                      list.length === 0 ? (
+                        <EmptyState scene="calling">まだ架電記録はありません。</EmptyState>
+                      ) : (
+                        <ul className="flex flex-col gap-4">
+                          {list.map((record) => (
+                            <CallRecordItem key={record.id} record={record} companyId={id} />
+                          ))}
+                        </ul>
+                      )
+                    }
+                  </QueryState>
+                </Card>
+              </div>
             </div>
           </div>
 
