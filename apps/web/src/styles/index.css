@@ -1901,3 +1901,54 @@ dialog[open] > div {
     animation: none;
   }
 }
+
+/*
+ * Sign-in card over the lake (11/18): glassmorphism — a thin frosted pane with rounded corners,
+ * a bright hairline edge and a soft shadow; the fields are frosted too and the button a pill.
+ * Strong blur under a light veil, so the text keeps its contrast while the scene shows through.
+ * Dark looks get a darker, denser pane so light text stays readable.
+ */
+.glass-card {
+  --glass-veil: 24%;
+  border: 1px solid rgb(255 255 255 / 0.55);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.05) 60%),
+    color-mix(in srgb, var(--color-surface) var(--glass-veil), transparent);
+  box-shadow:
+    0 30px 70px -28px rgb(48 36 96 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    inset 0 -1px 0 rgb(255 255 255 / 0.15);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  overflow: hidden;
+}
+html[data-theme='dark'] .glass-card {
+  --glass-veil: 62%;
+  border-color: rgb(255 255 255 / 0.18);
+  background: color-mix(in srgb, var(--color-surface) var(--glass-veil), transparent);
+  box-shadow:
+    0 30px 70px -28px rgb(0 0 0 / 0.7),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+.glass-card input {
+  border-color: rgb(255 255 255 / 0.7);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+.glass-card input:focus {
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+}
+html[data-theme='dark'] .glass-card input {
+  border-color: rgb(255 255 255 / 0.2);
+}
+.glass-card button[type='submit'] {
+  border-radius: 999px;
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--color-main) 70%, transparent);
+}
+.glass-card input:focus {
+  border-color: var(--color-main-focus);
+}
+.glass-card input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}

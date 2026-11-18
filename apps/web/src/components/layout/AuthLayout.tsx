@@ -89,12 +89,12 @@ export function AuthLayout({
 
           <div
             className={cn(
-              'w-full max-w-[420px] shrink-0 border border-t-4 border-t-main',
-              // Over the lake (11/18): frosted glass, so the evening scene shows through softly
-              // while the blur and a light veil keep every word as easy to read as on white.
+              'w-full max-w-[420px] shrink-0',
+              // Over the lake (11/18): a glassmorphism pane (see .glass-card), the scene showing
+              // through behind a blur, the text as easy to read as on white.
               leaves
-                ? 'border-white/50 bg-surface/40 shadow-[0_28px_64px_-24px_rgb(40_36_90/0.45),inset_0_1px_0_rgb(255_255_255/0.6)] backdrop-blur-md backdrop-saturate-150'
-                : 'border-line bg-surface shadow-(--shadow-raised)',
+                ? 'glass-card'
+                : 'border border-t-4 border-line border-t-main bg-surface shadow-(--shadow-raised)',
             )}
           >
             <header
@@ -118,7 +118,7 @@ export function AuthLayout({
             <footer
               className={cn(
                 'flex flex-col gap-1 border-t px-6 py-3 text-xs text-ink-sub max-sm:px-5',
-                leaves ? 'border-white/40 bg-surface/25' : 'border-line bg-column',
+                leaves ? 'border-white/40' : 'border-line bg-column',
               )}
             >
               {footer && <p>{footer}</p>}

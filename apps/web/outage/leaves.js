@@ -2092,6 +2092,99 @@ function drawShootingStar(ctx, star) {
  * stays clean; a click or tap on the water sends a ripple that pushes the nearby leaves away and
  * keeps them a few seconds more.
  */
+/**
+ * Birds (11/18): a small flock in a loose V crossing the evening sky now and then, flapping and
+ * gliding in turn. `top` is where the lake starts; they keep to the sky well above it.
+ */
+function newFlock(width, top) {
+  var dir = Math.random() < 0.5 ? 1 : -1;
+  var count = 4 + Math.floor(Math.random() * 4);
+  var y = top * (0.12 + Math.random() * 0.28);
+  var speed = 34 + Math.random() * 18;
+  var x0 = dir > 0 ? -30 : width + 30;
+  var list = [];
+  for (var i = 0; i < count; i++) {
+    var rank = Math.ceil(i / 2);
+    var side = i % 2 ? 1 : -1;
+    list.push({
+      x: x0 - dir * rank * (20 + Math.random() * 6),
+      y: y + side * rank * (9 + Math.random() * 4),
+      vx: dir * speed * (0.96 + Math.random() * 0.08),
+      vy: 0,
+      size: 6.5 + Math.random() * 3,
+      phase: Math.random() * Math.PI * 2,
+      beat: 6.5 + Math.random() * 2,
+      scared: 0,
+    });
+  }
+  return list;
+}
+
+/** Moves the birds; returns those still on the screen. */
+function flyBirds(birds, dt, t, width) {
+  return birds.filter(function (b) {
+    if (b.scared > 0) {
+      b.scared -= dt;
+      b.vy *= Math.pow(0.55, dt);
+    }
+    b.x += b.vx * dt;
+    b.y += b.vy * dt + Math.sin(t * 0.7 + b.phase) * 0.12;
+    return b.x > -90 && b.x < width + 90 && b.y > -60;
+  });
+}
+
+/** A bird seen from afar: two curved wings beating up and down around a small body. */
+function drawBirds(ctx, birds, t) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(62, 56, 88, 0.82)';
+  ctx.fillStyle = 'rgba(62, 56, 88, 0.82)';
+  birds.forEach(function (b) {
+    var s = b.size;
+    // Flap for a while, then glide with the wings held up a little; startled birds flap hard.
+    var glide = Math.max(0, Math.sin(t * 0.45 + b.phase));
+    var amp = b.scared > 0 ? 1 : 0.35 + 0.65 * glide;
+    var beat = b.scared > 0 ? b.beat * 2.2 : b.beat;
+    var wing = 0.25 + Math.sin(t * beat + b.phase) * 0.85 * amp;
+    var tipY = b.y - s * 0.55 * wing;
+    ctx.lineWidth = Math.max(1, s * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(b.x - s, tipY + s * 0.15);
+    ctx.quadraticCurveTo(b.x - s * 0.45, b.y - s * 0.75 * wing, b.x, b.y);
+    ctx.quadraticCurveTo(b.x + s * 0.45, b.y - s * 0.75 * wing, b.x + s, tipY + s * 0.15);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y + s * 0.05, s * 0.16, s * 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+/** Feathers a startled bird lost, swaying down and fading. */
+function drawFeathers(ctx, feathers) {
+  ctx.save();
+  feathers.forEach(function (f) {
+    var fade = Math.max(0, 1 - f.age / f.life);
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.angle);
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = 'rgba(248, 246, 255, 0.95)';
+    ctx.strokeStyle = 'rgba(90, 84, 116, 0.6)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, f.size, f.size * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-f.size * 1.2, 0);
+    ctx.lineTo(f.size, 0);
+    ctx.stroke();
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
 /** Loads the statue artwork once, then has the scenery drawn again with it. */
 function loadStatue(src, redraw) {
   if (!src || STATUE) return;
@@ -2174,6 +2267,9 @@ export function startLeaves(canvas, options) {
   var nextShooting = 1.5;
   var fisher = fisherOf(0, 0);
   var nextBite = 5;
+  var birds = [];
+  var feathers = [];
+  var nextFlock = 1.5;
   var biteAt = -10;
 
   function resize() {
@@ -2266,6 +2362,44 @@ export function startLeaves(canvas, options) {
     pointer = { x: event.clientX, y: event.clientY };
   }
 
+  /** Sky: startles the birds near a click on one of them; false when no bird was there. */
+  function scareBirds(x, y) {
+    var hit = null;
+    var best = 26;
+    birds.forEach(function (b) {
+      var d = Math.hypot(b.x - x, b.y - y);
+      if (d < best) {
+        best = d;
+        hit = b;
+      }
+    });
+    if (!hit) return false;
+    birds.forEach(function (b) {
+      var dx = b.x - x;
+      var dy = b.y - y;
+      var d = Math.hypot(dx, dy) || 1;
+      if (d > 170) return;
+      var dir = b.vx >= 0 ? 1 : -1;
+      b.vx = dir * Math.min(150, Math.abs(b.vx) * 1.9) + (dx / d) * 40;
+      b.vy = -70 - Math.random() * 50 + (dy / d) * 25;
+      b.scared = 1.4 + Math.random() * 0.6;
+    });
+    for (var i = 0; i < 4; i++) {
+      feathers.push({
+        x: hit.x + (Math.random() - 0.5) * 8,
+        y: hit.y + (Math.random() - 0.5) * 6,
+        vx: (Math.random() - 0.5) * 40,
+        vy: 6 + Math.random() * 12,
+        angle: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 3,
+        size: 3 + Math.random() * 1.6,
+        age: 0,
+        life: 2 + Math.random() * 0.8,
+      });
+    }
+    return true;
+  }
+
   /** Lake: a click or tap on the water. */
   function poke(event) {
     if (!lake) return;
@@ -2288,6 +2422,11 @@ export function startLeaves(canvas, options) {
       ripples.push({ x: torii.x, y: torii.y, age: 0, size: torii.h * 1.6, strength: 0.8 });
       return;
     }
+    // A click on a bird (11/18): the flock startles — wings beating hard, they climb away and
+    // the bird that was hit loses a few feathers.
+    var onControl =
+      event.target && event.target.closest && event.target.closest('form, button, a, input');
+    if (!onControl && event.clientY < lakeTop && scareBirds(event.clientX, event.clientY)) return;
     if (event.clientY < lakeTop + 4) return;
     var rect = canvas.getBoundingClientRect();
     var x = event.clientX - rect.left;
@@ -2413,6 +2552,22 @@ export function startLeaves(canvas, options) {
         }
       }
       drawSun(ctx, sun, clock, clock - moonPokedAt);
+      // Birds now and then; never more than two flocks at once.
+      if (clock >= nextFlock) {
+        if (birds.length < 12) birds = birds.concat(newFlock(width, lakeTop));
+        nextFlock = clock + 9 + Math.random() * 9;
+      }
+      birds = flyBirds(birds, dt, clock, width);
+      drawBirds(ctx, birds, clock);
+      feathers = feathers.filter(function (f) {
+        f.age += dt;
+        f.vx *= Math.pow(0.4, dt);
+        f.x += (f.vx + Math.sin(f.age * 3 + f.angle) * 14) * dt;
+        f.y += f.vy * dt;
+        f.angle += f.spin * dt;
+        return f.age < f.life;
+      });
+      drawFeathers(ctx, feathers);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawHarborLights(ctx, scenery && scenery.harbor, clock);
