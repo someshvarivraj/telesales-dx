@@ -52,7 +52,6 @@ import { MemberMenu, PAGE_SIZE } from './calendar/MemberMenu';
 import type { SavedGroup } from './calendar/MemberPicker';
 import { MiniMonth } from './calendar/MiniMonth';
 import { TimeGrid, useNow } from './calendar/TimeGrid';
-import { DayNote } from './DayNote';
 import { DayView } from './DayView';
 import { EventDetailDialog } from './EventDetailDialog';
 import {
@@ -211,6 +210,7 @@ export function SchedulePage() {
       endTime?: string;
       title?: string;
       attendeeIds?: string[];
+      allDay?: boolean;
     };
   } | null>(null);
   const [timeOffDialog, setTimeOffDialog] = useState<{ userId: string; date: string } | null>(null);
@@ -270,17 +270,6 @@ export function SchedulePage() {
           .some((text) => (text ?? '').toLowerCase().includes(needle))),
   );
   const allPeople = schedule.data?.people ?? [];
-  // The note in each day's header (11/18): everyone sees it; the person (or an admin) types it.
-  const dayNotes = schedule.data?.dayNotes ?? [];
-  const noteFor = (personId: string, date: string) => (
-    <DayNote
-      userId={personId}
-      date={date}
-      note={dayNotes.find((note) => note.userId === personId && note.date === date)}
-      editable={personId === user.id || isAdmin}
-      label={`${allPeople.find((person) => person.id === personId)?.name ?? ''} ${date}`}
-    />
-  );
   const order = allPeople.map((person) => person.id);
   // テレマ narrow the reps to one area (a prefecture or city of the 営業担当表, 11/17), shared with the call list.
   const areaPanel = useSalesPanel();
@@ -450,6 +439,28 @@ export function SchedulePage() {
         candidates: null,
       },
     });
+
+  // Typed straight into the 終日 row (11/18): an all-day 社内 plan with just a 件名.
+  const quickAddAllDay = (rowOwnerId: string, day: string, title: string) =>
+    savePlan.mutateAsync({
+      request: {
+        ...placeFor(rowOwnerId),
+        type: 'INTERNAL',
+        title,
+        companyName: null,
+        startsAt: toInstant(day, '00:00'),
+        endsAt: toInstant(addDays(day, 1), '00:00'),
+        allDay: true,
+        status: PlanStatus.Fixed,
+        holidayWork: false,
+        note: '',
+        candidateGroupId: null,
+        repeat: null,
+        candidates: null,
+      },
+    });
+  const openAllDay = (rowOwnerId: string, day: string, title: string) =>
+    setPlanDialog({ defaults: { ...placeFor(rowOwnerId), date: day, title, allDay: true } });
 
   const bookingLink =
     'inline-flex h-10 items-center gap-2 border border-line-strong bg-surface px-3.5 text-sm font-bold text-ink transition-colors hover:border-main-line hover:bg-main-soft';
@@ -892,7 +903,6 @@ export function SchedulePage() {
                   return (
                     <DayView
                       date={date}
-                      dayNote={noteFor}
                       people={visible}
                       events={events}
                       holidays={data.holidays}
@@ -916,6 +926,16 @@ export function SchedulePage() {
                               quickAdd(ownerId, date, start, end, title)
                           : undefined
                       }
+                      onQuickAddAllDay={
+                        canWritePlans
+                          ? (ownerId, title) => quickAddAllDay(ownerId, date, title)
+                          : undefined
+                      }
+                      onAllDayDetail={
+                        canWritePlans
+                          ? (ownerId, title) => openAllDay(ownerId, date, title)
+                          : undefined
+                      }
                     />
                   );
                 }
@@ -927,7 +947,6 @@ export function SchedulePage() {
                     <TimeGrid
                       maxHeight={fill}
                       pxPerMin={zoom}
-                      dayNote={(column) => noteFor(person.id, column.date)}
                       onEvent={setSelected}
                       peek={peek.bind}
                       showFree={showFree}
@@ -944,6 +963,16 @@ export function SchedulePage() {
                         canWritePlans
                           ? (column, start, end, title) =>
                               quickAdd(person.id, column.date, start, end, title)
+                          : undefined
+                      }
+                      onQuickAddAllDay={
+                        canWritePlans
+                          ? (column, title) => quickAddAllDay(person.id, column.date, title)
+                          : undefined
+                      }
+                      onAllDayDetail={
+                        canWritePlans
+                          ? (column, title) => openAllDay(person.id, column.date, title)
                           : undefined
                       }
                       columns={days.map((day) => {

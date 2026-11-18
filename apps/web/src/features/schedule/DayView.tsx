@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import type { CalendarDayDto, UserRef } from '@telesales/shared';
 import { isWeekend } from '@telesales/shared';
 import { cn } from '@/components/ui/cn';
@@ -11,8 +10,9 @@ import { type CalendarEvent, eventsOn, isDayOff } from './events';
 
 interface DayViewProps {
   date: string;
-  /** The note in each person's header for this day (11/18). */
-  dayNote?: (personId: string, date: string) => ReactNode;
+  /** Type an all-day plan into the 終日 row (11/18). */
+  onQuickAddAllDay?: (personId: string, title: string) => Promise<unknown>;
+  onAllDayDetail?: (personId: string, title: string) => void;
   people: UserRef[];
   events: CalendarEvent[];
   holidays: CalendarDayDto[];
@@ -55,7 +55,8 @@ export function DayView({
   maxHeight,
   step,
   clickMinutes,
-  dayNote,
+  onQuickAddAllDay,
+  onAllDayDetail,
 }: DayViewProps) {
   const holiday = holidays.find((day) => day.date === date);
   const off = isWeekend(date) || Boolean(holiday);
@@ -76,7 +77,6 @@ export function DayView({
         // 全員 is shown as columns too (11/12): narrower columns so a page of people fits.
         minColumnWidth={people.length > 5 ? 136 : undefined}
         onEvent={onEvent}
-        dayNote={dayNote ? (column) => dayNote(column.personId, column.date) : undefined}
         peek={peek}
         showFree={showFree}
         bufferMinutes={bufferMinutes}
@@ -96,6 +96,12 @@ export function DayView({
           onQuickAdd
             ? (column, start, end, title) => onQuickAdd(column.personId, start, end, title)
             : undefined
+        }
+        onQuickAddAllDay={
+          onQuickAddAllDay ? (column, title) => onQuickAddAllDay(column.personId, title) : undefined
+        }
+        onAllDayDetail={
+          onAllDayDetail ? (column, title) => onAllDayDetail(column.personId, title) : undefined
         }
         columns={people.map((person) => {
           const personEvents = eventsOn(events, date, person.id);

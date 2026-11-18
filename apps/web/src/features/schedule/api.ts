@@ -1,5 +1,4 @@
 import type {
-  DayNoteDto,
   PlanDto,
   PlanRequest,
   ScheduleResponse,
@@ -112,17 +111,3 @@ export const slotLockApi = {
   heartbeat: (id: string) => apiClient.put<SlotLockDto>(`/slot-locks/${id}`),
   release: (id: string) => apiClient.delete<undefined>(`/slot-locks/${id}`),
 };
-
-/** The note in a day's header (11/18); empty text removes it. */
-export function useSaveDayNote() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationKey: ['day-note'],
-    mutationFn: (input: { userId: string; date: string; text: string }) =>
-      apiClient.put<{ note: DayNoteDto | null }>(
-        `/schedule/day-notes/${input.userId}/${input.date}`,
-        { text: input.text },
-      ),
-    onSuccess: () => void client.invalidateQueries({ queryKey: scheduleKeys.all }),
-  });
-}

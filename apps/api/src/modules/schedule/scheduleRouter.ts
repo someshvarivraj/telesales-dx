@@ -1,6 +1,4 @@
 import {
-  dateString,
-  dayNoteRequestSchema,
   instantString,
   Permission,
   planRequestSchema,
@@ -56,18 +54,6 @@ export function createScheduleRouter(deps: ScheduleDeps): Router {
     res.json(
       await deps.schedule.getSchedule(currentUserOf(req), query.from, query.to, query.userIds),
     );
-  });
-  // The note in a day's header (11/18): the person's own day, or anyone's for an admin.
-  router.put('/schedule/day-notes/:userId/:date', view, async (req, res) => {
-    const params = parseWith(z.object({ userId: z.uuid(), date: dateString }), req.params);
-    const input = parseWith(dayNoteRequestSchema, req.body);
-    const note = await deps.schedule.setDayNote(
-      currentUserOf(req),
-      params.userId,
-      params.date,
-      input.text,
-    );
-    res.json({ note });
   });
   router.post('/schedule/check', view, async (req, res) => {
     const input = parseWith(checkSchema, req.body);
