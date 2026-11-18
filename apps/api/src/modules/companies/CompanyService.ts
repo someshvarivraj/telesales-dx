@@ -11,6 +11,8 @@ import {
   type CompanySearchIdsResponse,
   type CompanySearchRequest,
   MAX_PICKED_COMPANIES,
+  type CompanySort,
+  PREFECTURE_NAMES,
   jstDate,
   ListImportRowStatus,
   type Page,
@@ -191,6 +193,9 @@ function restoreData(before: Record<string, unknown>): Prisma.CompanyUpdateInput
 }
 
 /** The company register (企業台帳) and the call-target list of ①. */
+/** Address / name order is worked out in memory, for up to this many matches. */
+const MAX_SORTED_COMPANIES = 30000;
+
 const SEARCH_ORDER: Prisma.CompanyOrderByWithRelationInput[] = [
   { updatedAt: 'desc' },
   { id: 'asc' },
@@ -206,6 +211,30 @@ export class CompanyService {
   /** `viewerId` is needed for "assigned to me today" (confirmed allocation). */
   async search(request: CompanySearchRequest, viewerId?: string): Promise<Page<CompanyListItem>> {
     const where = await this.searchWhere(request, viewerId);
+    if (request.sort !== 'UPDATED') {
+      const ids = await this.sortedIds(where, request.sort);
+      const pageIds = ids.slice(
+        (request.page - 1) * request.pageSize,
+        request.page * request.pageSize,
+      );
+      const rows = await this.prisma.company.findMany({
+        where: { id: { in: pageIds } },
+        include: listInclude,
+      });
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      return {
+        items: await this.markMine(
+          pageIds.flatMap((id) => {
+            const row = byId.get(id);
+            return row ? [this.toListItem(row)] : [];
+          }),
+          viewerId,
+        ),
+        total: ids.length,
+        page: request.page,
+        pageSize: request.pageSize,
+      };
+    }
     const [total, rows] = await Promise.all([
       this.prisma.company.count({ where }),
       this.prisma.company.findMany({
@@ -217,11 +246,31 @@ export class CompanyService {
       }),
     ]);
     return {
-      items: rows.map((row) => this.toListItem(row)),
+      items: await this.markMine(
+        rows.map((row) => this.toListItem(row)),
+        viewerId,
+      ),
       total,
       page: request.page,
       pageSize: request.pageSize,
     };
+  }
+
+  /** Marks the companies in the viewer's confirmed call allocation for today (11/18). */
+  private async markMine(items: CompanyListItem[], viewerId?: string): Promise<CompanyListItem[]> {
+    if (!viewerId || items.length === 0) return items;
+    const mine = await this.prisma.allocation.findMany({
+      where: {
+        companyId: { in: items.map((item) => item.id) },
+        date: toDbDate(jstDate(this.clock.now())),
+        kind: 'CALL',
+        assigneeId: viewerId,
+        status: 'CONFIRMED',
+      },
+      select: { companyId: true },
+    });
+    const ids = new Set(mine.map((row) => row.companyId));
+    return items.map((item) => (ids.has(item.id) ? { ...item, mineToday: true } : item));
   }
 
   /** Every company the search finds, in the list's order (一括修正, 割り振り). */
@@ -230,6 +279,14 @@ export class CompanyService {
     viewerId?: string,
   ): Promise<CompanySearchIdsResponse> {
     const where = await this.searchWhere(request, viewerId);
+    if (request.sort !== 'UPDATED') {
+      const ids = await this.sortedIds(where, request.sort);
+      return {
+        ids: ids.slice(0, MAX_PICKED_COMPANIES),
+        total: ids.length,
+        capped: ids.length > MAX_PICKED_COMPANIES,
+      };
+    }
     const [total, rows] = await Promise.all([
       this.prisma.company.count({ where }),
       this.prisma.company.findMany({
@@ -240,6 +297,41 @@ export class CompanyService {
       }),
     ]);
     return { ids: rows.map((row) => row.id), total, capped: total > MAX_PICKED_COMPANIES };
+  }
+
+  /**
+   * Every match in address or name order (テレマ 11/18). 都道府県 go north to south as usual
+   * (not by character code), then 市区町村 and the rest in Japanese order; companies without an
+   * address come last. Sorted here because that order cannot be asked of the database.
+   */
+  private async sortedIds(where: Prisma.CompanyWhereInput, sort: CompanySort): Promise<string[]> {
+    const rows = await this.prisma.company.findMany({
+      where,
+      select: { id: true, name: true, prefecture: true, city: true, address: true },
+      take: MAX_SORTED_COMPANIES,
+    });
+    const collator = new Intl.Collator('ja');
+    const prefectureRank = (value: string | null) => {
+      const index = value ? PREFECTURE_NAMES.indexOf(value) : -1;
+      return index === -1 ? PREFECTURE_NAMES.length + (value ? 0 : 1) : index;
+    };
+    const text = (a: string | null, b: string | null) => {
+      if (!a || !b) return (a ? 0 : 1) - (b ? 0 : 1);
+      return collator.compare(a, b);
+    };
+    type Row = (typeof rows)[number];
+    const byName = (a: Row, b: Row) => collator.compare(a.name, b.name);
+    const byPlace = (a: Row, b: Row) =>
+      prefectureRank(a.prefecture) - prefectureRank(b.prefecture) ||
+      text(a.prefecture, b.prefecture) ||
+      text(a.city, b.city);
+    const compare: Record<Exclude<CompanySort, 'UPDATED'>, (a: Row, b: Row) => number> = {
+      ADDRESS: (a, b) => byPlace(a, b) || text(a.address, b.address) || byName(a, b),
+      ADDRESS_NAME: (a, b) => byPlace(a, b) || byName(a, b) || text(a.address, b.address),
+      NAME: (a, b) => byName(a, b) || byPlace(a, b),
+    };
+    const order = compare[sort as Exclude<CompanySort, 'UPDATED'>];
+    return rows.sort((a, b) => order(a, b) || a.id.localeCompare(b.id)).map((row) => row.id);
   }
 
   private async searchWhere(

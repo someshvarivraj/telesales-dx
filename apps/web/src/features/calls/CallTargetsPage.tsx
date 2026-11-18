@@ -1,5 +1,8 @@
 import {
   CompanyFlag,
+  COMPANY_SORT_LABELS,
+  COMPANY_SORTS,
+  type CompanySort,
   type BulkEditDto,
   type CompanyListItem,
   formatCapital,
@@ -26,6 +29,7 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { usePermission } from '@/features/auth/hooks/usePermission';
 import { useOptionList, usePeople } from '@/features/reference/useReference';
 import { cn } from '@/components/ui/cn';
+import { Select } from '@/components/ui/Select';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatDate, formatDateKanji, formatDateTime, todayJst } from '@/lib/format';
 import {
@@ -89,6 +93,8 @@ export function CallTargetsPage() {
     fresh,
   });
   const [page, setPage] = useViewState('calls.page', 1, { fresh });
+  // 並び替え (テレマ 11/18): by address (north to south), address then name, or name.
+  const [sort, setSort] = useViewState<CompanySort>('calls.sort', 'UPDATED');
   const grades = useOptionList(OptionCategory.CallGrade);
   const customerTypes = useOptionList(OptionCategory.CustomerType);
   const ranks = useOptionList(OptionCategory.CompanyRank);
@@ -135,6 +141,7 @@ export function CallTargetsPage() {
     assignedToMe: onlyMine,
     // The area chosen beside the list (a prefecture or city of the 営業担当表, 11/17).
     areas: focus.areas,
+    sort,
   };
   const query = useCompanySearch({ ...search, page, pageSize: 50 });
 
@@ -343,13 +350,31 @@ export function CallTargetsPage() {
                     </div>
                   </div>
                 )}
-                <div className="border-b border-line">
-                  <Pagination
-                    page={data.page}
-                    pageSize={data.pageSize}
-                    total={data.total}
-                    onChange={setPage}
-                  />
+                <div className="flex flex-wrap items-center border-b border-line">
+                  <label className="flex items-center gap-2 pl-4 text-sm text-ink-sub">
+                    並び替え
+                    <Select
+                      size="sm"
+                      aria-label="並び替え"
+                      value={sort}
+                      options={COMPANY_SORTS.map((value) => ({
+                        value,
+                        label: COMPANY_SORT_LABELS[value],
+                      }))}
+                      onChange={(event) => {
+                        setSort(event.target.value as CompanySort);
+                        setPage(1);
+                      }}
+                    />
+                  </label>
+                  <div className="min-w-0 flex-1">
+                    <Pagination
+                      page={data.page}
+                      pageSize={data.pageSize}
+                      total={data.total}
+                      onChange={setPage}
+                    />
+                  </div>
                 </div>
                 <Table stickyHeader>
                   <thead>
@@ -460,7 +485,11 @@ function CompanyRow({
   return (
     <tr
       onClick={open}
-      className="cursor-pointer transition-colors duration-100 hover:bg-main-soft/60 [&>td]:py-2.5"
+      className={cn(
+        'cursor-pointer transition-colors duration-100 hover:bg-main-soft/60 [&>td]:py-2.5',
+        // Today's own calls stand out in the list (テレマ 11/18).
+        company.mineToday && 'bg-main-soft/40 shadow-[inset_3px_0_0_var(--color-main)]',
+      )}
     >
       {picked !== undefined && (
         <Td className="pl-4">
@@ -482,6 +511,11 @@ function CompanyRow({
             >
               {company.name}
             </Link>
+            {company.mineToday && (
+              <span className="shrink-0 border border-main-line bg-surface px-1.5 text-[11px] leading-5 font-bold whitespace-nowrap text-main">
+                今日の担当
+              </span>
+            )}
             {/* Its rep's calendar beside the list, without leaving it (11/17). */}
             {panel && panel.mode !== 'closed' && (
               <button

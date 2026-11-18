@@ -10,6 +10,10 @@ import { type CalendarEvent, eventsOn, isDayOff } from './events';
 
 interface DayViewProps {
   date: string;
+  /** Fixed hours (9–18 mode, 11/18); otherwise 5–24 or wider for early or late events. */
+  dayStart?: number;
+  dayEnd?: number;
+  fit?: boolean;
   /** Type an all-day plan into the 終日 row (11/18). */
   onQuickAddAllDay?: (personId: string, title: string) => Promise<unknown>;
   onAllDayDetail?: (personId: string, title: string) => void;
@@ -57,6 +61,9 @@ export function DayView({
   clickMinutes,
   onQuickAddAllDay,
   onAllDayDetail,
+  dayStart,
+  dayEnd,
+  fit,
 }: DayViewProps) {
   const holiday = holidays.find((day) => day.date === date);
   const off = isWeekend(date) || Boolean(holiday);
@@ -71,6 +78,9 @@ export function DayView({
       )}
       <TimeGrid
         pxPerMin={pxPerMin}
+        dayStart={dayStart}
+        dayEnd={dayEnd}
+        fit={fit}
         maxHeight={maxHeight}
         step={step}
         clickMinutes={clickMinutes}

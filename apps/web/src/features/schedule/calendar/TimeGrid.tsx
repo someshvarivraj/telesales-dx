@@ -68,10 +68,18 @@ interface TimeGridProps {
    * empty part of a day's cell opens a box; Enter saves, 「＋詳細」 opens the full form.
    */
   onQuickAddAllDay?: (column: GridColumn, title: string) => Promise<unknown>;
+  /**
+   * 9–18 mode (テレマ 11/18): hours at least 1.5× taller, and stretched to fill the visible height
+   * when there is room.
+   */
+  fit?: boolean;
   onAllDayDetail?: (column: GridColumn, title: string) => void;
   /** Length of the range a single click makes (30 minutes). */
   clickMinutes?: number;
 }
+
+/** How much taller the hours are at least in 9–18 mode. */
+const FIT_MIN_SCALE = 1.5;
 
 function snap(minutes: number, step: number): number {
   return Math.round(minutes / step) * step;
@@ -94,7 +102,7 @@ export function useNow(): { date: string; minutes: number } {
  */
 export function TimeGrid({
   columns,
-  pxPerMin = 1,
+  pxPerMin: basePxPerMin = 1,
   dayStart: fixedStart,
   dayEnd: fixedEnd,
   onEvent,
@@ -111,13 +119,31 @@ export function TimeGrid({
   clickMinutes = DEFAULT_PLAN_MINUTES,
   onQuickAddAllDay,
   onAllDayDetail,
+  fit = false,
 }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
+  const header = useRef<HTMLDivElement>(null);
   const now = useNow();
+  // 9–18 mode: the room under the sticky header, measured, so the hours fill it exactly.
+  const [room, setRoom] = useState(0);
+  useEffect(() => {
+    if (!fit) return;
+    const measure = () =>
+      setRoom((scroller.current?.clientHeight ?? 0) - (header.current?.offsetHeight ?? 0) - 2);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    if (scroller.current) observer.observe(scroller.current);
+    if (header.current) observer.observe(header.current);
+    return () => observer.disconnect();
+  }, [fit]);
   // 5:00–24:00 (request 11/11), opened scrolled to the morning.
   const span = visibleSpan(columns.flatMap((column) => column.events));
   const dayStart = fixedStart ?? span.start;
   const dayEnd = fixedEnd ?? span.end;
+  const pxPerMin = fit
+    ? Math.max(basePxPerMin * FIT_MIN_SCALE, room / (dayEnd - dayStart))
+    : basePxPerMin;
   const height = (dayEnd - dayStart) * pxPerMin;
   const hours = Array.from({ length: (dayEnd - dayStart) / 60 + 1 }, (_, i) => dayStart / 60 + i);
   const y = (minutes: number) =>
@@ -205,7 +231,7 @@ export function TimeGrid({
       >
         <div className="min-w-max">
           {/* Header: who / which day and all-day items, sticky while the hours scroll. */}
-          <div className="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm">
+          <div ref={header} className="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm">
             <div className="flex border-b border-line">
               <div className="sticky left-0 z-10 w-14 shrink-0 bg-surface/95" />
               {columns.map((column) => (
