@@ -287,7 +287,7 @@ export class Container {
         nextActions,
       }),
       createTelemaRouter({ authenticator, team, allocations }),
-      createNotificationsRouter({ authenticator, notifications, dashboard }),
+      createNotificationsRouter({ authenticator, notifications, dashboard, emails }),
       createFeedbackRouter({
         authenticator,
         feedback: new FeedbackService(prisma, notifications, this.audit, files, config.appBaseUrl),

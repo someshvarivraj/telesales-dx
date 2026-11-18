@@ -284,9 +284,10 @@ function PanelBody({ panel }: { panel: PanelContext }) {
     // Moved by its title bar and resized from the corner (11/17), so what is under it can be seen.
     float: cn(
       'h-[min(560px,calc(100dvh-6rem))] w-[min(620px,calc(100vw-8rem))] min-h-80 min-w-96 resize overflow-hidden border border-line',
-      !panelPos && 'right-24 bottom-6',
+      !panelPos && 'bottom-6 left-[calc(var(--sidebar-w)+1.5rem)]',
     ),
-    split: 'top-11 right-0 bottom-0 border-l border-line',
+    // On the left (Sano 11/18): the rep's schedule, the company and the call on the right.
+    split: 'top-11 bottom-0 left-(--sidebar-w) border-r border-line',
     max: 'top-11 right-0 bottom-0 left-(--sidebar-w)',
   }[mode as 'float' | 'split' | 'max'];
   const stepDays = repId ? 7 : 1;

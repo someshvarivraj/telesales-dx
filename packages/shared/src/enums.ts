@@ -134,6 +134,8 @@ export const EmailStatus = {
   Queued: 'QUEUED',
   Sent: 'SENT',
   Failed: 'FAILED',
+  /** Held for confirmation and then not sent (11/18). */
+  Discarded: 'DISCARDED',
 } as const;
 export type EmailStatus = (typeof EmailStatus)[keyof typeof EmailStatus];
 

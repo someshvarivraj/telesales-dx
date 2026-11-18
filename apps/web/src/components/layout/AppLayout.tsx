@@ -13,6 +13,7 @@ import { AssistantWidget } from '@/features/assistant/AssistantWidget';
 import { SalesPanel, SalesPanelProvider } from '@/features/calls/SalesPanel';
 import { SessionExpiryWarning } from '@/features/auth/components/SessionExpiryWarning';
 import { NoticeToaster } from '@/features/notifications/NoticeToaster';
+import { PendingMailCheck } from '@/features/notifications/PendingMailCheck';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
 import { OutageOverlay } from '@/features/system/OutageOverlay';
 import { PlannedOutageBanner } from '@/features/system/PlannedOutageBanner';
@@ -50,10 +51,10 @@ export function AppLayout() {
             <div className="app-main flex min-h-dvh min-w-0 flex-col">
               <AppHeader />
               {/* A thin Teams-like top bar (11/17): language and theme as icons at the right. */}
-              {/* Always the full width (11/17): it reaches over the docked 営業の予定 too, so the
+              {/* Always the full width (11/17): it reaches over the docked 営業の予定 (left) too, so the
                 icons stay in the corner. */}
               <div
-                style={{ marginRight: 'calc(-1 * var(--split-room, 0px))' }}
+                style={{ marginLeft: 'calc(-1 * var(--split-room, 0px))' }}
                 className="sticky top-0 z-30 hidden h-11 shrink-0 items-center justify-end border-b border-line bg-surface px-3 md:flex"
               >
                 <TopBarMenus />
@@ -87,6 +88,7 @@ export function AppLayout() {
             <AssistantWidget />
             <SessionExpiryWarning />
             <NoticeToaster />
+            <PendingMailCheck />
             <OutageOverlay />
           </div>
           <SalesPanel />

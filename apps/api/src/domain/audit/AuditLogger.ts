@@ -31,6 +31,7 @@ export const AuditAction = {
   PreparationAdded: 'appointment.preparation.added',
   ChangeRequestUpdated: 'change_request.updated',
   EmailSent: 'email.sent',
+  EmailDiscarded: 'email.discarded',
   PlanCreated: 'plan.created',
   PlanUpdated: 'plan.updated',
   PlanDeleted: 'plan.deleted',

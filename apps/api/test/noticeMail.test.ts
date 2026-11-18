@@ -14,6 +14,7 @@ const EMAILS: Record<string, string> = {
 
 function setup({ sendsEmail = true } = {}) {
   const sent: DirectEmailInput[] = [];
+  const held: DirectEmailInput[] = [];
   const prisma = {
     notification: { createMany: async () => ({ count: 1 }) },
     noticeSetting: { findUnique: async () => ({ isEnabled: true, sendsEmail }) },
@@ -36,6 +37,10 @@ function setup({ sendsEmail = true } = {}) {
       sent.push(input);
       return true;
     },
+    holdForConfirmation: async (input: DirectEmailInput) => {
+      held.push(input);
+      return true;
+    },
   } as unknown as EmailService;
   const logger = { error: () => undefined } as unknown as Logger;
   const service = new NotificationService(
@@ -45,12 +50,12 @@ function setup({ sendsEmail = true } = {}) {
     logger,
     'https://dx.morabu.com/telesales-dx-staging/',
   );
-  return { service, sent };
+  return { service, sent, held };
 }
 
 describe('every notice can be mailed (request 11/11)', () => {
   it('mails a notice with no e-mail of its own: title, text and a link', async () => {
-    const { service, sent } = setup();
+    const { service, held } = setup();
     await service.notify({
       code: NoticeCode.Commented,
       title: 'アポにコメントが付きました',
@@ -58,11 +63,35 @@ describe('every notice can be mailed (request 11/11)', () => {
       linkPath: '/appointments/x1',
       actorId: 'me',
     });
+    expect(held).toHaveLength(1);
+    expect(held[0]?.to).toEqual(['a@morabu.com']);
+    expect(held[0]?.cc).toEqual(['b@morabu.com']);
+    expect(held[0]?.subject).toBe('架電システム：アポにコメントが付きました');
+    expect(held[0]?.body).toContain('https://dx.morabu.com/telesales-dx-staging/appointments/x1');
+  });
+
+  it('holds a mail caused by someone for them to confirm, never sends it straight away (11/18)', async () => {
+    const { service, sent, held } = setup();
+    await service.notify({
+      code: NoticeCode.Commented,
+      title: 'アポにコメントが付きました',
+      linkPath: '/appointments/x1',
+      actorId: 'me',
+    });
+    expect(sent).toHaveLength(0);
+    expect(held).toHaveLength(1);
+    expect(held[0]?.createdById).toBe('me');
+  });
+
+  it('still sends scheduled mails (nobody caused them) straight away', async () => {
+    const { service, sent, held } = setup();
+    await service.notify({
+      code: NoticeCode.Commented,
+      title: '明日のアポ',
+      linkPath: '/appointments',
+    });
+    expect(held).toHaveLength(0);
     expect(sent).toHaveLength(1);
-    expect(sent[0]?.to).toEqual(['a@morabu.com']);
-    expect(sent[0]?.cc).toEqual(['b@morabu.com']);
-    expect(sent[0]?.subject).toBe('架電システム：アポにコメントが付きました');
-    expect(sent[0]?.body).toContain('https://dx.morabu.com/telesales-dx-staging/appointments/x1');
   });
 
   it('mails the people a notice is sent to directly', async () => {

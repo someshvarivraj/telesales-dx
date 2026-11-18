@@ -449,7 +449,8 @@ export function SchedulePage() {
   return (
     <div className={showToday ? 'lg:flex lg:items-start lg:gap-4' : undefined}>
       {showToday && (
-        <div className="shrink-0 max-lg:hidden">
+        // On the right: the reps' schedule stays on the left (Sano 11/18).
+        <div className="shrink-0 max-lg:hidden lg:order-2">
           <TodayCallList onRep={(repId) => update({ people: repId })} />
         </div>
       )}

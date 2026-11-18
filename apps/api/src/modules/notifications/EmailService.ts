@@ -1,7 +1,7 @@
 import {
   type EmailDraftDto,
   EmailStatus,
-  type NoticeCode,
+  NoticeCode,
   Role,
   stampAutomatic,
   stampOperator,
@@ -26,6 +26,16 @@ export interface DraftInput {
   body: string;
   createdById: string;
 }
+
+/**
+ * Mails checked on their own preview page (伝達事項 N1, 取り消し N8, 前日確認 N14): their drafts
+ * are not "waiting for confirmation" mails.
+ */
+const PREVIEWED_ON_MAIL_PAGE: ReadonlySet<string> = new Set([
+  NoticeCode.Booking,
+  NoticeCode.Cancelled,
+  NoticeCode.DayBeforeResult,
+]);
 
 export interface DirectEmailInput extends Omit<DraftInput, 'createdById'> {
   createdById?: string | null;
@@ -193,6 +203,92 @@ export class EmailService {
    * Sends immediately (scheduled and automatic notices).
    * Returns false when an e-mail with the same key was already sent.
    */
+  /**
+   * A mail someone's action causes is not sent straight away (Sano 11/18): it waits as a draft
+   * for that person to check on the 「メールの確認」 screen and press 送信. Returns false when a
+   * mail with the same key already exists.
+   */
+  async holdForConfirmation(input: DirectEmailInput & { createdById: string }): Promise<boolean> {
+    if (input.to.length === 0 && input.cc.length === 0) {
+      return false;
+    }
+    try {
+      await this.prisma.outboundEmail.create({
+        data: {
+          noticeCode: input.noticeCode,
+          dedupeKey: input.dedupeKey,
+          appointmentId: input.appointmentId ?? null,
+          to: input.to.length > 0 ? input.to : input.cc,
+          cc: input.to.length > 0 ? input.cc : [],
+          subject: input.subject,
+          body: input.body,
+          attachmentIds: (input.attachments ?? []).flatMap((file) =>
+            file.fileId ? [file.fileId] : [],
+          ),
+          status: EmailStatus.Draft,
+          createdById: input.createdById,
+        },
+      });
+      return true;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /** The mails waiting for this person's confirmation, oldest first (11/18). */
+  async pendingFor(userId: string): Promise<EmailDraftDto[]> {
+    const rows = await this.prisma.outboundEmail.findMany({
+      where: {
+        createdById: userId,
+        status: EmailStatus.Draft,
+        noticeCode: { notIn: [...PREVIEWED_ON_MAIL_PAGE] },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+    });
+    return rows.map(toEmailDraftDto);
+  }
+
+  /** Sends one of the person's waiting mails, as it was shown to them. */
+  async sendPending(actor: Actor, id: string): Promise<EmailDraftDto> {
+    await this.assertPending(actor.id, id);
+    return this.sendDraft(actor, id);
+  }
+
+  /** 「送らない」: the waiting mail is never sent; kept for the record. */
+  async discardPending(actor: Actor, id: string): Promise<void> {
+    await this.assertPending(actor.id, id);
+    const { count } = await this.prisma.outboundEmail.updateMany({
+      where: { id, createdById: actor.id, status: EmailStatus.Draft },
+      data: { status: EmailStatus.Discarded },
+    });
+    if (count === 0) {
+      throw new InvalidStateError({ reason: 'already_sent' });
+    }
+    await this.audit.record({
+      action: AuditAction.EmailDiscarded,
+      actorUserId: actor.id,
+      targetType: 'email',
+      targetId: id,
+    });
+  }
+
+  private async assertPending(userId: string, id: string): Promise<void> {
+    const row = await this.prisma.outboundEmail.findUnique({
+      where: { id },
+      select: { createdById: true, status: true, noticeCode: true },
+    });
+    if (!row || row.createdById !== userId || PREVIEWED_ON_MAIL_PAGE.has(row.noticeCode)) {
+      throw new NotFoundError();
+    }
+    if (row.status !== EmailStatus.Draft) {
+      throw new InvalidStateError({ reason: 'already_sent' });
+    }
+  }
+
   async sendDirect(input: DirectEmailInput): Promise<boolean> {
     if (input.to.length === 0 && input.cc.length === 0) {
       return false;
