@@ -259,6 +259,12 @@ function mountainAt(x, y, width, height) {
   var top = lakeTopOf(height);
   if (y >= top) return null;
   var tall = Math.min(200, height * 0.21);
+  // Not the city (11/18: a MoraBot face popping out of a building or the tower looked wrong),
+  // nor the torii (MoraBot came up from Fuji right inside the gate).
+  var harbor = harborOf(width, top, tall);
+  if (harbor.H > 30 && x >= harbor.towerX - harbor.H * 3.3) return null;
+  var torii = toriiOf(width, height, top);
+  if (Math.abs(x - torii.x) <= torii.h * 0.9 && y >= torii.y - torii.h - 12) return null;
   var ranges = rangesOf(top, tall, seeded(1113));
   var fuji = fujiOf(width, height);
   var order = [
@@ -338,6 +344,21 @@ function buildScenery(width, height, top, ratio) {
     { ridge: ranges.far, from: '#dfe6ee', to: '#c9d4df' },
     { ridge: ranges.mid, from: '#b4c3d2', to: '#9cadbf' },
   ];
+  // The テレマ MoraBot rising from behind the far range above the city (11/18: among the
+  // buildings it looked crowded): drawn first, so the mountains cover everything below its face.
+  if (STATUE) {
+    var harborAt = harborOf(width, top, tall);
+    if (harborAt.H > 30) {
+      var peakX = harborAt.towerX + harborAt.H * 0.6;
+      for (var px = peakX; px <= harborAt.towerX + harborAt.H * 1.5; px += 4) {
+        if (ranges.far(px) < ranges.far(peakX)) peakX = px;
+      }
+      var size = tall * 0.78;
+      // His face stays above both the ridge and the tallest buildings, whatever the screen.
+      var line = Math.min(ranges.far(peakX), top - harborAt.H * 0.95);
+      drawStatue(ctx, STATUE, peakX, line + size * 0.42, size);
+    }
+  }
   layers.forEach(function (layer, index) {
     var highest = top - (index === 0 ? tall : index === 1 ? tall * 0.68 : tall * 0.22);
     var fill = ctx.createLinearGradient(0, highest, 0, top);
@@ -408,6 +429,31 @@ function harborOf(width, top, tall) {
     // and, on most screens, behind the sign-in box.
     wheel: { x: towerX + H * 1.92, y: top - 1 - H * 0.47, r: H * 0.38 },
   };
+}
+
+/**
+ * The テレマ MoraBot (11/18): the pink MoraBot artwork, big and far away, its face rising over
+ * the far range behind Kobe like a giant watching the harbour. Toned by the evening haze, as
+ * distant as the mountains. Drawn only once the artwork has loaded
+ * (the sign-in screen passes it in; the outage page has none).
+ */
+var STATUE = null;
+
+function drawStatue(ctx, image, cx, base, S) {
+  if (!image || !(S > 30)) return;
+  var w = (S * image.naturalWidth) / image.naturalHeight;
+  // The artwork with a light veil of haze on it only (not on the sky around it).
+  var off = document.createElement('canvas');
+  var scale = 2;
+  off.width = Math.max(1, Math.round(w * scale));
+  off.height = Math.max(1, Math.round(S * scale));
+  var o = off.getContext('2d');
+  if (!o) return;
+  o.drawImage(image, 0, 0, off.width, off.height);
+  o.globalCompositeOperation = 'source-atop';
+  o.fillStyle = 'rgba(214, 210, 232, 0.32)';
+  o.fillRect(0, 0, off.width, off.height);
+  ctx.drawImage(off, cx - w / 2, base - S, w, S);
 }
 
 /** Lit and dark windows in rows over a building's face. */
@@ -1105,7 +1151,7 @@ function drawFish(ctx, fish) {
   ctx.save();
   ctx.translate(fish.x, fish.y);
   ctx.scale(fish.dir, 1);
-  ctx.rotate(Math.cos(fish.wander) * 0.05);
+  ctx.rotate(Math.cos(fish.wander) * 0.05 + (fish.tilt || 0));
   // Just under the water: a little softer further away.
   ctx.globalAlpha = 0.72 + 0.25 * fish.depth;
 
@@ -1251,7 +1297,7 @@ function drawFish(ctx, fish) {
 }
 
 /** Moves the fish; they swim back in from the side they left, at a new depth. */
-function swimFish(list, dt, width, height, top) {
+function swimFish(list, dt, width, height, top, croc) {
   for (var i = 0; i < list.length; i++) {
     var f = list[i];
     f.wander += dt * 0.6;
@@ -1259,6 +1305,24 @@ function swimFish(list, dt, width, height, top) {
     f.boost *= Math.pow(0.3, dt);
     f.x += f.dir * (f.speed + f.boost) * dt;
     f.y += Math.sin(f.wander) * 6 * dt;
+    // Around the crocodile (11/18: fish swam right over it): a fish heading its way turns up and
+    // passes above it, more sharply the closer it gets, its nose tilting up as it climbs.
+    var climb = 0;
+    if (croc) {
+      var cs = croc.scale;
+      var rx = 105 * cs + f.length * 0.6;
+      var ry = 30 * cs + 10;
+      var cx = croc.x + 14 * cs;
+      var cy = croc.y - 4 * cs;
+      var nx = (f.x - cx) / rx;
+      var ny = (f.y - cy) / ry;
+      var d = Math.sqrt(nx * nx + ny * ny);
+      var coming = (cx - f.x) * f.dir > -rx * 0.4;
+      if (d < 1.8 && coming) climb = ((1.8 - d) / 0.8) * 46 + (d < 1 ? 70 : 0);
+    }
+    f.y -= climb * dt;
+    var tilt = climb > 0 ? -Math.min(0.45, climb / 120) : 0;
+    f.tilt = (f.tilt || 0) + (tilt - (f.tilt || 0)) * Math.min(1, dt * 4);
     f.y = Math.max(top + 18, Math.min(height - 14, f.y));
     if (f.x < -f.length * 3 || f.x > width + f.length * 3)
       list[i] = newFish(width, height, top, false);
@@ -1407,17 +1471,108 @@ function isOnMoon(x, y, width) {
   return Math.hypot(x - moon.x, y - moon.y) <= moon.r * 1.1;
 }
 
+/**
+ * The moon's seas (海), placed as on the real near side: [x, y, rx, ry, tilt] in moon radii,
+ * x to the right, y down. Together they make the shape people in Japan see as the rabbit
+ * pounding mochi — the rabbit is in the moon itself, as in the real sky.
+ */
+var MARIA = [
+  [-0.36, -0.42, 0.3, 0.26, -0.3], // 雨の海 Imbrium
+  [-0.62, 0.02, 0.22, 0.46, 0.15], // 嵐の大洋 Procellarum
+  [-0.42, 0.3, 0.2, 0.18, 0.4], // Procellarum, south
+  [0.18, -0.44, 0.17, 0.15, 0], // 晴れの海 Serenitatis
+  [0.36, -0.1, 0.22, 0.17, 0.3], // 静かの海 Tranquillitatis
+  [0.72, -0.3, 0.11, 0.09, 0], // 危機の海 Crisium
+  [0.6, 0.18, 0.12, 0.17, -0.2], // 豊かの海 Fecunditatis
+  [0.4, 0.32, 0.08, 0.08, 0], // 神酒の海 Nectaris
+  [-0.18, 0.44, 0.17, 0.12, 0.2], // 雲の海 Nubium
+  [-0.5, 0.44, 0.08, 0.08, 0], // 湿りの海 Humorum
+  [-0.12, -0.7, 0.38, 0.06, 0.12], // 氷の海 Frigoris
+  [0.02, -0.16, 0.1, 0.07, 0], // 蒸気の海 Vaporum
+  [-0.22, -0.04, 0.12, 0.08, 0], // 島の海 Insularum
+];
+
+/** The moon's face, drawn once per size: flat and pale, the seas with soft uneven edges. */
+var moonFace = null;
+function moonFaceOf(r) {
+  var size = Math.ceil(r * 2 * 2);
+  if (moonFace && moonFace.r === r) return moonFace.canvas;
+  var canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  var c = canvas.getContext('2d');
+  if (!c) return null;
+  var k = size / 2;
+  c.translate(k, k);
+  c.scale(k, k);
+  // A flat pale disc (11/18: no shading or bright rim — a plain 2-D moon).
+  c.fillStyle = '#f3f1e7';
+  c.beginPath();
+  c.arc(0, 0, 1, 0, Math.PI * 2);
+  c.fill();
+  c.save();
+  c.clip();
+  var rand = seeded(2718);
+  // Each sea a few overlapping soft patches, fading out at their edges like on the real moon
+  // (no outline anywhere).
+  MARIA.forEach(function (m) {
+    for (var i = 0; i < 4; i++) {
+      var ox = (rand() - 0.5) * m[2] * 0.7;
+      var oy = (rand() - 0.5) * m[3] * 0.7;
+      var sx = m[2] * (0.75 + rand() * 0.35);
+      var sy = m[3] * (0.75 + rand() * 0.35);
+      c.save();
+      c.translate(m[0], m[1]);
+      c.rotate(m[4]);
+      c.translate(ox, oy);
+      c.scale(sx, sy);
+      var patch = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+      patch.addColorStop(0, 'rgba(132, 138, 162, 0.2)');
+      patch.addColorStop(0.65, 'rgba(132, 138, 162, 0.13)');
+      patch.addColorStop(1, 'rgba(132, 138, 162, 0)');
+      c.fillStyle = patch;
+      c.beginPath();
+      c.arc(0, 0, 1, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
+  });
+  // A few small craters, and Tycho and Copernicus as bright spots with faint rays.
+  c.fillStyle = 'rgba(150, 154, 172, 0.18)';
+  for (var n = 0; n < 26; n++) {
+    var ca = rand() * Math.PI * 2;
+    var cd = Math.sqrt(rand()) * 0.92;
+    c.beginPath();
+    c.arc(Math.cos(ca) * cd, Math.sin(ca) * cd, 0.012 + rand() * 0.025, 0, Math.PI * 2);
+    c.fill();
+  }
+  [
+    [-0.12, 0.7, 0.032, 16],
+    [-0.26, -0.12, 0.022, 0],
+  ].forEach(function (b) {
+    c.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    c.lineWidth = 0.01;
+    for (var ray = 0; ray < b[3]; ray++) {
+      var ra = (ray / b[3]) * Math.PI * 2 + rand() * 0.3;
+      var rl = 0.15 + rand() * 0.35;
+      c.beginPath();
+      c.moveTo(b[0], b[1]);
+      c.lineTo(b[0] + Math.cos(ra) * rl, b[1] + Math.sin(ra) * rl);
+      c.stroke();
+    }
+    c.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    c.beginPath();
+    c.arc(b[0], b[1], b[2], 0, Math.PI * 2);
+    c.fill();
+  });
+  c.restore();
+  moonFace = { r: r, canvas: canvas };
+  return canvas;
+}
+
 /** The mallet (杵): pointing at the mortar when down, raised over the rabbit's head when up. */
 var MALLET_DOWN = Math.PI + 0.06;
 var MALLET_UP = Math.PI + 1.5;
-/** Soft craters on the moon: [x, y, rx, ry] in unit size. */
-var CRATERS = [
-  [-0.45, -0.55, 0.22, 0.14],
-  [0.5, -0.5, 0.16, 0.12],
-  [0.62, 0.42, 0.13, 0.1],
-  [-0.66, 0.2, 0.1, 0.14],
-  [0.05, -0.78, 0.12, 0.07],
-];
 
 /** A little four-pointed sparkle. */
 function sparkle(ctx, x, y, size) {
@@ -1461,10 +1616,9 @@ function moonRabbit(ctx, x, y, face, lean) {
 }
 
 /**
- * The moon (11/13–14, after the senior's requests, as in the classic 月のうさぎ picture): a
- * large pale disc with soft craters and two rabbits making mochi. The one on the right swings
- * the mallet over its head and brings it down; the one on the left kneels at the mortar and
- * turns the mochi between strikes, pulling its paws back just before each one.
+ * The full moon (11/18: a real moon, flat 2-D): a pale disc with the real seas on it, and on it
+ * the two rabbits making mochi — the right one swings the mallet, the left one turns the mochi
+ * between strikes — with a soft silver glow that breathes slowly.
  * `poked`: seconds since the moon was clicked — it bounces, the rabbits hop and sparkles fly.
  */
 function drawSun(ctx, sun, t, poked) {
@@ -1476,10 +1630,9 @@ function drawSun(ctx, sun, t, poked) {
   // Soft glow, breathing slowly; brighter for a moment after a click.
   var breath = 0.5 + 0.5 * Math.sin(t * 0.8);
   var flash = p >= 0 ? 1 - p : 0;
-  var glow = ctx.createRadialGradient(0, 0, r * 0.8, 0, 0, r * (2 + 0.15 * breath + 0.4 * flash));
-  // A cool silver glow (11/17: the お月見 moon, not a gold one).
-  glow.addColorStop(0, 'rgba(244, 247, 255, ' + (0.6 + 0.3 * flash).toFixed(3) + ')');
-  glow.addColorStop(1, 'rgba(244, 247, 255, 0)');
+  var glow = ctx.createRadialGradient(0, 0, r * 0.95, 0, 0, r * (2 + 0.15 * breath + 0.4 * flash));
+  glow.addColorStop(0, 'rgba(246, 246, 240, ' + (0.55 + 0.3 * flash).toFixed(3) + ')');
+  glow.addColorStop(1, 'rgba(246, 246, 240, 0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
@@ -1504,34 +1657,22 @@ function drawSun(ctx, sun, t, poked) {
   // The moon bounces when clicked.
   var bounce = p >= 0 ? 1 + 0.08 * Math.sin(p * Math.PI * 3) * (1 - p) : 1;
   ctx.scale(bounce, bounce);
-  var disc = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
-  // Pale silvery white with a breath of cream, as the moon is drawn for お月見.
-  disc.addColorStop(0, '#ffffff');
-  disc.addColorStop(0.55, '#f6f4ec');
-  disc.addColorStop(1, '#dcdde6');
-  ctx.fillStyle = disc;
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.fill();
+  var face = moonFaceOf(r);
+  if (face) ctx.drawImage(face, -r, -r, r * 2, r * 2);
 
+  // The two rabbits making mochi (11/18: kept on the real moon), flat soft shadows in the
+  // colour of its seas.
   ctx.save();
   ctx.beginPath();
   ctx.arc(0, 0, r * 0.98, 0, Math.PI * 2);
   ctx.clip();
   ctx.scale(r, r);
-  ctx.fillStyle = 'rgba(160, 168, 190, 0.2)';
-  CRATERS.forEach(function (c) {
-    ctx.beginPath();
-    ctx.ellipse(c[0], c[1], c[2], c[3], 0, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
   // Rabbits and mortar: soft blue-grey shadows on the silver, the 月のうさぎ people see in the
   // real moon; where they overlap they look a little deeper.
   ctx.save();
   ctx.translate(0, -0.04);
   ctx.scale(1.14, 1.14);
-  var mark = 'rgba(122, 132, 160, 0.5)';
+  var mark = 'rgba(118, 126, 154, 0.5)';
   ctx.fillStyle = mark;
   ctx.strokeStyle = mark;
   ctx.lineCap = 'round';
@@ -1613,72 +1754,75 @@ function drawSun(ctx, sun, t, poked) {
   }
   ctx.restore();
   ctx.restore();
-
-  // A thin bright rim.
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.lineWidth = Math.max(1, r * 0.03);
-  ctx.beginPath();
-  ctx.arc(0, 0, r * 0.99, 0, Math.PI * 2);
-  ctx.stroke();
   ctx.restore();
   drawSusuki(ctx, sun, t);
 }
 
 /**
- * すすき (11/17): pampas grass in front of the lower right of the moon, as in every お月見
- * picture with the moon, the rabbits and the mochi. A few stalks with feathery plumes, swaying
- * a little in the evening air. Soft dark silhouettes, so the moon stays the bright thing.
+ * すすき (11/17, 11/18): pampas grass inside the moon, along its lower right edge, as in every
+ * お月見 picture with the moon, the rabbits and the mochi (11/18: drawn outside the moon it looked
+ * like strings hanging in the air). A few stalks leaning to the right with feathery plumes,
+ * swaying a little, cut to the moon's disc. Soft silhouettes, so the rabbits stay in view.
  */
 function drawSusuki(ctx, sun, t) {
   var r = sun.r;
   ctx.save();
-  ctx.translate(sun.x + r * 0.95, sun.y + r * 1.25);
+  ctx.translate(sun.x, sun.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.97, 0, Math.PI * 2);
+  ctx.clip();
   ctx.lineCap = 'round';
-  // Off to the lower right of the moon, so the rabbits stay in view; only the plumes cross its edge.
+  // [foot x, height, lean, sway phase] in moon radii; the feet sit below the disc's edge.
   var stalks = [
-    [-0.15, 1.35, -0.3, 0],
-    [0.08, 1.55, -0.16, 1.3],
-    [0.3, 1.3, -0.02, 2.1],
-    [0.5, 1.05, 0.14, 3.4],
+    [0.02, 0.62, 0.42, 0],
+    [0.18, 0.74, 0.5, 1.3],
+    [0.34, 0.66, 0.6, 2.1],
+    [0.5, 0.52, 0.66, 3.4],
   ];
+  var footY = r * 1.02;
   stalks.forEach(function (s) {
-    var sway = Math.sin(t * 0.9 + s[3]) * 0.06;
+    var sway = Math.sin(t * 0.9 + s[3]) * 0.05;
     var baseX = s[0] * r;
     var tall = s[1] * r;
     var lean = s[2] + sway;
     var tipX = baseX + Math.sin(lean) * tall;
-    var tipY = -Math.cos(lean) * tall;
+    var tipY = footY - Math.cos(lean) * tall;
     // The stalk, curving a little.
-    ctx.strokeStyle = 'rgba(92, 84, 104, 0.75)';
-    ctx.lineWidth = Math.max(1, r * 0.025);
+    ctx.strokeStyle = 'rgba(86, 80, 102, 0.7)';
+    ctx.lineWidth = Math.max(1, r * 0.022);
     ctx.beginPath();
-    ctx.moveTo(baseX, 0);
-    ctx.quadraticCurveTo(baseX + (tipX - baseX) * 0.2, tipY * 0.55, tipX, tipY);
+    ctx.moveTo(baseX, footY);
+    ctx.quadraticCurveTo(baseX + (tipX - baseX) * 0.2, footY - (footY - tipY) * 0.6, tipX, tipY);
     ctx.stroke();
-    // The plume: soft feathers drooping from the top, pale against the sky.
-    for (var f = 0; f < 7; f++) {
-      var u = f / 6;
-      var fx = tipX - Math.sin(lean) * u * r * 0.32;
-      var fy = tipY + Math.cos(lean) * u * r * 0.32;
+    // The plume: soft feathers drooping from the top, warm gold against the silver.
+    for (var f = 0; f < 6; f++) {
+      var u = f / 5;
+      var fx = tipX - Math.sin(lean) * u * r * 0.22;
+      var fy = tipY + Math.cos(lean) * u * r * 0.22;
       var side = f % 2 ? 1 : -1;
-      ctx.strokeStyle = 'rgba(214, 196, 176, ' + (0.85 - u * 0.3).toFixed(3) + ')';
-      ctx.lineWidth = Math.max(1, r * 0.03);
+      ctx.strokeStyle = 'rgba(176, 142, 98, ' + (0.85 - u * 0.3).toFixed(3) + ')';
+      ctx.lineWidth = Math.max(1, r * 0.024);
       ctx.beginPath();
       ctx.moveTo(fx, fy);
       ctx.quadraticCurveTo(
-        fx + side * r * 0.1,
-        fy + r * 0.02,
-        fx + side * r * (0.12 + sway),
-        fy + r * 0.12,
+        fx + side * r * 0.07,
+        fy + r * 0.015,
+        fx + side * r * (0.08 + sway * 0.5),
+        fy + r * 0.09,
       );
       ctx.stroke();
     }
     // One long leaf from the foot.
-    ctx.strokeStyle = 'rgba(92, 84, 104, 0.55)';
-    ctx.lineWidth = Math.max(1, r * 0.02);
+    ctx.strokeStyle = 'rgba(86, 80, 102, 0.5)';
+    ctx.lineWidth = Math.max(1, r * 0.018);
     ctx.beginPath();
-    ctx.moveTo(baseX, 0);
-    ctx.quadraticCurveTo(baseX + r * 0.15, -tall * 0.35, baseX + r * (0.45 + sway), -tall * 0.25);
+    ctx.moveTo(baseX, footY);
+    ctx.quadraticCurveTo(
+      baseX - r * 0.12,
+      footY - tall * 0.4,
+      baseX - r * (0.3 - sway),
+      footY - tall * 0.28,
+    );
     ctx.stroke();
   });
   ctx.restore();
@@ -2169,6 +2313,110 @@ function drawShootingStar(ctx, star) {
  * stays clean; a click or tap on the water sends a ripple that pushes the nearby leaves away and
  * keeps them a few seconds more.
  */
+/**
+ * Birds (11/18): a small flock in a loose V crossing the evening sky now and then, flapping and
+ * gliding in turn. `top` is where the lake starts; they keep to the sky well above it.
+ */
+function newFlock(width, top) {
+  var dir = Math.random() < 0.5 ? 1 : -1;
+  var count = 4 + Math.floor(Math.random() * 4);
+  var y = top * (0.12 + Math.random() * 0.28);
+  var speed = 34 + Math.random() * 18;
+  var x0 = dir > 0 ? -30 : width + 30;
+  var list = [];
+  for (var i = 0; i < count; i++) {
+    var rank = Math.ceil(i / 2);
+    var side = i % 2 ? 1 : -1;
+    list.push({
+      x: x0 - dir * rank * (20 + Math.random() * 6),
+      y: y + side * rank * (9 + Math.random() * 4),
+      vx: dir * speed * (0.96 + Math.random() * 0.08),
+      vy: 0,
+      size: 6.5 + Math.random() * 3,
+      phase: Math.random() * Math.PI * 2,
+      beat: 6.5 + Math.random() * 2,
+      scared: 0,
+    });
+  }
+  return list;
+}
+
+/** Moves the birds; returns those still on the screen. */
+function flyBirds(birds, dt, t, width) {
+  return birds.filter(function (b) {
+    if (b.scared > 0) {
+      b.scared -= dt;
+      b.vy *= Math.pow(0.55, dt);
+    }
+    b.x += b.vx * dt;
+    b.y += b.vy * dt + Math.sin(t * 0.7 + b.phase) * 0.12;
+    return b.x > -90 && b.x < width + 90 && b.y > -60;
+  });
+}
+
+/** A bird seen from afar: two curved wings beating up and down around a small body. */
+function drawBirds(ctx, birds, t) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(62, 56, 88, 0.82)';
+  ctx.fillStyle = 'rgba(62, 56, 88, 0.82)';
+  birds.forEach(function (b) {
+    var s = b.size;
+    // Flap for a while, then glide with the wings held up a little; startled birds flap hard.
+    var glide = Math.max(0, Math.sin(t * 0.45 + b.phase));
+    var amp = b.scared > 0 ? 1 : 0.35 + 0.65 * glide;
+    var beat = b.scared > 0 ? b.beat * 2.2 : b.beat;
+    var wing = 0.25 + Math.sin(t * beat + b.phase) * 0.85 * amp;
+    var tipY = b.y - s * 0.55 * wing;
+    ctx.lineWidth = Math.max(1, s * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(b.x - s, tipY + s * 0.15);
+    ctx.quadraticCurveTo(b.x - s * 0.45, b.y - s * 0.75 * wing, b.x, b.y);
+    ctx.quadraticCurveTo(b.x + s * 0.45, b.y - s * 0.75 * wing, b.x + s, tipY + s * 0.15);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y + s * 0.05, s * 0.16, s * 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+/** Feathers a startled bird lost, swaying down and fading. */
+function drawFeathers(ctx, feathers) {
+  ctx.save();
+  feathers.forEach(function (f) {
+    var fade = Math.max(0, 1 - f.age / f.life);
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.rotate(f.angle);
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = 'rgba(248, 246, 255, 0.95)';
+    ctx.strokeStyle = 'rgba(90, 84, 116, 0.6)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, f.size, f.size * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-f.size * 1.2, 0);
+    ctx.lineTo(f.size, 0);
+    ctx.stroke();
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
+/** Loads the statue artwork once, then has the scenery drawn again with it. */
+function loadStatue(src, redraw) {
+  if (!src || STATUE) return;
+  var image = new Image();
+  image.onload = function () {
+    STATUE = image;
+    redraw();
+  };
+  image.src = src;
+}
+
 function startLeaves(canvas, options) {
   var opts = options || {};
   var ctx = canvas.getContext('2d');
@@ -2199,6 +2447,7 @@ function startLeaves(canvas, options) {
       drawCroc(ctx, crocOf(w, h), 0, { x: 0.6, y: -0.2 }, 0);
     };
     still();
+    loadStatue(opts.statue, still);
     window.addEventListener('resize', still);
     return function () {
       window.removeEventListener('resize', still);
@@ -2239,6 +2488,9 @@ function startLeaves(canvas, options) {
   var nextShooting = 1.5;
   var fisher = fisherOf(0, 0);
   var nextBite = 5;
+  var birds = [];
+  var feathers = [];
+  var nextFlock = 1.5;
   var biteAt = -10;
 
   function resize() {
@@ -2331,6 +2583,44 @@ function startLeaves(canvas, options) {
     pointer = { x: event.clientX, y: event.clientY };
   }
 
+  /** Sky: startles the birds near a click on one of them; false when no bird was there. */
+  function scareBirds(x, y) {
+    var hit = null;
+    var best = 26;
+    birds.forEach(function (b) {
+      var d = Math.hypot(b.x - x, b.y - y);
+      if (d < best) {
+        best = d;
+        hit = b;
+      }
+    });
+    if (!hit) return false;
+    birds.forEach(function (b) {
+      var dx = b.x - x;
+      var dy = b.y - y;
+      var d = Math.hypot(dx, dy) || 1;
+      if (d > 170) return;
+      var dir = b.vx >= 0 ? 1 : -1;
+      b.vx = dir * Math.min(150, Math.abs(b.vx) * 1.9) + (dx / d) * 40;
+      b.vy = -70 - Math.random() * 50 + (dy / d) * 25;
+      b.scared = 1.4 + Math.random() * 0.6;
+    });
+    for (var i = 0; i < 4; i++) {
+      feathers.push({
+        x: hit.x + (Math.random() - 0.5) * 8,
+        y: hit.y + (Math.random() - 0.5) * 6,
+        vx: (Math.random() - 0.5) * 40,
+        vy: 6 + Math.random() * 12,
+        angle: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 3,
+        size: 3 + Math.random() * 1.6,
+        age: 0,
+        life: 2 + Math.random() * 0.8,
+      });
+    }
+    return true;
+  }
+
   /** Lake: a click or tap on the water. */
   function poke(event) {
     if (!lake) return;
@@ -2353,6 +2643,11 @@ function startLeaves(canvas, options) {
       ripples.push({ x: torii.x, y: torii.y, age: 0, size: torii.h * 1.6, strength: 0.8 });
       return;
     }
+    // A click on a bird (11/18): the flock startles — wings beating hard, they climb away and
+    // the bird that was hit loses a few feathers.
+    var onControl =
+      event.target && event.target.closest && event.target.closest('form, button, a, input');
+    if (!onControl && event.clientY < lakeTop && scareBirds(event.clientX, event.clientY)) return;
     if (event.clientY < lakeTop + 4) return;
     var rect = canvas.getBoundingClientRect();
     var x = event.clientX - rect.left;
@@ -2478,11 +2773,27 @@ function startLeaves(canvas, options) {
         }
       }
       drawSun(ctx, sun, clock, clock - moonPokedAt);
+      // Birds now and then; never more than two flocks at once.
+      if (clock >= nextFlock) {
+        if (birds.length < 12) birds = birds.concat(newFlock(width, lakeTop));
+        nextFlock = clock + 9 + Math.random() * 9;
+      }
+      birds = flyBirds(birds, dt, clock, width);
+      drawBirds(ctx, birds, clock);
+      feathers = feathers.filter(function (f) {
+        f.age += dt;
+        f.vx *= Math.pow(0.4, dt);
+        f.x += (f.vx + Math.sin(f.age * 3 + f.angle) * 14) * dt;
+        f.y += f.vy * dt;
+        f.angle += f.spin * dt;
+        return f.age < f.life;
+      });
+      drawFeathers(ctx, feathers);
       drawLake(ctx, width, height, lakeTop, clock, streaks);
       drawScenery(ctx, scenery, width, height, lakeTop, true);
       drawHarborLights(ctx, scenery && scenery.harbor, clock);
       drawTorii(ctx, torii, clock);
-      swimFish(fish, dt, width, height, lakeTop);
+      swimFish(fish, dt, width, height, lakeTop, croc);
       fish.sort(function (a, b) {
         return a.y - b.y;
       });
@@ -2677,6 +2988,10 @@ function startLeaves(canvas, options) {
   }
 
   resize();
+  if (lake)
+    loadStatue(opts.statue, function () {
+      if (width > 0) scenery = buildScenery(width, height, lakeTop, ratio);
+    });
   window.addEventListener('resize', resize);
   document.addEventListener('visibilitychange', visibility);
   if (lake) {

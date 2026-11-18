@@ -87,8 +87,22 @@ export function AuthLayout({
             {!leaves && <MoraBot mood="happy" size={180} title="" className="mt-6" />}
           </section>
 
-          <div className="w-full max-w-[420px] shrink-0 border border-t-4 border-line border-t-main bg-surface shadow-(--shadow-raised)">
-            <header className="flex items-center gap-3 border-b border-line px-6 py-4 max-sm:px-5">
+          <div
+            className={cn(
+              'w-full max-w-[420px] shrink-0',
+              // Over the lake (11/18): a glassmorphism pane (see .glass-card), the scene showing
+              // through behind a blur, the text as easy to read as on white.
+              leaves
+                ? 'glass-card'
+                : 'border border-t-4 border-line border-t-main bg-surface shadow-(--shadow-raised)',
+            )}
+          >
+            <header
+              className={cn(
+                'flex items-center gap-3 border-b px-6 py-4 max-sm:px-5',
+                leaves ? 'border-white/40' : 'border-line',
+              )}
+            >
               <MoraBot mood={mood} size={56} title="" />
               <div className="min-w-0">
                 <p className="truncate text-base leading-tight font-bold text-ink">{ja.app.name}</p>
@@ -101,7 +115,12 @@ export function AuthLayout({
               {children}
             </main>
 
-            <footer className="flex flex-col gap-1 border-t border-line bg-column px-6 py-3 text-xs text-ink-sub max-sm:px-5">
+            <footer
+              className={cn(
+                'flex flex-col gap-1 border-t px-6 py-3 text-xs text-ink-sub max-sm:px-5',
+                leaves ? 'border-white/40' : 'border-line bg-column',
+              )}
+            >
               {footer && <p>{footer}</p>}
               {/* One sentence per line, so no line ends with a stray 「さい。」. */}
               {ja.app.notice

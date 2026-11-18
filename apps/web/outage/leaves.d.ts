@@ -1,7 +1,13 @@
 /** Starts the falling leaves on a full-screen canvas; returns a function that stops them. */
 export function startLeaves(
   canvas: HTMLCanvasElement,
-  options?: { maxFalling?: number; every?: number; lake?: boolean },
+  options?: {
+    maxFalling?: number;
+    every?: number;
+    lake?: boolean;
+    /** The MoraBot statue artwork drawn in the waterfront (lake only). */
+    statue?: string;
+  },
 ): () => void;
 
 /** Whether a point on the screen is on the sign-in sky's moon (the grid skips its ripple there). */
