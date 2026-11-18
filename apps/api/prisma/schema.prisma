@@ -68,6 +68,8 @@ model User {
   planAttendances      PlanAttendee[]
   timeOff              TimeOff[]                @relation("TimeOffUser")
   timeOffEntered       TimeOff[]                @relation("TimeOffEnteredBy")
+  dayNotes             DayNote[]                @relation("DayNoteUser")
+  dayNotesUpdated      DayNote[]                @relation("DayNoteUpdatedBy")
   slotLocksHeld        SlotLock[]               @relation("SlotLockHolder")
   slotLocksOnRep       SlotLock[]               @relation("SlotLockRep")
   areaRulesAsRep       SalesAreaRule[]          @relation("AreaRuleRep")
@@ -175,6 +177,21 @@ model CalendarDay {
   createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("calendar_days")
+}
+
+/// A short note on one person's day (11/18), typed in the day's header on the schedule.
+/// Everyone viewing the schedule sees it; the person (or an admin) writes it.
+model DayNote {
+  userId      String   @map("user_id") @db.Uuid
+  date        DateTime @db.Date
+  text        String   @db.VarChar(200)
+  updatedById String   @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user        User     @relation("DayNoteUser", fields: [userId], references: [id])
+  updatedBy   User     @relation("DayNoteUpdatedBy", fields: [updatedById], references: [id])
+
+  @@id([userId, date])
+  @@map("day_notes")
 }
 
 /// Small system-wide settings edited by admins (e.g. travel-time buffer).

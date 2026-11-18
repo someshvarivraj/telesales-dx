@@ -66,9 +66,10 @@ export const EVENT_STYLE: Record<
   },
   timeoff: {
     label: '休み',
-    chip: 'border-l-[3px] border-ink-sub bg-column text-ink-sub',
-    dot: 'bg-ink-sub',
-    bar: 'bg-ink-sub/60',
+    // Its own olive green (11/18), as the 休み days in the calendar.
+    chip: 'border-l-[3px] border-dayoff-ink bg-dayoff-soft text-dayoff-ink',
+    dot: 'bg-dayoff-ink',
+    bar: 'bg-dayoff-ink/60',
   },
   lock: {
     label: '編集中',

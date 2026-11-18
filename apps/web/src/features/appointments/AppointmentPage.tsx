@@ -7,7 +7,6 @@ import {
 } from '@telesales/shared';
 import {
   CalendarClock,
-  Check,
   FileText,
   Mail,
   MessageSquareWarning,
@@ -16,7 +15,7 @@ import {
   Send,
   XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
@@ -90,6 +89,25 @@ export function AppointmentPage() {
     }
   };
 
+  // Opening the page is the sales rep's 「確認」 (11/18: a 「確認しました」 button read like a status
+  // yet asked to be pressed). When the assigned rep sees a booked appointment, it is marked
+  // 営業確認済み for telemarketing at once — no button; the header shows the status as text.
+  const confirmSeen = confirm.mutate;
+  const seenFor = useRef<string | null>(null);
+  const shown = query.data;
+  useEffect(() => {
+    if (!shown || seenFor.current === id) return;
+    if (
+      shown.abilities.confirm &&
+      !shown.salesConfirmedAt &&
+      shown.status === 'SCHEDULED' &&
+      shown.salesRep.id === me.id
+    ) {
+      seenFor.current = id;
+      confirmSeen(undefined);
+    }
+  }, [shown, id, me.id, confirmSeen]);
+
   return (
     <QueryState query={query}>
       {(appointment) => {
@@ -115,15 +133,6 @@ export function AppointmentPage() {
                     >
                       確認して送る
                     </LinkButton>
-                  )}
-                  {abilities.confirm && !appointment.salesConfirmedAt && (
-                    <Button
-                      icon={<Check className="size-4" aria-hidden="true" />}
-                      loading={confirm.isPending}
-                      onClick={() => confirm.mutate(undefined)}
-                    >
-                      確認しました
-                    </Button>
                   )}
                   {abilities.requestChange && (
                     <Button

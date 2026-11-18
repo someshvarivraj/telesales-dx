@@ -63,6 +63,8 @@ interface TimeGridProps {
   columnLabel?: (column: GridColumn) => string;
   /** Minutes a click or drag snaps to (30). */
   step?: number;
+  /** A note under each column's header (11/18: typed in the day's header). */
+  dayNote?: (column: GridColumn) => ReactNode;
   /** Length of the range a single click makes (30 minutes). */
   clickMinutes?: number;
 }
@@ -103,6 +105,7 @@ export function TimeGrid({
   columnLabel,
   step = BOOKING_STEP_MINUTES,
   clickMinutes = DEFAULT_PLAN_MINUTES,
+  dayNote,
 }: TimeGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const now = useNow();
@@ -187,6 +190,7 @@ export function TimeGrid({
                   style={{ minWidth: minColumnWidth }}
                 >
                   {column.header}
+                  {dayNote?.(column)}
                 </div>
               ))}
             </div>

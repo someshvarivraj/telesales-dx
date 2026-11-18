@@ -138,7 +138,32 @@ export interface ScheduleResponse {
   locks: SlotLockDto[];
   /** Minutes to keep free before and after a plan (spec §7, value being confirmed). */
   travelBufferMinutes: number;
+  /** Notes typed in the day headers of the people shown (11/18). */
+  dayNotes: DayNoteDto[];
 }
+
+/**
+ * A short note on one person's day (11/18), typed in that day's header on the schedule:
+ * everyone viewing the schedule sees it; the person (or an admin) writes it.
+ */
+export interface DayNoteDto {
+  userId: string;
+  date: string;
+  text: string;
+  updatedBy: UserRef;
+  updatedAt: string;
+}
+
+export const DAY_NOTE_MAX = 200;
+/** Empty text removes the note. */
+export const dayNoteRequestSchema = z.object({
+  text: z
+    .string()
+    .max(DAY_NOTE_MAX * 2)
+    .transform((value) => value.replace(/\s+/g, ' ').trim())
+    .pipe(z.string().max(DAY_NOTE_MAX)),
+});
+export type DayNoteRequest = z.input<typeof dayNoteRequestSchema>;
 
 /** Result of checking one slot before booking. */
 export interface SlotCheckResult {

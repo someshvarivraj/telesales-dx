@@ -61,7 +61,7 @@ export function ActivityPage() {
   useEffect(() => {
     const id = window.setTimeout(() => setQ(search.trim()), 250);
     return () => window.clearTimeout(id);
-  }, [search]);
+  }, [search, setQ]);
 
   const codes = NOTICE_CATEGORIES.find((c) => c.key === category)?.codes ?? [];
   const feed = useNotificationFeed({ box, q, codes });

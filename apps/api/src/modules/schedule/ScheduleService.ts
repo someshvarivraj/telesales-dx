@@ -8,11 +8,13 @@ import {
   jstDate,
   NoticeCode,
   OptionCategory,
+  Permission,
   PLAN_TYPES_WITH_COMPANY,
   type PlanDto,
   planLabel,
   PlanStatus,
   Role,
+  type DayNoteDto,
   type ScheduleResponse,
   type SlotCheckResult,
   type TimeOffDto,
@@ -143,7 +145,7 @@ export class ScheduleService {
     ];
     const targetIds = userIds.length > 0 ? userIds : salesUsers.map((user) => user.id);
 
-    const [plans, timeOff, holidays, locks, settings] = await Promise.all([
+    const [plans, timeOff, holidays, locks, settings, dayNotes] = await Promise.all([
       this.prisma.schedulePlan.findMany({
         where: {
           deletedAt: null,
@@ -173,6 +175,10 @@ export class ScheduleService {
       }),
       this.guard.activeLocks(actor.id, { salesRepIds: targetIds, from: rangeStart, to: rangeEnd }),
       this.settings.get(),
+      this.prisma.dayNote.findMany({
+        where: { userId: { in: targetIds }, date: { gte: toDbDate(from), lte: toDbDate(to) } },
+        include: { updatedBy: userRefSelect },
+      }),
     ]);
 
     return {
@@ -186,6 +192,57 @@ export class ScheduleService {
       })),
       locks,
       travelBufferMinutes: settings.travelBufferMinutes,
+      dayNotes: dayNotes.map((note) => this.toDayNoteDto(note)),
+    };
+  }
+
+  /**
+   * The note in a day's header (11/18). Everyone viewing the schedule reads it; only the person
+   * whose day it is (or an admin) writes it. Empty text removes it.
+   */
+  async setDayNote(
+    actor: Actor,
+    userId: string,
+    date: string,
+    text: string,
+  ): Promise<DayNoteDto | null> {
+    if (actor.id !== userId && !actor.can(Permission.Administer)) {
+      throw new ForbiddenError();
+    }
+    const key = { userId_date: { userId, date: toDbDate(date) } };
+    if (!text) {
+      await this.prisma.dayNote.deleteMany({ where: { userId, date: toDbDate(date) } });
+      return null;
+    }
+    const exists = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!exists) {
+      throw new NotFoundError();
+    }
+    const row = await this.prisma.dayNote.upsert({
+      where: key,
+      create: { userId, date: toDbDate(date), text, updatedById: actor.id },
+      update: { text, updatedById: actor.id },
+      include: { updatedBy: userRefSelect },
+    });
+    return this.toDayNoteDto(row);
+  }
+
+  private toDayNoteDto(row: {
+    userId: string;
+    date: Date;
+    text: string;
+    updatedAt: Date;
+    updatedBy: { id: string; name: string };
+  }): DayNoteDto {
+    return {
+      userId: row.userId,
+      date: dateOnly(row.date),
+      text: row.text,
+      updatedBy: userRef(row.updatedBy),
+      updatedAt: iso(row.updatedAt),
     };
   }
 

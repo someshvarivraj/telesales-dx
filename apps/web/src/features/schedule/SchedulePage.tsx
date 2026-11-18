@@ -52,6 +52,7 @@ import { MemberMenu, PAGE_SIZE } from './calendar/MemberMenu';
 import type { SavedGroup } from './calendar/MemberPicker';
 import { MiniMonth } from './calendar/MiniMonth';
 import { TimeGrid, useNow } from './calendar/TimeGrid';
+import { DayNote } from './DayNote';
 import { DayView } from './DayView';
 import { EventDetailDialog } from './EventDetailDialog';
 import {
@@ -269,6 +270,17 @@ export function SchedulePage() {
           .some((text) => (text ?? '').toLowerCase().includes(needle))),
   );
   const allPeople = schedule.data?.people ?? [];
+  // The note in each day's header (11/18): everyone sees it; the person (or an admin) types it.
+  const dayNotes = schedule.data?.dayNotes ?? [];
+  const noteFor = (personId: string, date: string) => (
+    <DayNote
+      userId={personId}
+      date={date}
+      note={dayNotes.find((note) => note.userId === personId && note.date === date)}
+      editable={personId === user.id || isAdmin}
+      label={`${allPeople.find((person) => person.id === personId)?.name ?? ''} ${date}`}
+    />
+  );
   const order = allPeople.map((person) => person.id);
   // テレマ narrow the reps to one area (a prefecture or city of the 営業担当表, 11/17), shared with the call list.
   const areaPanel = useSalesPanel();
@@ -880,6 +892,7 @@ export function SchedulePage() {
                   return (
                     <DayView
                       date={date}
+                      dayNote={noteFor}
                       people={visible}
                       events={events}
                       holidays={data.holidays}
@@ -914,6 +927,7 @@ export function SchedulePage() {
                     <TimeGrid
                       maxHeight={fill}
                       pxPerMin={zoom}
+                      dayNote={(column) => noteFor(person.id, column.date)}
                       onEvent={setSelected}
                       peek={peek.bind}
                       showFree={showFree}

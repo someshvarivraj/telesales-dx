@@ -50,6 +50,7 @@ export const EXACT: Readonly<Record<string, string>> = {
   // Company page (request 10/29)
   テレマメモ: 'Telemarketing memo',
   メモを保存: 'Save memo',
+  メモを入力: 'Add a note',
   'メモはありません。': 'No memo.',
   保存しました: 'Saved',
   企業ランク: 'Company rank',

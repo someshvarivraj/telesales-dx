@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { CalendarDayDto, UserRef } from '@telesales/shared';
 import { isWeekend } from '@telesales/shared';
 import { cn } from '@/components/ui/cn';
@@ -10,6 +11,8 @@ import { type CalendarEvent, eventsOn, isDayOff } from './events';
 
 interface DayViewProps {
   date: string;
+  /** The note in each person's header for this day (11/18). */
+  dayNote?: (personId: string, date: string) => ReactNode;
   people: UserRef[];
   events: CalendarEvent[];
   holidays: CalendarDayDto[];
@@ -52,6 +55,7 @@ export function DayView({
   maxHeight,
   step,
   clickMinutes,
+  dayNote,
 }: DayViewProps) {
   const holiday = holidays.find((day) => day.date === date);
   const off = isWeekend(date) || Boolean(holiday);
@@ -72,6 +76,7 @@ export function DayView({
         // 全員 is shown as columns too (11/12): narrower columns so a page of people fits.
         minColumnWidth={people.length > 5 ? 136 : undefined}
         onEvent={onEvent}
+        dayNote={dayNote ? (column) => dayNote(column.personId, column.date) : undefined}
         peek={peek}
         showFree={showFree}
         bufferMinutes={bufferMinutes}
