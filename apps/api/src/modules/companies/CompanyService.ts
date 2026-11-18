@@ -368,7 +368,11 @@ export class CompanyService {
           ? {
               OR: request.areas.map((area) =>
                 area.city
-                  ? { prefecture: area.prefecture, city: { contains: area.city } }
+                  ? {
+                      prefecture: area.prefecture,
+                      // Older rows keep only 「神戸市」 as the city; the address has the ward.
+                      OR: [{ city: { contains: area.city } }, { address: { contains: area.city } }],
+                    }
                   : { prefecture: area.prefecture },
               ),
             }

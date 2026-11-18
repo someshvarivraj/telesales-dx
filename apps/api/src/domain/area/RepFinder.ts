@@ -66,7 +66,8 @@ export class RepFinder {
         if (!query.city || !query.city.startsWith(rule.city)) {
           return null;
         }
-        score += 10;
+        // The more precise place wins (「神戸市中央区」 over 「神戸市」).
+        score += 10 + Math.min(rule.city.length, 50) / 100;
       }
     }
 
