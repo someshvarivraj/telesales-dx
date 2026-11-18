@@ -44,7 +44,6 @@ import { AgendaView } from './AgendaView';
 import { AreaPicker, useSalesAreas } from '@/features/calls/AreaPicker';
 import { useSalesPanel } from '@/features/calls/SalesPanel';
 import { useSavePlan, useSchedule } from './api';
-import { TodayCallList } from './TodayCallList';
 import { existingListBookingHref } from './bookingLinks';
 import { useEventPeek } from './calendar/EventPeek';
 import { DayTimeline } from './calendar/DayTimeline';
@@ -217,11 +216,7 @@ export function SchedulePage() {
   const [zoom, setZoom] = usePref('zoom', 1);
   const [showFree, setShowFree] = usePref('free', false);
   const [hidden, setHidden] = usePref<EventKind[]>('hiddenKinds', []);
-  // テレマ see today's call list beside the reps' calendars (11/17); the call list is the master.
-  const showToday =
-    canTelemaBook && user.roles.some((role) => role === Role.Telema || role === Role.TelemaLead);
-  // Beside today's list the calendar starts without its side column (two columns, not three).
-  const [railOpen, setRailOpen] = usePref(showToday ? 'rail-with-today' : 'rail', !showToday);
+  const [railOpen, setRailOpen] = usePref('rail', true);
   const [sort, setSort] = usePref<'name' | 'free' | 'busy'>('sort', 'name');
   const [groups, setGroups] = usePref<SavedGroup[]>('groups', []);
   const [page, setPage] = useState(0);
@@ -447,14 +442,10 @@ export function SchedulePage() {
     'inline-flex h-10 items-center gap-2 border border-line-strong bg-surface px-3.5 text-sm font-bold text-ink transition-colors hover:border-main-line hover:bg-main-soft';
 
   return (
-    <div className={showToday ? 'lg:flex lg:items-start lg:gap-4' : undefined}>
-      {showToday && (
-        // On the right: the reps' schedule stays on the left (Sano 11/18).
-        <div className="shrink-0 max-lg:hidden lg:order-2">
-          <TodayCallList onRep={(repId) => update({ people: repId })} />
-        </div>
-      )}
-      <div ref={pageRef} className="schedule-page min-w-0 flex-1">
+    // 今日の架電リスト is no longer shown here (11/18): opening a company from the call list
+    // opens its rep's schedule beside it, so a second list on 予定 only confused.
+    <div>
+      <div ref={pageRef} className="schedule-page min-w-0">
         {/* The title, its buttons and the toolbar stay at the top while the page scrolls (11/17). */}
         <StickyTop className="mb-3">
           {/* Page head: the place and the actions people come here for. */}
