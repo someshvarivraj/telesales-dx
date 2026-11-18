@@ -6,7 +6,7 @@ import { AssistantActionRunner } from '../src/modules/assistant/AssistantActionR
 import type { CallRecordService } from '../src/modules/callRecords/CallRecordService.js';
 import type { ScheduleService } from '../src/modules/schedule/ScheduleService.js';
 
-const actor = { id: 'u1' } as Actor;
+const actor = { id: 'u1', can: () => false, hasRole: () => false } as unknown as Actor;
 const REP = '11111111-1111-4111-8111-111111111111';
 const COMPANY = '22222222-2222-4222-8222-222222222222';
 const APPOINTMENT = '33333333-3333-4333-8333-333333333333';
@@ -48,7 +48,10 @@ describe('MoraBot 確定', () => {
       },
     });
     expect(link).toBe('/schedule?date=2026-11-04');
-    expect(calls).toMatchObject([['plan', { ownerId: REP, title: '打ち合わせ', allDay: false }]]);
+    // A plan "with" another rep is the person's own plan with that rep as 同席者 (11/18).
+    expect(calls).toMatchObject([
+      ['plan', { ownerId: 'u1', attendeeIds: [REP], title: '打ち合わせ', allDay: false }],
+    ]);
   });
 
   it('books an appointment and opens the N1 mail screen', async () => {

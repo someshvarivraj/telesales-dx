@@ -1,5 +1,6 @@
 import type { ChangePasswordRequest, LoginRequest, SessionUser } from '@telesales/shared';
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { clearDrafts } from '@/lib/drafts';
 import { authApi } from '../api/AuthApi';
 
 export const sessionQueryKey = ['auth', 'session'] as const;
@@ -46,6 +47,8 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSettled: () => {
+      const user = queryClient.getQueryData<SessionUser | null>(sessionQueryKey);
+      if (user) clearDrafts(user.id);
       queryClient.clear();
       queryClient.setQueryData(sessionQueryKey, null);
     },

@@ -42,7 +42,16 @@ export const paths = {
 
 /** Only allow same-app relative paths as post-login redirect targets (no open redirect). */
 export function safeRedirectTarget(value: string | null): string | null {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith(paths.login)) {
+  if (
+    !value ||
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    // Browsers read "/\evil.com" as "//evil.com"; control characters are never part of a path
+    // here (11/18 audit).
+    value.includes('\\') ||
+    [...value].some((ch) => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f) ||
+    value.startsWith(paths.login)
+  ) {
     return null;
   }
   return value;

@@ -41,6 +41,7 @@ import { FindRepDialog } from './FindRepDialog';
 import { useSalesPanel } from './SalesPanel';
 import { OfficeCreatedNotice, OfficeDialog } from './OfficeDialog';
 import { BackBar, BackLink } from '@/components/ui/BackLink';
+import { ExternalLink } from '@/components/ui/ExternalLink';
 
 function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyId: string }) {
   const [editing, setEditing] = useState(false);
@@ -284,30 +285,12 @@ export function CompanyPage() {
                     },
                     {
                       label: 'URL',
-                      value: data.url ? (
-                        <a
-                          className="break-all text-link"
-                          href={data.url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          {data.url}
-                        </a>
-                      ) : null,
+                      value: <ExternalLink value={data.url} />,
                       wide: true,
                     },
                     {
                       label: '掲載元のURL',
-                      value: data.sourceUrl ? (
-                        <a
-                          className="break-all text-link"
-                          href={data.sourceUrl}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          {data.sourceUrl}
-                        </a>
-                      ) : null,
+                      value: <ExternalLink value={data.sourceUrl} />,
                       wide: true,
                     },
                     { label: '郵便番号', value: data.postalCode },

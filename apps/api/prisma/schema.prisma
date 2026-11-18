@@ -277,6 +277,8 @@ enum EmailStatus {
   QUEUED
   SENT
   FAILED
+  /// Held for confirmation and then not sent ("送らない", 11/18).
+  DISCARDED
 }
 
 /// Every e-mail the system sends. Drafts support "preview then send"; the

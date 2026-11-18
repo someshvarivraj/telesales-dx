@@ -59,7 +59,7 @@ export function TodayCallList({ onRep }: { onRep: (repId: string) => void }) {
         title="今日の架電リストを開く"
         className="sticky top-[3.25rem] flex h-48 w-9 cursor-pointer flex-col items-center gap-2 border border-line bg-surface py-3 text-xs font-bold text-ink-sub shadow-(--shadow-card) hover:text-main"
       >
-        <ChevronRight aria-hidden="true" className="size-4" />
+        <ChevronLeft aria-hidden="true" className="size-4" />
         <span className="[writing-mode:vertical-rl]">今日の架電リスト</span>
       </button>
     );
@@ -90,7 +90,7 @@ export function TodayCallList({ onRep }: { onRep: (repId: string) => void }) {
           title="たたむ"
           className="ml-auto flex size-7 cursor-pointer items-center justify-center text-ink-sub hover:bg-hover hover:text-ink"
         >
-          <ChevronLeft aria-hidden="true" className="size-4" />
+          <ChevronRight aria-hidden="true" className="size-4" />
         </button>
       </header>
       <label className="flex shrink-0 items-center gap-2 border-b border-line px-3">

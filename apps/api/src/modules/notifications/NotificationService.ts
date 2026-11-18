@@ -91,6 +91,19 @@ export class NotificationService {
     return users.map((user) => user.email.trim().toLowerCase());
   }
 
+  /**
+   * A mail caused by someone's action waits for that person to check it and press 送信 on the
+   * 「メールの確認」 screen (Sano 11/18: a confirmation screen before every e-mail). Mails nobody
+   * caused (the scheduled ones) go out as before.
+   */
+  private async deliver(input: DirectEmailInput): Promise<void> {
+    if (input.createdById) {
+      await this.emails.holdForConfirmation({ ...input, createdById: input.createdById });
+    } else {
+      await this.emails.sendDirect(input);
+    }
+  }
+
   async notify(event: NoticeEvent): Promise<void> {
     try {
       const resolved = await this.recipients.resolve(event.code, event.context);
@@ -105,7 +118,7 @@ export class NotificationService {
         });
       }
       if (resolved.sendsEmail && event.email) {
-        await this.emails.sendDirect({
+        await this.deliver({
           noticeCode: event.code,
           dedupeKey: event.email.dedupeKey,
           appointmentId: event.email.appointmentId ?? null,
@@ -120,7 +133,7 @@ export class NotificationService {
         // The person who caused it is not mailed about it, as on screen.
         const [self] = event.actorId ? await this.addressesOf([event.actorId]) : [];
         const mail = this.noticeMail(event);
-        await this.emails.sendDirect({
+        await this.deliver({
           noticeCode: event.code,
           dedupeKey: mail.dedupeKey,
           to: resolved.to.filter((address) => address !== self),
@@ -155,7 +168,7 @@ export class NotificationService {
       });
       if (setting?.sendsEmail && !OWN_MAIL.has(event.code)) {
         const mail = this.noticeMail(event);
-        await this.emails.sendDirect({
+        await this.deliver({
           noticeCode: event.code,
           dedupeKey: mail.dedupeKey,
           to: await this.addressesOf(targets),

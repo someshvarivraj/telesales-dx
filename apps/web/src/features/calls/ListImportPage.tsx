@@ -28,6 +28,7 @@ const UNREADABLE: Record<string, string> = {
   broken_csv: 'CSVの形式が正しくありません。',
   empty: 'データが入っていません。',
   no_valid_rows: '登録できる行がありません。',
+  too_many_rows: '行が多すぎます（1回に20,000行まで）。ファイルを分けて取り込んでください。',
 };
 
 function importErrorMessage(error: unknown): string {

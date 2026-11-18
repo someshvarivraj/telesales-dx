@@ -213,7 +213,14 @@ export async function parseHandoverPdf(content: Buffer): Promise<HandoverPdfFiel
   const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
   let document;
   try {
-    document = await getDocument({ data: new Uint8Array(content), useSystemFonts: true }).promise;
+    // Files come from outside (11/18 audit): no embedded fonts, no XFA forms. (pdf.js 6 no
+    // longer uses eval at all, so that cannot be switched on.)
+    document = await getDocument({
+      data: new Uint8Array(content),
+      useSystemFonts: true,
+      disableFontFace: true,
+      enableXfa: false,
+    }).promise;
   } catch {
     throw new HandoverFileError('broken_pdf');
   }

@@ -326,8 +326,6 @@ function drawWaterfront(ctx, harbor, rand) {
     [-1.9, 0.16, 0.58],
     [-1.72, 0.2, 0.74],
     [-1.5, 0.15, 0.46],
-    [-1.06, 0.18, 0.68],
-    [-0.86, 0.15, 0.5],
     [0.62, 0.18, 0.4],
     [0.82, 0.22, 0.52],
     [1.05, 0.16, 0.34],
@@ -387,34 +385,84 @@ function drawWaterfront(ctx, harbor, rand) {
   ctx.arc(ocx, base - oh - H * 0.08, Math.max(1.1, H / 75), 0, Math.PI * 2);
   ctx.fill();
 
-  // Kobe Maritime Museum: a low white frame like a wave or a sail, west of the tower.
-  var mx = X - H * 0.72;
-  var mw = H * 0.52;
-  ctx.fillStyle = '#e9edf3';
-  ctx.fillRect(mx, base - H * 0.08, mw, H * 0.08);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.lineWidth = Math.max(0.8, H / 110);
-  for (var r = 0; r <= 8; r++) {
-    var u = r / 8;
-    var peak = H * (0.12 + 0.16 * Math.sin(Math.PI * u * 0.9 + 0.2));
+  // Kobe Maritime Museum beside the tower (11/18, after the photo): a white steel lattice like
+  // sails or a wave — a tall peak next to the tower, a long dip, a smaller peak at the far end —
+  // lit warm white at night, over a low white building with green roofs.
+  var m0 = X - H * 1.08;
+  var m1 = X - H * 0.24;
+  var mw = m1 - m0;
+  var roofTop = base - H * 0.12;
+  var crest = function (u) {
+    // u = 0 at the far end, 1 next to the tower.
+    var low = 0.2;
+    var dip = 0.42;
+    var h =
+      u <= dip
+        ? low + (0.4 - low) * Math.pow((dip - u) / dip, 2)
+        : low + (0.68 - low) * Math.pow((u - dip) / (1 - dip), 2.2);
+    return base - H * h;
+  };
+  // The building underneath: white walls, green roofs, lit windows.
+  ctx.fillStyle = '#ece6dc';
+  ctx.fillRect(m0 + mw * 0.04, roofTop, mw * 0.96, H * 0.12);
+  ctx.fillStyle = '#6b8f7f';
+  ctx.beginPath();
+  ctx.moveTo(m0 + mw * 0.02, roofTop + H * 0.02);
+  ctx.lineTo(m0 + mw * 0.36, roofTop + H * 0.02);
+  ctx.lineTo(m0 + mw * 0.32, roofTop - H * 0.03);
+  ctx.lineTo(m0 + mw * 0.06, roofTop - H * 0.03);
+  ctx.closePath();
+  ctx.fill();
+  for (var wx = m0 + mw * 0.42; wx < m1 - H * 0.03; wx += H * 0.045) {
+    ctx.fillStyle = 'rgba(255, 214, 140, 0.95)';
+    ctx.fillRect(wx, roofTop + H * 0.035, H * 0.025, H * 0.04);
+  }
+  // A soft warm light under the frame, then the lit lattice with a glow.
+  ctx.fillStyle = 'rgba(255, 238, 190, 0.2)';
+  ctx.beginPath();
+  ctx.moveTo(m0, roofTop);
+  for (var c = 0; c <= 30; c++) ctx.lineTo(m0 + (mw * c) / 30, crest(c / 30));
+  ctx.lineTo(m1, roofTop);
+  ctx.closePath();
+  ctx.fill();
+  ctx.save();
+  ctx.shadowColor = 'rgba(255, 224, 150, 0.95)';
+  ctx.shadowBlur = Math.max(4, H * 0.07);
+  ctx.strokeStyle = 'rgba(255, 247, 222, 0.9)';
+  ctx.lineWidth = Math.max(0.6, H / 170);
+  var bays = 16;
+  for (var k = 0; k < bays; k++) {
+    var ua = k / bays;
+    var ub = (k + 1) / bays;
+    var xa = m0 + mw * ua;
+    var xb = m0 + mw * ub;
     ctx.beginPath();
-    ctx.moveTo(mx + u * mw, base - H * 0.08);
-    ctx.lineTo(mx + u * mw + H * 0.05, base - peak);
+    // Each bay: an upright and the two diagonals, which make the diamond net of the frame.
+    ctx.moveTo(xa, roofTop);
+    ctx.lineTo(xa, crest(ua));
+    ctx.moveTo(xa, roofTop);
+    ctx.lineTo(xb, crest(ub));
+    ctx.moveTo(xb, roofTop);
+    ctx.lineTo(xa, crest(ua));
     ctx.stroke();
   }
+  // The edge of the sails, brighter and a little heavier.
+  ctx.strokeStyle = 'rgba(255, 252, 238, 1)';
+  ctx.lineWidth = Math.max(1.1, H / 85);
   ctx.beginPath();
-  for (var q = 0; q <= 16; q++) {
-    var v = q / 16;
-    var yTop = base - H * (0.12 + 0.16 * Math.sin(Math.PI * v * 0.9 + 0.2));
-    if (q === 0) ctx.moveTo(mx + v * mw + H * 0.05, yTop);
-    else ctx.lineTo(mx + v * mw + H * 0.05, yTop);
+  for (var e = 0; e <= 40; e++) {
+    var ex = m0 + (mw * e) / 40;
+    if (e === 0) ctx.moveTo(ex, crest(0));
+    else ctx.lineTo(ex, crest(e / 40));
   }
+  ctx.lineTo(m1, roofTop);
   ctx.stroke();
+  ctx.restore();
 
   // A dense low row along the water, leaving the tower, the hotel and the museum clear.
   for (var lx = X - H * 3.3; lx < X + H * 3.2; lx += H * (0.1 + rand() * 0.06)) {
     var rel = (lx - X) / H;
-    if (rel > -0.85 && rel < 0.6) continue;
+    if (rel > -1.12 && rel < 0.6) continue;
     var lw = H * (0.08 + rand() * 0.07);
     var lh = H * (0.1 + rand() * 0.17);
     ctx.fillStyle = rand() < 0.5 ? '#8a92a8' : '#7a8299';
@@ -495,8 +543,8 @@ function drawHarborLights(ctx, harbor, t) {
   ctx.lineTo(wheel.x, wheel.y);
   ctx.lineTo(wheel.x + wheel.r * 0.55, harbor.base);
   ctx.stroke();
-  // It turns about once every 18 s (11/17: at once a minute it looked still).
-  var turn = t * 0.35;
+  // It turns about once every 30 s (11/18: 18 s felt hurried; once a minute looked still).
+  var turn = t * 0.2;
   var dot = Math.max(1, H / 90);
   // Spokes.
   ctx.strokeStyle = 'rgba(240, 242, 248, 0.9)';
@@ -530,7 +578,7 @@ function drawHarborLights(ctx, harbor, t) {
     ctx.fill();
   }
   for (var tail = 0; tail < 6; tail++) {
-    var e = turn * 2.2 - tail * 0.09;
+    var e = turn * 1.8 - tail * 0.09;
     ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.95 - tail * 0.15) + ')';
     ctx.beginPath();
     ctx.arc(

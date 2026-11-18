@@ -26,16 +26,27 @@ async function main(): Promise<void> {
     logger.info({ port: config.port, env: config.env }, 'API server started');
   });
 
-  const shutdown = (signal: string) => {
+  const shutdown = (signal: string, code = 0) => {
     logger.info({ signal }, 'shutting down');
     server.close(async () => {
       await container.dispose();
-      process.exit(0);
+      process.exit(code);
     });
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
+
+  // Last-resort safety nets (11/18 audit). A promise nobody awaited is logged and the server
+  // keeps serving; an exception nothing caught leaves the process in an unknown state, so it is
+  // logged and the process exits for the container to restart it.
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason }, 'unhandled promise rejection');
+  });
+  process.on('uncaughtException', (error) => {
+    logger.fatal({ err: error }, 'uncaught exception, exiting');
+    shutdown('uncaughtException', 1);
+  });
 }
 
 main().catch((error: unknown) => {

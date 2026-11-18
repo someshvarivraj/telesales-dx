@@ -19,7 +19,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { currentUserOf } from '../../http/currentUser.js';
 import type { Authenticator } from '../../http/middleware/Authenticator.js';
-import { sendFile, uploadedFiles } from '../../http/sendFile.js';
+import { canShowInline, sendFile, uploadedFiles } from '../../http/sendFile.js';
 import { uploadFiles } from '../../http/upload.js';
 import { idParam, parseQuery, parseWith } from '../../http/validate.js';
 import type { AppointmentBookingService } from './AppointmentBookingService.js';
@@ -184,7 +184,7 @@ export function createAppointmentsRouter(deps: AppointmentsDeps): Router {
       idParam(req, 'fileId'),
     );
     sendFile(res, record, content, {
-      inline: record.contentType === 'application/pdf' || record.contentType.startsWith('image/'),
+      inline: canShowInline(record.contentType),
     });
   });
   router.post('/appointments/:id/results', view, async (req, res) => {

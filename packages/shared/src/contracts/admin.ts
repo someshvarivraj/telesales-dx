@@ -20,13 +20,13 @@ export const createUserRequestSchema = z.object({
   employeeNo: optionalText(32),
   name: requiredText(100),
   email: z.string().trim().toLowerCase().max(254).pipe(z.email()),
-  roles: z.array(roleEnum).min(1),
+  roles: z.array(roleEnum).min(1).max(10),
 });
 export type CreateUserRequest = z.input<typeof createUserRequestSchema>;
 
 export const updateUserRequestSchema = createUserRequestSchema.extend({
   status: z.enum(['ACTIVE', 'DISABLED']),
-  grants: z.array(permissionEnum).default([]),
+  grants: z.array(permissionEnum).max(50).default([]),
   telemarketer: z
     .object({
       isAllocationTarget: z.boolean(),

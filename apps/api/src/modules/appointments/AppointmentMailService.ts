@@ -10,7 +10,12 @@ import {
 import type { AccessPolicy, Actor } from '../../domain/access/AccessPolicy.js';
 import type { Clock } from '../../domain/Clock.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
-import { ForbiddenError, InvalidStateError, NotFoundError } from '../../http/errors/AppError.js';
+import {
+  ForbiddenError,
+  InvalidStateError,
+  NotFoundError,
+  ValidationError,
+} from '../../http/errors/AppError.js';
 import type { EmailService } from '../notifications/EmailService.js';
 import type { NotificationService } from '../notifications/NotificationService.js';
 import type { RecipientResolver } from '../notifications/RecipientResolver.js';
@@ -137,7 +142,19 @@ export class AppointmentMailService {
     emailId: string,
     input: UpdateEmailDraftRequest,
   ): Promise<EmailDraftDto> {
-    await this.loadEmail(actor, id, emailId);
+    const { email } = await this.loadEmail(actor, id, emailId);
+    // The mail's recipients come from the appointment and the notice settings (11/2): an
+    // address may be left out, but none can be added here (11/18 audit: this let anyone who
+    // may send the mail forward appointment details to any outside address).
+    const allowed = new Set(
+      [...email.to, ...email.cc].map((address) => address.trim().toLowerCase()),
+    );
+    const added = [...input.to, ...(input.cc ?? [])].filter(
+      (address) => !allowed.has(address.trim().toLowerCase()),
+    );
+    if (added.length > 0) {
+      throw new ValidationError({ to: ['recipient_not_allowed'] });
+    }
     return this.emails.updateDraft(emailId, {
       to: input.to,
       cc: input.cc ?? [],

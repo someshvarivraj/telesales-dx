@@ -112,18 +112,25 @@ export class AccessPolicy {
     };
   }
 
-  /**
-   * Sales add and change their own and other reps' plans (not appointments).
-   * Plans that are appointments are only moved through the appointment.
-   */
-  /** Confirming a tentative plan; a tentative appointment by its rep or an admin (11/13). */
-  canConfirmPlan(actor: Actor, plan: PlanFacts): boolean {
-    if (plan.appointmentId) {
-      return plan.ownerId === actor.id || this.isAdmin(actor);
-    }
-    return this.canEditPlan(actor, plan);
+  /** May write plans at all: sales (and anyone granted it) and admins. */
+  canWritePlans(actor: Actor): boolean {
+    return this.isAdmin(actor) || actor.can(Permission.WriteSalesPlans);
   }
 
+  /**
+   * Whose calendar a plan may go on (11/18): a rep puts plans only on their own calendar; other
+   * reps join it as 同席者. Admins anywhere.
+   */
+  canPlacePlan(actor: Actor, ownerId: string): boolean {
+    if (this.isAdmin(actor)) return true;
+    return actor.can(Permission.WriteSalesPlans) && ownerId === actor.id;
+  }
+
+  /**
+   * Changing or deleting a plan (11/18: own plans only): the rep whose plan it is, or an admin.
+   * Being 同席者 on someone's plan does not make it yours to change. Plans that are appointments
+   * are only moved through the appointment.
+   */
   canEditPlan(actor: Actor, plan: PlanFacts): boolean {
     if (plan.appointmentId) {
       return false;
@@ -131,7 +138,18 @@ export class AccessPolicy {
     if (this.isAdmin(actor)) {
       return true;
     }
-    return actor.can(Permission.WriteSalesPlans);
+    return actor.can(Permission.WriteSalesPlans) && plan.ownerId === actor.id;
+  }
+
+  /** Confirming a 仮予定 (11/13): the rep whose plan it is, or an admin. */
+  canConfirmPlan(actor: Actor, plan: PlanFacts): boolean {
+    if (this.isAdmin(actor)) {
+      return true;
+    }
+    if (plan.appointmentId) {
+      return plan.ownerId === actor.id;
+    }
+    return plan.ownerId === actor.id && actor.can(Permission.WriteSalesPlans);
   }
 
   /** Time off: sales for any rep; telemarketers for themselves and absences they were told about. */
