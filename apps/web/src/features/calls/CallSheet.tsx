@@ -1,5 +1,5 @@
 import { type CompanyListItem, type CompanySort, jstDate } from '@telesales/shared';
-import { ArrowDown, CalendarDays } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarDays } from 'lucide-react';
 import type { Dispatch, MouseEvent, SetStateAction } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { paths } from '@/app/paths';
@@ -11,7 +11,8 @@ import { useSalesPanel } from './SalesPanel';
 interface CallSheetProps {
   items: CompanyListItem[];
   sort: CompanySort;
-  onSort: (sort: CompanySort) => void;
+  sortDir: 'asc' | 'desc';
+  onSort: (sort: CompanySort, dir: 'asc' | 'desc') => void;
   gradeLabelOf: (code: string | null | undefined) => string;
   resultLabelOf: (code: string | null | undefined) => string;
   /** With checkboxes when companies can be picked (一括修正・割り振り). */
@@ -38,6 +39,7 @@ function fullAddress(company: CompanyListItem): string {
 export function CallSheet({
   items,
   sort,
+  sortDir,
   onSort,
   gradeLabelOf,
   resultLabelOf,
@@ -51,20 +53,28 @@ export function CallSheet({
     if (window.getSelection()?.toString()) return;
     navigate(paths.company(id));
   };
+  // Every column sorts (テレマ 11/19): click → ascending, again → descending, again → off.
   const sortHeader = (label: string, by: CompanySort) => {
     const active = sort === by || (by === 'ADDRESS' && sort === 'ADDRESS_NAME');
+    const desc = active && sortDir === 'desc';
+    const next = (): [CompanySort, 'asc' | 'desc'] =>
+      !active ? [by, 'asc'] : sortDir === 'asc' ? [sort, 'desc'] : ['UPDATED', 'asc'];
+    const Icon = desc ? ArrowUp : ArrowDown;
     return (
       <button
         type="button"
-        onClick={() => onSort(active ? 'UPDATED' : by)}
-        title={active ? '並び替えをやめる' : `${label}で並び替え`}
+        onClick={() => onSort(...next())}
+        title={
+          !active ? `${label}で並び替え` : sortDir === 'asc' ? '逆の順にする' : '並び替えをやめる'
+        }
+        aria-sort={active ? (desc ? 'descending' : 'ascending') : undefined}
         className={cn(
           'inline-flex cursor-pointer items-center gap-1 whitespace-nowrap hover:text-main',
           active && 'text-main',
         )}
       >
         {label}
-        <ArrowDown
+        <Icon
           aria-hidden="true"
           className={cn('size-3.5', active ? 'opacity-100' : 'opacity-30')}
         />
@@ -97,20 +107,20 @@ export function CallSheet({
               />
             </Th>
           )}
-          <Th className={picked ? undefined : 'pl-4'}>テレマID</Th>
-          <Th>業種</Th>
+          <Th className={picked ? undefined : 'pl-4'}>{sortHeader('テレマID', 'TELEMA_ID')}</Th>
+          <Th>{sortHeader('業種', 'INDUSTRY')}</Th>
           <Th>{sortHeader('会社名', 'NAME')}</Th>
-          <Th>事業所名</Th>
-          <Th>部署名</Th>
-          <Th>電話番号</Th>
+          <Th>{sortHeader('事業所名', 'OFFICE')}</Th>
+          <Th>{sortHeader('部署名', 'DEPARTMENT')}</Th>
+          <Th>{sortHeader('電話番号', 'PHONE')}</Th>
           <Th>{sortHeader('住所', 'ADDRESS')}</Th>
-          <Th>最寄駅</Th>
-          <Th>判定</Th>
-          <Th>最新テレマ結果</Th>
-          <Th>最新テレマ日</Th>
-          <Th className="text-right">回数</Th>
-          <Th>テレマ担当者</Th>
-          <Th className="pr-4">リスト名</Th>
+          <Th>{sortHeader('最寄駅', 'STATION')}</Th>
+          <Th>{sortHeader('判定', 'GRADE')}</Th>
+          <Th>{sortHeader('最新テレマ結果', 'RESULT')}</Th>
+          <Th>{sortHeader('最新テレマ日', 'LAST_CALL')}</Th>
+          <Th className="text-right">{sortHeader('回数', 'CALL_COUNT')}</Th>
+          <Th>{sortHeader('テレマ担当者', 'TELEMARKETER')}</Th>
+          <Th className="pr-4">{sortHeader('リスト名', 'LIST')}</Th>
         </tr>
       </thead>
       <tbody>

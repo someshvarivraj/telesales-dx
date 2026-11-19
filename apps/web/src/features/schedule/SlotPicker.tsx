@@ -51,10 +51,20 @@ interface SlotPickerProps {
 }
 
 /** The rep's day and the availability check for a slot (shared by the picker's parts). */
-export function useSlotData(slot: Slot, appointmentId?: string, salesBooked = false) {
-  const schedule = useSchedule(slot.date, slot.date, slot.repId ? [slot.repId] : []);
+export function useSlotData(
+  slot: Slot,
+  appointmentId?: string,
+  salesBooked = false,
+  /** 同席者 shown beside the rep (11/19), and the day shown when it is not the slot's own. */
+  view: { attendeeIds?: string[]; date?: string } = {},
+) {
+  const ids = slot.repId
+    ? [slot.repId, ...(view.attendeeIds ?? []).filter((id) => id !== slot.repId)]
+    : [];
+  const schedule = useSchedule(view.date ?? slot.date, view.date ?? slot.date, ids);
   const events = useMemo(() => (schedule.data ? buildEvents(schedule.data) : []), [schedule.data]);
-  const people = (schedule.data?.people ?? []).filter((person) => person.id === slot.repId);
+  const all = schedule.data?.people ?? [];
+  const people = ids.flatMap((id) => all.filter((person) => person.id === id));
   const check = useSlotCheck(
     slot.repId && slot.start && slot.end > slot.start
       ? {
@@ -178,25 +188,48 @@ export function SlotDay({
   held,
   data,
   maxHeight = '26rem',
+  viewDate,
+  onPick,
+  viewRange,
 }: {
   slot: Slot;
   onChange: (slot: Slot) => void;
   held: boolean;
   data: SlotData;
   maxHeight?: string;
+  /** Another day than the slot's (a candidate date being set, 11/19). */
+  viewDate?: string;
+  /** A time chosen on `viewDate` (for that candidate) instead of the slot. */
+  onPick?: (start: string, end: string) => void;
+  /** The candidate's time on `viewDate`, highlighted like the slot. */
+  viewRange?: { start: string; end: string };
 }) {
   if (!slot.repId) return null;
+  const date = viewDate ?? slot.date;
+  const ownDay = date === slot.date;
   return (
     <>
       <ScheduleLegend />
       <DayView
-        date={slot.date}
+        date={date}
         people={data.people}
         events={data.events}
         holidays={data.schedule?.holidays ?? []}
         onEvent={() => undefined}
-        onRange={held ? undefined : (_person, start, end) => onChange({ ...slot, start, end })}
-        selection={{ personId: slot.repId, start: slot.start, end: slot.end }}
+        onRange={
+          onPick && !ownDay
+            ? (_person, start, end) => onPick(start, end)
+            : held
+              ? undefined
+              : (_person, start, end) => onChange({ ...slot, start, end })
+        }
+        selection={
+          ownDay
+            ? { personId: slot.repId, start: slot.start, end: slot.end }
+            : viewRange
+              ? { personId: slot.repId, ...viewRange }
+              : null
+        }
         maxHeight={maxHeight}
         step={BOOKING_STEP_MINUTES}
         clickMinutes={DEFAULT_APPOINTMENT_MINUTES}

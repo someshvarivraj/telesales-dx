@@ -356,7 +356,21 @@ function BookingForm(props: BookingFormProps) {
 
   // A rep's own appointment (feedback 11/11): only what is needed, beside their day, no scrolling.
   const quick = salesBooked && !rebookOf;
-  const slotData = useSlotData(slot, undefined, salesBooked);
+  // The day beside the form (11/19): the slot's, or a candidate's while it is being set; with the
+  // 同席者 as columns, so everyone's free time is seen together.
+  const [focus, setFocus] = useState<{ date: string; index: number } | null>(null);
+  const [focusFor, setFocusFor] = useState(slot.date);
+  if (focusFor !== slot.date) {
+    setFocusFor(slot.date);
+    setFocus(null);
+  }
+  const shownDate = focus?.date ?? slot.date;
+  const slotData = useSlotData(
+    slot,
+    undefined,
+    salesBooked,
+    salesBooked ? { attendeeIds: extras.attendeeIds, date: focus?.date } : {},
+  );
   const companyName = company?.name ?? companyValues.name;
   const quickReady =
     Boolean(slot.repId) &&
@@ -538,6 +552,10 @@ function BookingForm(props: BookingFormProps) {
                       first={{ date: slot.date, start: slot.start, end: slot.end }}
                       candidates={candidates}
                       onChange={(next) => setExtras({ candidates: next })}
+                      attendeeIds={extras.attendeeIds}
+                      onFocusDate={(date, index) =>
+                        setFocus(index === null ? null : { date, index })
+                      }
                     />
                   </div>
                 )}
@@ -608,8 +626,26 @@ function BookingForm(props: BookingFormProps) {
               aria-label="担当営業の予定"
               className="flex min-w-0 flex-col gap-3 border border-line bg-surface p-4 shadow-(--shadow-card) lg:sticky lg:top-4 lg:col-start-1 lg:row-start-1"
             >
-              <h2 className="text-sm font-bold">
-                {rep?.name ?? ''}さんの予定・{formatDate(slot.date)}
+              <h2 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-bold">
+                <span>
+                  {rep?.name ?? ''}さん
+                  {extras.attendeeIds.length > 0 && `・同席者${extras.attendeeIds.length}人`}
+                  の予定・{formatDate(shownDate)}
+                </span>
+                {focus && (
+                  <span className="border border-ev-tentative bg-ev-tentative-soft px-1.5 text-[11px] leading-5 text-ev-tentative">
+                    候補{focus.index + 2}の日
+                  </span>
+                )}
+                {focus && (
+                  <button
+                    type="button"
+                    onClick={() => setFocus(null)}
+                    className="cursor-pointer text-xs font-normal text-link underline-offset-2 hover:underline"
+                  >
+                    上の日時に戻る
+                  </button>
+                )}
               </h2>
               <SlotDay
                 slot={slot}
@@ -617,6 +653,25 @@ function BookingForm(props: BookingFormProps) {
                 held={held}
                 data={slotData}
                 maxHeight="calc(100dvh - 20rem)"
+                viewDate={focus?.date}
+                viewRange={
+                  focus
+                    ? {
+                        start: candidates[focus.index]?.start ?? '',
+                        end: candidates[focus.index]?.end ?? '',
+                      }
+                    : undefined
+                }
+                onPick={
+                  focus
+                    ? (start, end) =>
+                        setExtras({
+                          candidates: candidates.map((candidate, i) =>
+                            i === focus.index ? { date: focus.date, start, end } : candidate,
+                          ),
+                        })
+                    : undefined
+                }
               />
             </section>
           </div>

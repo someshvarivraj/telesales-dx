@@ -275,6 +275,11 @@ export function CompanyPage() {
           {/* Two columns only when the page itself is wide enough (11/18): with the sales schedule
               docked beside it, the screen can be wide while the page is not. */}
           <div className="@container">
+            {/* The whole width (11/19): every column of each office, and an appointment already
+                won with another office, seen before calling. */}
+            <div className="mb-5 empty:hidden">
+              <CompanyGroupCard company={data} />
+            </div>
             <div className="grid gap-5 @4xl:grid-cols-5">
               <div className="flex flex-col gap-5 @4xl:col-span-3">
                 <Card title="企業情報">
@@ -364,7 +369,6 @@ export function CompanyPage() {
                     ]}
                   />
                 </Card>
-                <CompanyGroupCard company={data} />
                 <TelemaMemoCard company={data} canWrite={canCall || canEdit} />
                 <Card title="この会社のアポ">
                   {companyAppointments.length === 0 ? (

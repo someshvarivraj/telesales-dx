@@ -2,6 +2,7 @@ import {
   CompanyFlag,
   COMPANY_SORT_LABELS,
   COMPANY_SORTS,
+  MENU_SORTS,
   type CompanySort,
   type BulkEditDto,
   type CompanyListItem,
@@ -98,6 +99,7 @@ export function CallTargetsPage() {
   const [page, setPage] = useViewState('calls.page', 1, { fresh });
   // 並び替え (テレマ 11/18): by address (north to south), address then name, or name.
   const [sort, setSort] = useViewState<CompanySort>('calls.sort', 'UPDATED');
+  const [sortDir, setSortDir] = useViewState<'asc' | 'desc'>('calls.sortDir', 'asc');
   // 架電用の一覧 (資料A, 11/18): every item in its own column, as telemarketing asked; the
   // grouped rows stay for everyone else. Telemarketers start with the 架電用 one.
   const me = useCurrentUser();
@@ -152,6 +154,7 @@ export function CallTargetsPage() {
     // The area chosen beside the list (a prefecture or city of the 営業担当表, 11/17).
     areas: focus.areas,
     sort,
+    sortDir,
   };
   const query = useCompanySearch({ ...search, page, pageSize: 50 });
 
@@ -367,12 +370,18 @@ export function CallTargetsPage() {
                       size="sm"
                       aria-label="並び替え"
                       value={sort}
-                      options={COMPANY_SORTS.map((value) => ({
+                      // The menu's 4 orders, plus the column now sorted by from the table headers.
+                      options={COMPANY_SORTS.filter(
+                        (value) => MENU_SORTS.includes(value) || value === sort,
+                      ).map((value) => ({
                         value,
-                        label: COMPANY_SORT_LABELS[value],
+                        label: `${COMPANY_SORT_LABELS[value]}${
+                          value === sort && sortDir === 'desc' ? '（逆順）' : ''
+                        }`,
                       }))}
                       onChange={(event) => {
                         setSort(event.target.value as CompanySort);
+                        setSortDir('asc');
                         setPage(1);
                       }}
                     />
@@ -401,8 +410,10 @@ export function CallTargetsPage() {
                   <CallSheet
                     items={data.items}
                     sort={sort}
-                    onSort={(next) => {
+                    sortDir={sortDir}
+                    onSort={(next, dir) => {
                       setSort(next);
+                      setSortDir(dir);
                       setPage(1);
                     }}
                     gradeLabelOf={grades.labelOf}
