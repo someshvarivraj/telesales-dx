@@ -193,14 +193,46 @@ export function splitRange(value: string): { from: string; to: string } {
 }
 export type CompanyFilterCondition = z.infer<typeof companyFilterConditionSchema>;
 
-export const COMPANY_SORTS = ['UPDATED', 'ADDRESS', 'ADDRESS_NAME', 'NAME'] as const;
+export const COMPANY_SORTS = [
+  'UPDATED',
+  'ADDRESS',
+  'ADDRESS_NAME',
+  'NAME',
+  // Every column of the 架電用 list (テレマ 11/19).
+  'TELEMA_ID',
+  'INDUSTRY',
+  'OFFICE',
+  'DEPARTMENT',
+  'PHONE',
+  'STATION',
+  'GRADE',
+  'RESULT',
+  'LAST_CALL',
+  'CALL_COUNT',
+  'TELEMARKETER',
+  'LIST',
+] as const;
 export type CompanySort = (typeof COMPANY_SORTS)[number];
 export const COMPANY_SORT_LABELS: Record<CompanySort, string> = {
   UPDATED: '更新が新しい順',
   ADDRESS: '住所順（都道府県・市区町村）',
   ADDRESS_NAME: '住所順 → 会社名順',
   NAME: '会社名順',
+  TELEMA_ID: 'テレマID順',
+  INDUSTRY: '業種順',
+  OFFICE: '事業所名順',
+  DEPARTMENT: '部署名順',
+  PHONE: '電話番号順',
+  STATION: '最寄駅順',
+  GRADE: '判定順',
+  RESULT: '最新テレマ結果順',
+  LAST_CALL: '最新テレマ日順',
+  CALL_COUNT: '回数順',
+  TELEMARKETER: 'テレマ担当者順',
+  LIST: 'リスト名順',
 };
+/** The 4 orders offered in the 並び替え menu; the rest come from the column headers. */
+export const MENU_SORTS: readonly CompanySort[] = ['UPDATED', 'ADDRESS', 'ADDRESS_NAME', 'NAME'];
 
 export const companySearchRequestSchema = z.object({
   /** Words searched across every company field; all words must match (request 10/30). */
@@ -227,6 +259,8 @@ export const companySearchRequestSchema = z.object({
    * north-to-south order, then 市区町村), by address then company name, or by company name.
    */
   sort: z.enum(COMPANY_SORTS).default('UPDATED'),
+  /** Column orders can be reversed; empty values stay last either way. */
+  sortDir: z.enum(['asc', 'desc']).default('asc'),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(200).default(50),
 });
@@ -298,6 +332,9 @@ export interface CompanyDetail extends CompanyListItem {
   similarNumbers: { id: string; name: string; phone: string | null }[];
   /** The same company's other departments / offices (grouped, request 11/2). */
   groupMembers: CompanyRefWithDepartment[];
+  /** Latest appointment per company of the group, this one included (11/19: a branch already
+   * booked, e.g. 姫路, shows at a glance). */
+  groupAppointments: Record<string, GroupAppointmentDto>;
   /** Same name, not grouped yet: offered to group as departments. */
   sameNameCompanies: CompanyRefWithDepartment[];
   /** Companies this one was flagged against on import. */
@@ -315,6 +352,16 @@ export interface CompanyRefWithDepartment {
   phone: string | null;
   /** The company the group is kept under. */
   isGroupRoot: boolean;
+  /** Every column of the 架電用 list, for the group table (テレマ 11/19). */
+  row?: CompanyListItem;
+}
+
+/** The latest appointment of a company in the group (not cancelled), shown in the group table. */
+export interface GroupAppointmentDto {
+  id: string;
+  startsAt: string;
+  status: string;
+  salesRep: UserRef;
 }
 
 /** Move companies into or out of the call targets (架電対象 / 架電対象外). */

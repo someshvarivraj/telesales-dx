@@ -12,6 +12,7 @@ import {
   type CompanySearchRequest,
   MAX_PICKED_COMPANIES,
   type CompanySort,
+  type GroupAppointmentDto,
   PREFECTURE_NAMES,
   jstDate,
   ListImportRowStatus,
@@ -215,7 +216,7 @@ export class CompanyService {
   async search(request: CompanySearchRequest, viewerId?: string): Promise<Page<CompanyListItem>> {
     const where = await this.searchWhere(request, viewerId);
     if (request.sort !== 'UPDATED') {
-      const ids = await this.sortedIds(where, request.sort);
+      const ids = await this.sortedIds(where, request.sort, request.sortDir);
       const pageIds = ids.slice(
         (request.page - 1) * request.pageSize,
         request.page * request.pageSize,
@@ -283,7 +284,7 @@ export class CompanyService {
   ): Promise<CompanySearchIdsResponse> {
     const where = await this.searchWhere(request, viewerId);
     if (request.sort !== 'UPDATED') {
-      const ids = await this.sortedIds(where, request.sort);
+      const ids = await this.sortedIds(where, request.sort, request.sortDir);
       return {
         ids: ids.slice(0, MAX_PICKED_COMPANIES),
         total: ids.length,
@@ -307,31 +308,81 @@ export class CompanyService {
    * (not by character code), then 市区町村 and the rest in Japanese order; companies without an
    * address come last. Sorted here because that order cannot be asked of the database.
    */
-  private async sortedIds(where: Prisma.CompanyWhereInput, sort: CompanySort): Promise<string[]> {
+  private async sortedIds(
+    where: Prisma.CompanyWhereInput,
+    sort: CompanySort,
+    dir: 'asc' | 'desc' = 'asc',
+  ): Promise<string[]> {
     const rows = await this.prisma.company.findMany({
       where,
-      select: { id: true, name: true, prefecture: true, city: true, address: true },
+      select: {
+        id: true,
+        name: true,
+        prefecture: true,
+        city: true,
+        address: true,
+        telemaIdNo: true,
+        industry: true,
+        office: true,
+        department: true,
+        phone: true,
+        nearestStation: true,
+        listName: true,
+        callRecords: {
+          orderBy: { calledAt: 'desc' },
+          take: 1,
+          select: {
+            grade: true,
+            resultCode: true,
+            calledAt: true,
+            telemarketer: { select: { name: true } },
+          },
+        },
+        _count: { select: { callRecords: { where: { grade: { not: 'E' } } } } },
+      },
       take: MAX_SORTED_COMPANIES,
     });
-    const collator = new Intl.Collator('ja');
+    const collator = new Intl.Collator('ja', { numeric: true });
+    const sign = dir === 'desc' ? -1 : 1;
     const prefectureRank = (value: string | null) => {
       const index = value ? PREFECTURE_NAMES.indexOf(value) : -1;
       return index === -1 ? PREFECTURE_NAMES.length + (value ? 0 : 1) : index;
     };
-    const text = (a: string | null, b: string | null) => {
+    // Empty values last whatever the direction; the rest in Japanese order, numbers by value.
+    const text = (a: string | null | undefined, b: string | null | undefined) => {
       if (!a || !b) return (a ? 0 : 1) - (b ? 0 : 1);
-      return collator.compare(a, b);
+      return sign * collator.compare(a, b);
+    };
+    const num = (a: number | null, b: number | null) => {
+      if (a === null || b === null) return (a === null ? 1 : 0) - (b === null ? 1 : 0);
+      return sign * (a - b);
     };
     type Row = (typeof rows)[number];
+    const last = (row: Row) => row.callRecords[0];
     const byName = (a: Row, b: Row) => collator.compare(a.name, b.name);
     const byPlace = (a: Row, b: Row) =>
-      prefectureRank(a.prefecture) - prefectureRank(b.prefecture) ||
+      sign * (prefectureRank(a.prefecture) - prefectureRank(b.prefecture)) ||
       text(a.prefecture, b.prefecture) ||
       text(a.city, b.city);
     const compare: Record<Exclude<CompanySort, 'UPDATED'>, (a: Row, b: Row) => number> = {
       ADDRESS: (a, b) => byPlace(a, b) || text(a.address, b.address) || byName(a, b),
       ADDRESS_NAME: (a, b) => byPlace(a, b) || byName(a, b) || text(a.address, b.address),
-      NAME: (a, b) => byName(a, b) || byPlace(a, b),
+      NAME: (a, b) => sign * byName(a, b) || byPlace(a, b),
+      TELEMA_ID: (a, b) => text(a.telemaIdNo, b.telemaIdNo),
+      INDUSTRY: (a, b) => text(a.industry, b.industry) || byName(a, b),
+      OFFICE: (a, b) => text(a.office, b.office) || byName(a, b),
+      DEPARTMENT: (a, b) => text(a.department, b.department) || byName(a, b),
+      PHONE: (a, b) => text(a.phone, b.phone),
+      STATION: (a, b) => text(a.nearestStation, b.nearestStation) || byName(a, b),
+      GRADE: (a, b) => text(last(a)?.grade, last(b)?.grade) || byName(a, b),
+      RESULT: (a, b) => text(last(a)?.resultCode, last(b)?.resultCode) || byName(a, b),
+      LAST_CALL: (a, b) =>
+        num(last(a)?.calledAt.getTime() ?? null, last(b)?.calledAt.getTime() ?? null) ||
+        byName(a, b),
+      CALL_COUNT: (a, b) => sign * (a._count.callRecords - b._count.callRecords) || byName(a, b),
+      TELEMARKETER: (a, b) =>
+        text(last(a)?.telemarketer.name, last(b)?.telemarketer.name) || byName(a, b),
+      LIST: (a, b) => text(a.listName, b.listName) || byName(a, b),
     };
     const order = compare[sort as Exclude<CompanySort, 'UPDATED'>];
     return rows.sort((a, b) => order(a, b) || a.id.localeCompare(b.id)).map((row) => row.id);
@@ -427,12 +478,41 @@ export class CompanyService {
     const rootId = company.parentId ?? company.id;
     const groupMembers = await this.prisma.company.findMany({
       where: { OR: [{ id: rootId }, { parentId: rootId }], id: { not: company.id } },
-      select: { id: true, name: true, office: true, department: true, phone: true, parentId: true },
+      include: listInclude,
       orderBy: { createdAt: 'asc' },
       take: 100,
     });
+    const groupIds = groupMembers.length > 0 ? [company.id, ...groupMembers.map((m) => m.id)] : [];
+    const groupAppointmentRows = groupIds.length
+      ? await this.prisma.appointment.findMany({
+          where: { companyId: { in: groupIds }, status: { not: 'CANCELLED' } },
+          select: {
+            id: true,
+            companyId: true,
+            startsAt: true,
+            status: true,
+            salesRep: userRefSelect,
+          },
+          orderBy: { startsAt: 'desc' },
+        })
+      : [];
+    const groupAppointments: Record<string, GroupAppointmentDto> = {};
+    for (const row of groupAppointmentRows) {
+      groupAppointments[row.companyId] ??= {
+        id: row.id,
+        startsAt: iso(row.startsAt),
+        status: row.status,
+        salesRep: userRef(row.salesRep),
+      };
+    }
     const grouped = new Set(groupMembers.map((member) => member.id));
-    const refOf = (other: (typeof groupMembers)[number]) => ({
+    const refOf = (other: {
+      id: string;
+      name: string;
+      office: string | null;
+      department: string | null;
+      phone: string | null;
+    }) => ({
       id: other.id,
       name: other.name,
       office: other.office,
@@ -466,7 +546,11 @@ export class CompanyService {
       avoided: avoided
         ? { by: userRef(avoided.createdBy), at: iso(avoided.createdAt), source: avoided.source }
         : null,
-      groupMembers: groupMembers.map(refOf),
+      groupMembers: groupMembers.map((member) => ({
+        ...refOf(member),
+        row: this.toListItem(member),
+      })),
+      groupAppointments,
       sameNameCompanies: sameName.filter((other) => !grouped.has(other.id)).map(refOf),
       similarNumbers: sameName
         .filter((other) => isSimilarNumber(other.phoneDigits, company.phoneDigits))
