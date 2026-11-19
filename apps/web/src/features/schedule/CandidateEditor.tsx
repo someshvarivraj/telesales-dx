@@ -29,11 +29,17 @@ export function CandidateEditor({
   first,
   candidates,
   onChange,
+  attendeeIds = [],
+  onFocusDate,
 }: {
   ownerId: string;
   first: Candidate;
   candidates: Candidate[];
   onChange: (next: Candidate[]) => void;
+  /** 同席者: 「空き時間から選ぶ」 offers only times when everyone is free (11/19). */
+  attendeeIds?: string[];
+  /** A candidate was picked or its date changed: show that day beside the form (11/19). */
+  onFocusDate?: (date: string, index: number | null) => void;
 }) {
   const [picking, setPicking] = useState(false);
   const all = [first, ...candidates];
@@ -52,7 +58,10 @@ export function CandidateEditor({
   return (
     <div className="flex flex-col gap-2">
       <ol className="flex flex-col gap-1.5">
-        <li className="flex flex-wrap items-center gap-2 text-sm">
+        <li
+          className="flex cursor-pointer flex-wrap items-center gap-2 text-sm"
+          onClick={() => first.date && onFocusDate?.(first.date, null)}
+        >
           <span className="flex size-6 items-center justify-center bg-ev-tentative-soft text-xs font-bold text-ev-tentative">
             1
           </span>
@@ -62,7 +71,12 @@ export function CandidateEditor({
           <span className="text-xs text-ink-sub">（上の日時）</span>
         </li>
         {candidates.map((slot, index) => (
-          <li key={index} className="flex flex-wrap items-center gap-2">
+          <li
+            key={index}
+            className="flex flex-wrap items-center gap-2"
+            onFocusCapture={() => slot.date && onFocusDate?.(slot.date, index)}
+            onClickCapture={() => slot.date && onFocusDate?.(slot.date, index)}
+          >
             <span className="flex size-6 items-center justify-center bg-ev-tentative-soft text-xs font-bold text-ev-tentative">
               {index + 2}
             </span>
@@ -70,7 +84,10 @@ export function CandidateEditor({
               aria-label={`候補${index + 2}の日付`}
               className="w-60"
               value={slot.date}
-              onChange={(e) => update(index, { date: e.target.value })}
+              onChange={(e) => {
+                update(index, { date: e.target.value });
+                if (e.target.value) onFocusDate?.(e.target.value, index);
+              }}
             />
             <TimePicker
               aria-label={`候補${index + 2}の開始`}
@@ -133,6 +150,7 @@ export function CandidateEditor({
       {picking && ownerId && (
         <FreeSlotPicker
           ownerId={ownerId}
+          attendeeIds={attendeeIds}
           from={first.date || todayJst()}
           length={length}
           isTaken={taken}
@@ -147,6 +165,7 @@ export function CandidateEditor({
 /** The rep's free time (9:00–18:00) day by day; a click adds that time as a candidate. */
 function FreeSlotPicker({
   ownerId,
+  attendeeIds,
   from,
   length,
   isTaken,
@@ -154,6 +173,7 @@ function FreeSlotPicker({
   onPick,
 }: {
   ownerId: string;
+  attendeeIds: string[];
   from: string;
   length: number;
   isTaken: (slot: Candidate) => boolean;
@@ -162,7 +182,8 @@ function FreeSlotPicker({
 }) {
   const [week, setWeek] = useState(() => startOfWeek(from));
   const last = addDays(week, DAYS_SHOWN - 1);
-  const schedule = useSchedule(week, last, [ownerId]);
+  const ids = [ownerId, ...attendeeIds.filter((id) => id !== ownerId)];
+  const schedule = useSchedule(week, last, ids);
   const events = useMemo(() => (schedule.data ? buildEvents(schedule.data) : []), [schedule.data]);
   const today = todayJst();
   const days = Array.from({ length: DAYS_SHOWN }, (_, i) => addDays(week, i));
@@ -181,6 +202,7 @@ function FreeSlotPicker({
         />
         <span className="text-sm font-bold">
           {formatShortDate(week)}〜{formatShortDate(last)}の空き時間
+          {ids.length > 1 && `（同席者${ids.length - 1}人も空いている時間）`}
         </span>
         <Button
           size="sm"
@@ -199,7 +221,11 @@ function FreeSlotPicker({
             const free =
               date < today || name
                 ? []
-                : freeRanges(eventsOn(events, date, ownerId), date, { min: Math.min(length, 60) });
+                : freeRanges(
+                    ids.flatMap((id) => eventsOn(events, date, id)),
+                    date,
+                    { min: Math.min(length, 60) },
+                  );
             return (
               <li key={date} className="grid grid-cols-[5.5rem_1fr] items-start gap-2">
                 <span className="pt-1 text-sm font-bold">{formatShortDate(date)}</span>
