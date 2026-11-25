@@ -80,7 +80,7 @@ export function ImportRowsDialog({
                     <tr>
                       <Th className="w-16">行</Th>
                       <Th className="w-24">判定</Th>
-                      <Th>会社</Th>
+                      <Th className="md:w-52">会社</Th>
                       <Th className="max-md:hidden">読み取った値</Th>
                     </tr>
                   </thead>

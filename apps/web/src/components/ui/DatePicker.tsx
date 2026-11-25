@@ -240,7 +240,10 @@ export function DatePicker({
             : placeholder}
         </span>
         {hint && !disabled && !(clearable && value) && (
-          <span className="shrink-0 bg-column px-1.5 text-[11px] leading-5 font-bold text-ink-sub">
+          <span
+            data-hint=""
+            className="shrink-0 bg-column px-1.5 text-[11px] leading-5 font-bold text-ink-sub"
+          >
             {hint}
           </span>
         )}

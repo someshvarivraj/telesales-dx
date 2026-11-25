@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Lock, LockOpen } from 'lucide-react';
 import { useMemo } from 'react';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
+import { cn } from '@/components/ui/cn';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { Select } from '@/components/ui/Select';
@@ -81,7 +82,10 @@ export function useSlotData(
 }
 export type SlotData = ReturnType<typeof useSlotData>;
 
-/** 担当営業・日付・開始・終了. `compact`: two columns, for a narrow form beside the day. */
+/**
+ * 担当営業・日付・開始・終了. `compact`: two columns, for a narrow form beside the day. Otherwise
+ * the columns follow the room there is (a dialog is narrow on a wide screen too, 11/25).
+ */
 export function SlotInputs({
   slot,
   onChange,
@@ -97,16 +101,16 @@ export function SlotInputs({
 }) {
   const reps = usePeople(Role.Sales);
   const set = (patch: Partial<Slot>) => onChange({ ...slot, ...patch });
-  return (
+  const fields = (
     <div
       className={
         compact
           ? 'grid grid-cols-2 gap-x-3 gap-y-4'
-          : 'grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_8rem_10rem]'
+          : 'grid grid-cols-2 gap-4 @xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] @5xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_9rem_11rem]'
       }
     >
       {!(compact && repLocked) && (
-        <div className={compact ? 'col-span-2' : undefined}>
+        <div className={cn('col-span-2', !compact && '@xl:col-span-1')}>
           <FormField label="担当営業" required>
             {(c) => (
               <Select
@@ -121,20 +125,22 @@ export function SlotInputs({
           </FormField>
         </div>
       )}
-      <div className={compact ? 'col-span-2' : undefined}>
+      <div className={cn('col-span-2', !compact && '@xl:col-span-1')}>
         <FormField label="日付" required>
           {(c) => (
             <div className="flex gap-1">
               <Button
                 variant="secondary"
                 aria-label="前の日"
+                className="h-11 shrink-0"
                 disabled={held}
                 onClick={() => set({ date: nextWeekday(slot.date, -1) })}
                 icon={<ChevronLeft className="size-4" aria-hidden="true" />}
               />
               <DatePicker
                 {...c}
-                className={compact ? 'min-w-0 flex-1' : undefined}
+                // Narrow: the weekday matters more than the 「5日後」 hint.
+                className="min-w-0 flex-1 max-sm:[&_[data-hint]]:hidden"
                 value={slot.date}
                 disabled={held}
                 isDisabled={isWeekend}
@@ -143,6 +149,7 @@ export function SlotInputs({
               <Button
                 variant="secondary"
                 aria-label="次の日"
+                className="h-11 shrink-0"
                 disabled={held}
                 onClick={() => set({ date: nextWeekday(slot.date, 1) })}
                 icon={<ChevronRight className="size-4" aria-hidden="true" />}
@@ -179,6 +186,7 @@ export function SlotInputs({
       </FormField>
     </div>
   );
+  return compact ? fields : <div className="@container">{fields}</div>;
 }
 
 /** The rep's day with the chosen slot; clicking free time sets the start. */
