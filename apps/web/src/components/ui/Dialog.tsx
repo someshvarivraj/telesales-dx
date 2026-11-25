@@ -190,7 +190,8 @@ export function Dialog({
               <X aria-hidden="true" className="size-5" />
             </button>
           </header>
-          <div className="overflow-y-auto px-5 py-4">{children}</div>
+          {/* The body scrolls on its own: sticky table headers stop at its top, not below the app bar. */}
+          <div className="overflow-y-auto px-5 py-4 [--page-top:0px]">{children}</div>
           {footer && (
             <footer className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">
               {footer}

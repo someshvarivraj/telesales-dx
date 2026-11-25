@@ -189,7 +189,7 @@ function GroupTable({
           </Alert>
         );
       })}
-      <div className="overflow-x-auto border border-line">
+      <div className="border border-line">
         <Table>
           <thead>
             <tr className="[&>th]:px-2 [&>th]:text-xs">
