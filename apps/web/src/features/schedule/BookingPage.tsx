@@ -316,9 +316,9 @@ function BookingForm(props: BookingFormProps) {
     bookedById: values.bookedById || null,
     bookedOn: values.bookedOn || null,
     originalAppointmentId: rebookOf,
-    // 仮予定・同席者 are asked on a rep's own appointment only (11/13).
+    // 仮予定 is asked on a rep's own appointment only (11/13); ほかの営業 on any new one (11/27).
     tentative: salesBooked && !rebookOf ? extras.tentative : false,
-    attendeeIds: salesBooked && !rebookOf ? extras.attendeeIds : [],
+    attendeeIds: !rebookOf ? extras.attendeeIds : [],
     candidates:
       salesBooked && !rebookOf
         ? candidates.map((c) => ({
@@ -462,10 +462,10 @@ function BookingForm(props: BookingFormProps) {
                 },
               ]
             : []),
-          ...(quick && extras.attendeeIds.length > 0
+          ...(!rebookOf && extras.attendeeIds.length > 0
             ? [
                 {
-                  label: '同席者',
+                  label: quick ? '同席者' : 'ほかの営業（同席）',
                   value: extras.attendeeIds
                     .map((id) => people.data?.find((person) => person.id === id)?.name ?? '')
                     .join('、'),
@@ -759,6 +759,8 @@ function BookingForm(props: BookingFormProps) {
                 )
               }
               onUnlock={() => void lock.release()}
+              attendeeIds={rebookOf ? undefined : extras.attendeeIds}
+              onAttendees={rebookOf ? undefined : (attendeeIds) => setExtras({ attendeeIds })}
             />
           </StepCard>
 

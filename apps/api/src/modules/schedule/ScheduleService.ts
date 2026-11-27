@@ -55,7 +55,10 @@ const planInclude = {
       status: true,
       source: true,
       meetingUrl: true,
-      company: { select: { name: true } },
+      visitAddress: true,
+      contactName: true,
+      contactDepartment: true,
+      company: { select: { name: true, address: true, nearestStation: true, department: true } },
     },
   },
 } satisfies Prisma.SchedulePlanInclude;
@@ -587,6 +590,11 @@ export class ScheduleService {
             status: row.appointment.status,
             isTelema: isTelemaSource(row.appointment.source),
             meetingUrl: row.appointment.meetingUrl,
+            // The visit's own details first, then what the company register holds.
+            address: row.appointment.visitAddress ?? row.appointment.company.address,
+            nearestStation: row.appointment.company.nearestStation,
+            department: row.appointment.contactDepartment ?? row.appointment.company.department,
+            contactName: row.appointment.contactName,
           }
         : null,
       canEdit: this.policy.canEditPlan(actor, row),

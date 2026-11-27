@@ -15,6 +15,7 @@ import { formatRange } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useConfirmCandidate, useDeletePlan, useDeleteTimeOff } from './api';
 import { type CalendarEvent, EVENT_STYLE } from './events';
+import { appointmentFacts } from './calendar/appointmentFacts';
 
 interface EventDetailDialogProps {
   event: CalendarEvent | null;
@@ -144,6 +145,14 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
                 : []),
               ...(plan.title !== plan.companyName
                 ? [{ label: '件名', value: plan.title, wide: true }]
+                : []),
+              // 住所・最寄駅・部署・訪問先担当者 (11/27).
+              ...(plan.appointment
+                ? appointmentFacts(plan.appointment).map((fact) => ({
+                    label: fact.label,
+                    value: fact.value,
+                    wide: fact.key === 'address',
+                  }))
                 : []),
               {
                 label: '日時',

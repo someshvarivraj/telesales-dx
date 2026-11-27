@@ -418,10 +418,23 @@ export function SchedulePage() {
     isAdmin || rowOwnerId === user.id
       ? { ownerId: rowOwnerId, attendeeIds: [] as string[] }
       : { ownerId: user.id, attendeeIds: [rowOwnerId] };
-  const openRange = (rowOwnerId: string, day: string, start: string, end: string, title?: string) =>
+  const openRange = (
+    rowOwnerId: string,
+    day: string,
+    start: string,
+    end: string,
+    title?: string,
+    /** More people dragged over (11/27): they join the same plan as 同席者. */
+    others: string[] = [],
+  ) => {
+    const place = placeFor(rowOwnerId);
+    const attendeeIds = [...new Set([...place.attendeeIds, rowOwnerId, ...others])].filter(
+      (id) => id !== place.ownerId,
+    );
     setPlanDialog({
-      defaults: { ...placeFor(rowOwnerId), date: day, time: start, endTime: end, title },
+      defaults: { ...place, attendeeIds, date: day, time: start, endTime: end, title },
     });
+  };
 
   // Typed straight into the calendar (11/17): a 社内 plan with just a 件名; 「詳細」 opens the form.
   const savePlan = useSavePlan();
@@ -914,7 +927,8 @@ export function SchedulePage() {
                       colorOrder={order}
                       onRange={
                         canWritePlans
-                          ? (ownerId, start, end) => openRange(ownerId, date, start, end)
+                          ? (ownerId, start, end, others) =>
+                              openRange(ownerId, date, start, end, undefined, others)
                           : undefined
                       }
                     />
@@ -938,8 +952,8 @@ export function SchedulePage() {
                       colorOrder={order}
                       onRange={
                         canWritePlans
-                          ? (ownerId, start, end, title) =>
-                              openRange(ownerId, date, start, end, title)
+                          ? (ownerId, start, end, title, others) =>
+                              openRange(ownerId, date, start, end, title, others)
                           : undefined
                       }
                       onQuickAdd={

@@ -18,6 +18,7 @@ import { usePeople } from '@/features/reference/useReference';
 import { defaultEndTime, formatDate, formatRange, toInstant } from '@/lib/format';
 import { useSchedule, useSlotCheck } from './api';
 import { DayView } from './DayView';
+import { ExtraReps } from './ExtraReps';
 import { buildEvents } from './events';
 import { ScheduleLegend } from './ScheduleLegend';
 import { slotProblemText } from './slotProblems';
@@ -49,6 +50,9 @@ interface SlotPickerProps {
   repLocked?: boolean;
   /** The rep's own appointment: their テレマアポ停止 time is open to them. */
   salesBooked?: boolean;
+  /** ほかの営業 (11/27): more reps for the same meeting, shown beside the rep. */
+  attendeeIds?: string[];
+  onAttendees?: (ids: string[]) => void;
 }
 
 /** The rep's day and the availability check for a slot (shared by the picker's parts). */
@@ -199,6 +203,7 @@ export function SlotDay({
   viewDate,
   onPick,
   viewRange,
+  onPeople,
 }: {
   slot: Slot;
   onChange: (slot: Slot) => void;
@@ -211,6 +216,8 @@ export function SlotDay({
   onPick?: (start: string, end: string) => void;
   /** The candidate's time on `viewDate`, highlighted like the slot. */
   viewRange?: { start: string; end: string };
+  /** People dragged across with the time (11/27): they join as ほかの営業. */
+  onPeople?: (ids: string[]) => void;
 }) {
   if (!slot.repId) return null;
   const date = viewDate ?? slot.date;
@@ -229,7 +236,11 @@ export function SlotDay({
             ? (_person, start, end) => onPick(start, end)
             : held
               ? undefined
-              : (_person, start, end) => onChange({ ...slot, start, end })
+              : (person, start, end, _title, others = []) => {
+                  onChange({ ...slot, start, end });
+                  const extra = [person, ...others].filter((id) => id !== slot.repId);
+                  if (extra.length > 0) onPeople?.(extra);
+                }
         }
         selection={
           ownDay
@@ -299,15 +310,26 @@ export function SlotPicker({
   appointmentId,
   repLocked = false,
   salesBooked = false,
+  attendeeIds = [],
+  onAttendees,
 }: SlotPickerProps) {
   const held = lock.status === 'held';
-  const data = useSlotData(slot, appointmentId, salesBooked);
+  const data = useSlotData(slot, appointmentId, salesBooked, { attendeeIds });
   const problem = lockProblemText(lock);
 
   return (
     <div className="flex flex-col gap-4">
       <SlotInputs slot={slot} onChange={onChange} held={held} repLocked={repLocked} />
-      <SlotDay slot={slot} onChange={onChange} held={held} data={data} />
+      {onAttendees && <ExtraReps repId={slot.repId} value={attendeeIds} onChange={onAttendees} />}
+      <SlotDay
+        slot={slot}
+        onChange={onChange}
+        held={held}
+        data={data}
+        onPeople={
+          onAttendees ? (ids) => onAttendees([...new Set([...attendeeIds, ...ids])]) : undefined
+        }
+      />
       <SlotProblems data={data} held={held} />
 
       <div className="flex flex-wrap items-center gap-3 rounded-(--radius-control) border border-line bg-canvas px-4 py-3">

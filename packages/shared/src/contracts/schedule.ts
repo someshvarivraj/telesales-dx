@@ -96,6 +96,11 @@ export interface PlanDto {
     isTelema: boolean;
     /** The online meeting's URL, for the calendar's 「参加」 button (11/17). */
     meetingUrl: string | null;
+    /** Shown on the calendar (request 11/27): where to go and whom to ask for. */
+    address: string | null;
+    nearestStation: string | null;
+    department: string | null;
+    contactName: string | null;
   } | null;
   canEdit: boolean;
   /** A tentative plan (or tentative appointment) this user may confirm. */

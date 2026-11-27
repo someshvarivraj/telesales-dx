@@ -33,7 +33,11 @@ interface DayTimelineProps {
   off: boolean;
   onEvent: (event: CalendarEvent) => void;
   peek?: PeekBinder;
-  onRange?: (personId: string, start: string, end: string) => void;
+  /**
+   * A time chosen on a row. Dragging down over more rows picks the same time for those people
+   * too (`others`, request 11/27: one meeting for several reps at once).
+   */
+  onRange?: (personId: string, start: string, end: string, others?: string[]) => void;
   showFree?: boolean;
   /** Horizontal zoom. */
   pxPerMin?: number;
@@ -70,7 +74,27 @@ export function DayTimeline({
   const hours = Array.from({ length: (END - START) / 60 + 1 }, (_, i) => START / 60 + i);
   const now = useNow();
   const scroller = useRef<HTMLDivElement>(null);
-  const [drag, setDrag] = useState<{ id: string; anchor: number; current: number } | null>(null);
+  const [drag, setDrag] = useState<{
+    id: string;
+    anchor: number;
+    current: number;
+    /** Rows (indexes in `people`) the drag started on and is over now. */
+    fromRow: number;
+    toRow: number;
+  } | null>(null);
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // The row under the pointer: the drag keeps the pointer on the row it started on.
+  const rowAt = (clientY: number, fallback: number) => {
+    const index = rowRefs.current.findIndex((row) => {
+      if (!row) return false;
+      const rect = row.getBoundingClientRect();
+      return clientY >= rect.top && clientY < rect.bottom;
+    });
+    return index >= 0 ? index : fallback;
+  };
+  const dragRows = drag
+    ? { first: Math.min(drag.fromRow, drag.toRow), last: Math.max(drag.fromRow, drag.toRow) }
+    : null;
 
   useEffect(() => {
     const target = now.date === date ? now.minutes - 120 : WORK_START - 30;
@@ -132,7 +156,7 @@ export function DayTimeline({
             </div>
           </div>
 
-          {people.map((person) => {
+          {people.map((person, rowIndex) => {
             const personEvents = eventsOn(events, date, person.id);
             const timed = placeEvents(personEvents, date).filter(
               (item) => item.end > START && item.start < END,
@@ -144,7 +168,7 @@ export function DayTimeline({
             const closed = off || dayOff;
             const free = closed ? 0 : freeMinutes(personEvents, date);
             const ghost =
-              drag?.id === person.id
+              drag && dragRows && !closed && rowIndex >= dragRows.first && rowIndex <= dragRows.last
                 ? {
                     start: Math.min(drag.anchor, drag.current),
                     end: Math.max(drag.anchor, drag.current),
@@ -169,6 +193,9 @@ export function DayTimeline({
                   </div>
                 </div>
                 <div
+                  ref={(element) => {
+                    rowRefs.current[rowIndex] = element;
+                  }}
                   role={onRange && !closed ? 'button' : undefined}
                   aria-label={onRange && !closed ? `${person.name}の空き時間を選ぶ` : undefined}
                   tabIndex={onRange && !closed ? 0 : undefined}
@@ -191,19 +218,39 @@ export function DayTimeline({
                     if ((event.target as HTMLElement).closest('[data-event]')) return;
                     event.currentTarget.setPointerCapture(event.pointerId);
                     const at = Math.floor(minutesAt(event) / STEP) * STEP;
-                    setDrag({ id: person.id, anchor: at, current: at + DEFAULT_PLAN_MINUTES });
+                    setDrag({
+                      id: person.id,
+                      anchor: at,
+                      current: at + DEFAULT_PLAN_MINUTES,
+                      fromRow: rowIndex,
+                      toRow: rowIndex,
+                    });
                   }}
                   onPointerMove={(event) => {
                     if (drag?.id !== person.id) return;
                     const at = Math.round(minutesAt(event) / STEP) * STEP;
-                    if (Math.abs(at - drag.anchor) >= STEP) setDrag({ ...drag, current: at });
+                    const toRow = rowAt(event.clientY, drag.toRow);
+                    const current = Math.abs(at - drag.anchor) >= STEP ? at : drag.current;
+                    if (current !== drag.current || toRow !== drag.toRow)
+                      setDrag({ ...drag, current, toRow });
                   }}
                   onPointerUp={() => {
-                    if (drag?.id !== person.id) return;
+                    if (drag?.id !== person.id || !dragRows) return;
                     setDrag(null);
                     const start = Math.min(drag.anchor, drag.current);
                     const end = Math.max(drag.anchor, drag.current, start + STEP);
-                    onRange?.(person.id, hhmm(Math.max(START, start)), hhmm(Math.min(END, end)));
+                    // Everyone else dragged over who is working that day.
+                    const others = people
+                      .slice(dragRows.first, dragRows.last + 1)
+                      .filter((other) => other.id !== person.id)
+                      .filter((other) => !off && !isDayOff(eventsOn(events, date, other.id)))
+                      .map((other) => other.id);
+                    onRange?.(
+                      person.id,
+                      hhmm(Math.max(START, start)),
+                      hhmm(Math.min(END, end)),
+                      others,
+                    );
                   }}
                   onPointerCancel={() => setDrag(null)}
                 >
@@ -275,9 +322,14 @@ export function DayTimeline({
                       className="pointer-events-none absolute inset-y-0.5 z-[4] flex items-center border-2 border-main bg-main/15"
                       style={{ left: x(ghost.start), width: x(ghost.end) - x(ghost.start) }}
                     >
-                      <span className="ml-1 bg-main px-1 text-[10px] leading-4 font-bold whitespace-nowrap text-white tabular-nums">
-                        {hhmm(ghost.start)}–{hhmm(ghost.end)}
-                      </span>
+                      {drag?.id === person.id && (
+                        <span className="ml-1 bg-main px-1 text-[10px] leading-4 font-bold whitespace-nowrap text-white tabular-nums">
+                          {hhmm(ghost.start)}–{hhmm(ghost.end)}
+                          {dragRows && dragRows.last > dragRows.first && (
+                            <span className="ml-1">・{dragRows.last - dragRows.first + 1}人</span>
+                          )}
+                        </span>
+                      )}
                     </div>
                   )}
                   {now.date === date && now.minutes > START && now.minutes < END && (

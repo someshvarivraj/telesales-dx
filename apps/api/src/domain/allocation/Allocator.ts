@@ -1,3 +1,5 @@
+import { OFFICE_KINDS, type OfficeKind } from '@telesales/shared';
+
 /**
  * Auto allocation (spec §7, priority 2). Pure rules, no database:
  *
@@ -17,6 +19,8 @@ export interface CallItem {
   id: string;
   /** Companies with the same key (normalised name) go to the same person. */
   groupKey: string;
+  /** 本社・支社・工場・その他: each is spread evenly over the people (request 11/27). */
+  kind?: OfficeKind;
 }
 
 export interface DayBeforeItem {
@@ -68,21 +72,34 @@ export class Allocator {
     return result;
   }
 
-  /** Item id → assignee. Same-name groups are kept whole and go to whoever has most room. */
+  /**
+   * Item id → assignee. Same-name groups are kept whole. Each office kind (本社・支社・工場・
+   * その他) is shared out by working time on its own, so everyone gets a similar mix
+   * (request 11/27); within a kind a group goes to whoever has most room for that kind,
+   * then most room overall.
+   */
   allocateCalls(items: readonly CallItem[]): Map<string, string> {
     const assignment = new Map<string, string>();
     if (this.targets.length === 0 || items.length === 0) {
       return assignment;
     }
     const room = this.quotas(items.length);
-    const groups = new Map<string, string[]>();
+    // A group takes the kind of its first company (the list order).
+    const groups = new Map<string, { ids: string[]; kind: OfficeKind }>();
     for (const item of items) {
-      groups.set(item.groupKey, [...(groups.get(item.groupKey) ?? []), item.id]);
+      const group = groups.get(item.groupKey);
+      if (group) group.ids.push(item.id);
+      else groups.set(item.groupKey, { ids: [item.id], kind: item.kind ?? 'OTHER' });
     }
-    for (const ids of groups.values()) {
-      const userId = this.mostRoom(room);
-      ids.forEach((id) => assignment.set(id, userId));
-      room.set(userId, (room.get(userId) ?? 0) - ids.length);
+    for (const kind of OFFICE_KINDS) {
+      const ofKind = [...groups.values()].filter((group) => group.kind === kind);
+      const kindRoom = this.quotas(ofKind.reduce((sum, group) => sum + group.ids.length, 0));
+      for (const { ids } of ofKind) {
+        const userId = this.mostRoom(kindRoom, room);
+        ids.forEach((id) => assignment.set(id, userId));
+        kindRoom.set(userId, (kindRoom.get(userId) ?? 0) - ids.length);
+        room.set(userId, (room.get(userId) ?? 0) - ids.length);
+      }
     }
     return assignment;
   }
@@ -110,14 +127,18 @@ export class Allocator {
     return assignment;
   }
 
-  private mostRoom(room: Map<string, number>): string {
+  /** Most room in `first`, then in `then` (ties: the order of the targets). */
+  private mostRoom(first: Map<string, number>, then?: Map<string, number>): string {
     let best = this.targets[0]?.userId ?? '';
-    let bestRoom = Number.NEGATIVE_INFINITY;
+    let bestFirst = Number.NEGATIVE_INFINITY;
+    let bestThen = Number.NEGATIVE_INFINITY;
     for (const target of this.targets) {
-      const left = room.get(target.userId) ?? 0;
-      if (left > bestRoom) {
+      const left = first.get(target.userId) ?? 0;
+      const overall = then?.get(target.userId) ?? 0;
+      if (left > bestFirst || (left === bestFirst && overall > bestThen)) {
         best = target.userId;
-        bestRoom = left;
+        bestFirst = left;
+        bestThen = overall;
       }
     }
     return best;
