@@ -1,6 +1,8 @@
 // Red autumn maple leaves (紅葉) drifting down and settling at the bottom of the screen (request
-// 11/12; red since 11/13). Plain browser JavaScript with no imports: the maintenance page (outage.html) inlines
-// it, and the app imports it, so both draw exactly the same leaves.
+// 11/12; red since 11/13). Since 11/27 the scene follows Japan's seasons: 春 cherry petals,
+// 夏 fireflies over the water, 秋 maple leaves, 冬 snow (see seasonOf). Plain browser JavaScript
+// with no imports: the maintenance page (outage.html) inlines it, and the app imports it, so both
+// draw exactly the same scene.
 
 /**
  * Vivid autumn maple (request 11/13, after a photo of 紅葉): scarlet, crimson, red-orange and
@@ -20,6 +22,27 @@ var LEAF_COLORS = [
  * Set when the lake starts; the maintenance page (no lake) keeps its plain background.
  */
 var EVENING = false;
+
+/** The season the scenery is drawn in (11/27): the near hills and their trees follow it. */
+var SCENE_SEASON = 'autumn';
+var HILLS = {
+  autumn: {
+    hills: ['#a5705e', '#7e5446'],
+    trees: ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'],
+  },
+  winter: {
+    hills: ['#e6ecf3', '#b7c3d1'],
+    trees: ['#ffffff', '#eef3f9', '#dfe7f0', '#5f776b', '#4d6559'],
+  },
+  spring: {
+    hills: ['#97a578', '#73835c'],
+    trees: ['#ffc4d8', '#ffb0cb', '#ffe0ea', '#f59ab8', '#8fae6a'],
+  },
+  summer: {
+    hills: ['#6f9a5c', '#557d47'],
+    trees: ['#4f9a4a', '#3f8a46', '#6bb05a', '#2f7a3e', '#82be5f'],
+  },
+};
 
 /** How many leaves may lie on top of each other at one spot. */
 var LAYERS = 2;
@@ -250,11 +273,13 @@ function buildScenery(width, height, top, ratio) {
     }
   });
 
-  // The near brown hills with autumn trees, from the left edge down to the water before the city.
+  // The near hills with the season's trees (autumn: brown with red and gold; winter: under
+  // snow), from the left edge down to the water before the city.
+  var look = HILLS[SCENE_SEASON] || HILLS.autumn;
   var nearRidge = nearRidgeOf(ranges.near, width, top, tall);
   var hills = ctx.createLinearGradient(0, top - tall * 0.22, 0, top);
-  hills.addColorStop(0, '#a5705e');
-  hills.addColorStop(1, '#7e5446');
+  hills.addColorStop(0, look.hills[0]);
+  hills.addColorStop(1, look.hills[1]);
   ctx.fillStyle = hills;
   ctx.beginPath();
   ctx.moveTo(0, top + 2);
@@ -262,7 +287,7 @@ function buildScenery(width, height, top, ratio) {
   ctx.lineTo(width, top + 2);
   ctx.closePath();
   ctx.fill();
-  var trees = ['#d9452b', '#e8742a', '#f0a830', '#c2332a', '#b5651d'];
+  var trees = look.trees;
   for (var tr = 0; tr < width / 7; tr++) {
     var tx = rand() * width;
     var ground = nearRidge(tx);
@@ -2295,12 +2320,190 @@ function loadStatue(src, redraw) {
   image.src = src;
 }
 
+/**
+ * Japan's seasons as they are felt (request 11/27): 冬 from 立冬 (about 7 November) to the end
+ * of February, 春 March–May (桜), 夏 June–August, 秋 September to 立冬 (紅葉). Japan time.
+ */
+export function seasonOf(date) {
+  var jst = new Date((date || new Date()).getTime() + 9 * 3600 * 1000);
+  var month = jst.getUTCMonth() + 1;
+  var day = jst.getUTCDate();
+  if (month === 12 || month <= 2 || (month === 11 && day >= 7)) return 'winter';
+  if (month <= 5) return 'spring';
+  if (month <= 8) return 'summer';
+  return 'autumn';
+}
+
+/** Cherry blossom petals (桜): pale pink, a notch at the tip, a deeper pink at the base. */
+var PETAL_COLORS = [
+  ['#fff4f8', '#ffc9dc', '#f39abb'],
+  ['#ffeef5', '#ffbcd4', '#ec86ad'],
+  ['#fffafc', '#ffd6e5', '#f5a8c6'],
+];
+
+function petalSprite(size, colors) {
+  var pad = 3;
+  var canvas = document.createElement('canvas');
+  var px = Math.ceil(size * 2 + pad * 2);
+  canvas.width = px;
+  canvas.height = px;
+  var ctx = canvas.getContext('2d');
+  ctx.translate(px / 2, px / 2);
+  ctx.scale(size, size);
+  var glow = ctx.createLinearGradient(0, -1, 0, 1);
+  glow.addColorStop(0, colors[0]);
+  glow.addColorStop(0.6, colors[1]);
+  glow.addColorStop(1, colors[2]);
+  ctx.beginPath();
+  ctx.moveTo(0, 0.95);
+  ctx.bezierCurveTo(0.75, 0.55, 0.78, -0.55, 0.3, -0.9);
+  ctx.lineTo(0, -0.68);
+  ctx.lineTo(-0.3, -0.9);
+  ctx.bezierCurveTo(-0.78, -0.55, -0.75, 0.55, 0, 0.95);
+  ctx.closePath();
+  ctx.fillStyle = glow;
+  ctx.fill();
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = colors[2];
+  ctx.lineWidth = 0.05;
+  ctx.beginPath();
+  ctx.moveTo(0, 0.85);
+  ctx.lineTo(0, -0.4);
+  ctx.stroke();
+  return canvas;
+}
+
+/** A snowflake: a soft round flake, or now and then a small six-armed crystal. */
+function snowSprite(size, crystal) {
+  var pad = Math.ceil(size * 0.5) + 2;
+  var canvas = document.createElement('canvas');
+  var px = Math.ceil(size * 2 + pad * 2);
+  canvas.width = px;
+  canvas.height = px;
+  var ctx = canvas.getContext('2d');
+  ctx.translate(px / 2, px / 2);
+  ctx.scale(size, size);
+  // A faint blue-grey edge, so white flakes still show on the light sky.
+  ctx.shadowColor = 'rgba(70, 90, 140, 0.45)';
+  ctx.shadowBlur = size * 0.35;
+  if (crystal) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.13;
+    for (var a = 0; a < 6; a++) {
+      ctx.save();
+      ctx.rotate((a * Math.PI) / 3);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -0.92);
+      ctx.moveTo(0, -0.5);
+      ctx.lineTo(0.24, -0.7);
+      ctx.moveTo(0, -0.5);
+      ctx.lineTo(-0.24, -0.7);
+      ctx.stroke();
+      ctx.restore();
+    }
+    return canvas;
+  }
+  var glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  glow.addColorStop(0, 'rgba(255,255,255,1)');
+  glow.addColorStop(0.6, 'rgba(255,255,255,0.95)');
+  glow.addColorStop(1, 'rgba(235,243,255,0.5)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  return canvas;
+}
+
+/**
+ * What falls in each season and how. Snow falls a little faster than the leaves and straighter
+ * (request 11/27), more of it at once, and melts as it touches the water.
+ */
+var SEASONS = {
+  autumn: { count: 8, max: [18, 9], every: [900, 1800], vy: [26, 30], sway: [18, 26] },
+  spring: { count: 9, max: [22, 12], every: [700, 1300], vy: [24, 26], sway: [22, 30] },
+  winter: { count: 14, max: [90, 70], every: [90, 110], vy: [46, 36], sway: [6, 12] },
+  summer: { count: 0, max: [0, 0], every: [1e9, 1e9], vy: [0, 0], sway: [0, 0] },
+};
+
+function seasonSprites(season, ratio) {
+  var list = [];
+  var def = SEASONS[season];
+  for (var s = 0; s < def.count; s++) {
+    var size;
+    var image;
+    if (season === 'winter') {
+      var crystal = s % 4 === 3;
+      // Big enough to be seen against the pale evening sky (11/27).
+      size = crystal ? 6 + Math.random() * 3 : 2.4 + Math.random() * 2.8;
+      image = snowSprite(size * ratio, crystal);
+    } else if (season === 'spring') {
+      size = 5 + Math.random() * 3.5;
+      image = petalSprite(size * ratio, PETAL_COLORS[s % PETAL_COLORS.length]);
+    } else {
+      // A little smaller (11/17): 10–17px instead of 15–27px, so they don't crowd the scene.
+      size = 10 + Math.random() * 7;
+      image = leafSprite(size * ratio, LEAF_COLORS[s % LEAF_COLORS.length]);
+    }
+    list.push({ size: size, image: image });
+  }
+  return list;
+}
+
+/** Summer: fireflies (蛍) drifting low over the shore and the water, glowing on and off. */
+function makeFireflies(width, height, top, lake) {
+  var list = [];
+  var n = Math.round(Math.min(26, Math.max(10, width / 60)));
+  for (var i = 0; i < n; i++) {
+    var low = lake ? top - 70 : height * 0.55;
+    var high = lake ? height - 20 : height - 10;
+    list.push({
+      x: Math.random() * width,
+      y: low + Math.random() * (high - low),
+      low: low,
+      high: high,
+      heading: Math.random() * Math.PI * 2,
+      speed: 8 + Math.random() * 10,
+      phase: Math.random() * Math.PI * 2,
+      rate: 0.5 + Math.random() * 0.6,
+    });
+  }
+  return list;
+}
+
+function drawFireflies(ctx, list, dt, t, width) {
+  list.forEach(function (f) {
+    f.heading += (Math.random() - 0.5) * 2.4 * dt;
+    f.x += Math.cos(f.heading) * f.speed * dt;
+    f.y += Math.sin(f.heading) * f.speed * 0.5 * dt;
+    if (f.y < f.low || f.y > f.high) f.heading = -f.heading;
+    if (f.x < -10) f.x = width + 10;
+    if (f.x > width + 10) f.x = -10;
+    var glow = Math.max(0, Math.sin(t * f.rate * 2 + f.phase));
+    glow = glow * glow;
+    if (glow < 0.02) return;
+    var r = 9 + glow * 6;
+    var g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
+    g.addColorStop(0, 'rgba(250,255,190,' + (0.95 * glow).toFixed(3) + ')');
+    g.addColorStop(0.25, 'rgba(214,255,120,' + (0.55 * glow).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(180,255,90,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 export function startLeaves(canvas, options) {
   var opts = options || {};
   var ctx = canvas.getContext('2d');
   if (!ctx) return function () {};
   var lake = Boolean(opts.lake);
   EVENING = lake;
+  var season = SEASONS[opts.season] ? opts.season : seasonOf();
+  SCENE_SEASON = season;
+  var def = SEASONS[season];
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     if (!lake) return function () {};
     // Still water, no leaves.
@@ -2342,8 +2545,9 @@ export function startLeaves(canvas, options) {
   var last = 0;
   var nextSpawn = 0;
   // Over the lake fewer leaves, falling less often (11/18).
-  var maxFalling = opts.maxFalling || (lake ? 9 : 18);
-  var every = opts.every || (lake ? 1800 : 900);
+  var maxFalling = opts.maxFalling || def.max[lake ? 1 : 0];
+  var every = opts.every || def.every[lake ? 1 : 0];
+  var fireflies = [];
   // Lake mode.
   var lakeTop = 0;
   var floating = [];
@@ -2391,35 +2595,33 @@ export function startLeaves(canvas, options) {
       if (EVENING) stars = makeStars(width, lakeTop, sun);
       fisher = fisherOf(width, height);
     }
+    if (season === 'summer') fireflies = makeFireflies(width, height, lakeTop, lake);
     floating = floating.filter(function (leaf) {
       return leaf.y0 > lakeTop && leaf.y0 < height;
     });
   }
 
-  for (var s = 0; s < 8; s++) {
-    // A little smaller (11/17): 10–17px instead of 15–27px, so they don't crowd the scene.
-    var size = 10 + Math.random() * 7;
-    // Drawn at the screen's pixel density, so the leaves stay sharp.
-    sprites.push({
-      size: size,
-      image: leafSprite(size * ratio, LEAF_COLORS[s % LEAF_COLORS.length]),
-    });
-  }
+  // Drawn at the screen's pixel density, so they stay sharp.
+  sprites = seasonSprites(season, ratio);
+  var snow = season === 'winter';
 
   function spawn() {
     var sprite = sprites[Math.floor(Math.random() * sprites.length)];
     // Over the lake none fall across the moon (11/18): they start right of its column, far enough
     // that their drift and sway never carry them over it.
-    var from = lake ? Math.min(width * 0.5, sun.x + sun.r * 1.2 + 130) : 0;
+    // Snow falls everywhere and passes behind the moon instead (hidden on its face).
+    var from = lake && !snow ? Math.min(width * 0.5, sun.x + sun.r * 1.2 + 130) : 0;
+    // Bigger flakes are nearer, so they fall faster.
+    var near = snow ? sprite.size / 9 : 0;
     falling.push({
       sprite: sprite,
       x: from + Math.random() * (width - from),
       y: -sprite.size * 2,
-      vy: 26 + Math.random() * 30,
-      drift: (Math.random() - 0.5) * 18,
-      sway: 18 + Math.random() * 26,
+      vy: def.vy[0] + Math.random() * def.vy[1] + near * 30,
+      drift: snow ? 6 + Math.random() * 10 : (Math.random() - 0.5) * 18,
+      sway: def.sway[0] + Math.random() * def.sway[1],
       phase: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 2.4,
+      spin: (Math.random() - 0.5) * (snow ? 0.8 : 2.4),
       angle: Math.random() * Math.PI * 2,
       flip: Math.random() * Math.PI * 2,
       // Lake: where on the water it comes down (anywhere between the shore and the front).
@@ -2429,6 +2631,8 @@ export function startLeaves(canvas, options) {
 
   /** Lake: a leaf touches the water — a small ripple, and it floats from there. */
   function splash(leaf) {
+    // Snow just melts into the water: no ring, no floating.
+    if (snow) return;
     ripples.push({ x: leaf.x, y: leaf.y, age: 0, size: 26 + leaf.sprite.size, strength: 0.55 });
     floating.forEach(function (other) {
       var dx = other.x - leaf.x;
@@ -2805,6 +3009,8 @@ export function startLeaves(canvas, options) {
       }
     }
 
+    if (fireflies.length) drawFireflies(ctx, fireflies, dt, clock, width);
+
     for (var i = resting.length - 1; i >= 0; i--) {
       var r = resting[i];
       r.age += dt;
@@ -2852,6 +3058,12 @@ export function startLeaves(canvas, options) {
           land(f);
           continue;
         }
+      }
+      if (snow) {
+        // Behind the moon: not drawn on its face.
+        if (lake && Math.hypot(f.x - sun.x, f.y - sun.y) < sun.r * 1.02) continue;
+        draw(f.sprite, f.x, f.y, f.angle, 1, 1, 0.9);
+        continue;
       }
       // The leaf turns over as it flutters (narrower when seen edge-on).
       draw(f.sprite, f.x, f.y, f.angle, 0.35 + 0.65 * Math.abs(Math.cos(f.flip)), 1, 1);

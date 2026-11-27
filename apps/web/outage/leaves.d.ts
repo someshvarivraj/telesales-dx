@@ -1,3 +1,8 @@
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+
+/** Japan's season on a date (now by default): 冬 from 立冬 (7 Nov) to February, 春 Mar–May, 夏 Jun–Aug, 秋 Sep to 立冬. */
+export function seasonOf(date?: Date): Season;
+
 /** Starts the falling leaves on a full-screen canvas; returns a function that stops them. */
 export function startLeaves(
   canvas: HTMLCanvasElement,
@@ -5,6 +10,8 @@ export function startLeaves(
     maxFalling?: number;
     every?: number;
     lake?: boolean;
+    /** What falls; by default Japan's season today (seasonOf). */
+    season?: Season;
     /** The MoraBot statue artwork drawn in the waterfront (lake only). */
     statue?: string;
   },
