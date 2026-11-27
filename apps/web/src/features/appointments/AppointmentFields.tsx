@@ -122,7 +122,8 @@ export function appointmentValuesOf(appointment: AppointmentDetail): Appointment
 /** The request fields shared by booking and editing (empty → null). */
 export function appointmentRequestFields(values: AppointmentValues) {
   return {
-    visitAddress: values.visitAddress || null,
+    // Only a visit has a place to go (the address is filled in ahead, 11/27).
+    visitAddress: values.format === MeetingFormat.Visit ? values.visitAddress || null : null,
     onlineTool: values.format === MeetingFormat.Online ? values.onlineTool || null : null,
     formatNote: values.format === MeetingFormat.Other ? values.formatNote || null : null,
     contactName: values.contactName || null,
@@ -407,7 +408,10 @@ export function AppointmentFields({
       )}
       {/* Quick booking: 訪問先住所 and the tool are optional, folded away with the rest. */}
       {part !== 'essential' && values.format === MeetingFormat.Visit && (
-        <FormField label="訪問先住所" hint="空のときは企業の住所を使います。">
+        <FormField
+          label="訪問先住所"
+          hint="企業の住所が入っています。訪問先が違うときは書き換えてください（空のときは企業の住所）。"
+        >
           {(c) => (
             <TextInput
               {...c}

@@ -53,6 +53,7 @@ import { createFeedbackRouter } from './modules/feedback/feedbackRouter.js';
 import { createCompaniesRouter } from './modules/companies/companiesRouter.js';
 import { CompanyService } from './modules/companies/CompanyService.js';
 import { AvoidListService } from './modules/companies/AvoidListService.js';
+import { ListAnalyticsService } from './modules/companies/ListAnalyticsService.js';
 import { ListImportService } from './modules/companies/ListImportService.js';
 import { DashboardService } from './modules/dashboard/DashboardService.js';
 import { FileService } from './modules/files/FileService.js';
@@ -274,6 +275,7 @@ export class Container {
         comments,
         area,
         files,
+        analytics: new ListAnalyticsService(prisma),
       }),
       createScheduleRouter({ authenticator, schedule, guard }),
       createAppointmentsRouter({

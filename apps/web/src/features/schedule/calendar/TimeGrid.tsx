@@ -45,17 +45,7 @@ interface TimeGridProps {
    * Drag (or click) on empty time: the range is snapped to `step` (30 minutes). With
    * `onQuickAdd` this is the 「詳細」 button of the type-in box, carrying what was typed.
    */
-  onRange?: (
-    column: GridColumn,
-    start: string,
-    end: string,
-    title?: string,
-    /**
-     * Dragging sideways over more people on the same day (request 11/27) picks the same
-     * time for them too: one meeting for several reps at once.
-     */
-    others?: GridColumn[],
-  ) => void;
+  onRange?: (column: GridColumn, start: string, end: string, title?: string) => void;
   /**
    * Type a plan straight into the grid (11/17): a click or drag on empty time opens a small box
    * there; Enter saves it with the typed 件名, 「詳細」 opens the full form instead.
@@ -160,33 +150,7 @@ export function TimeGrid({
   const y = (minutes: number) =>
     (Math.min(Math.max(minutes, dayStart), dayEnd) - dayStart) * pxPerMin;
   const showsToday = columns.some((column) => column.date === now.date);
-  const [drag, setDrag] = useState<{
-    key: string;
-    anchor: number;
-    current: number;
-    /** Columns (indexes) the drag started on and is over now. */
-    fromColumn: number;
-    toColumn: number;
-  } | null>(null);
-  const columnRefs = useRef<(HTMLDivElement | null)[]>([]);
-  // Only columns that are people on one day can be dragged across, not the days of a week.
-  const acrossPeople =
-    columns.length > 1 && columns.every((column) => column.date === columns[0]?.date);
-  const columnAt = (clientX: number, fallback: number) => {
-    if (!acrossPeople) return fallback;
-    const index = columnRefs.current.findIndex((element) => {
-      if (!element) return false;
-      const rect = element.getBoundingClientRect();
-      return clientX >= rect.left && clientX < rect.right;
-    });
-    return index >= 0 ? index : fallback;
-  };
-  const dragColumns = drag
-    ? {
-        first: Math.min(drag.fromColumn, drag.toColumn),
-        last: Math.max(drag.fromColumn, drag.toColumn),
-      }
-    : null;
+  const [drag, setDrag] = useState<{ key: string; anchor: number; current: number } | null>(null);
   const dragMoved = useRef(false);
   const [quick, setQuick] = useState<{
     key: string;
@@ -210,14 +174,9 @@ export function TimeGrid({
     return dayStart + (event.clientY - rect.top) / pxPerMin;
   };
 
-  const finish = (column: GridColumn, start: number, end: number, others: GridColumn[] = []) => {
+  const finish = (column: GridColumn, start: number, end: number) => {
     const from = Math.max(dayStart, Math.min(start, end));
     const to = Math.min(dayEnd, Math.max(start, end, from + step));
-    if (others.length > 0) {
-      // Several people: straight to the form, where they are listed as 同席者.
-      onRange?.(column, hhmm(from), hhmm(to), undefined, others);
-      return;
-    }
     if (onQuickAdd) {
       setQuick({ key: column.key, start: from, end: to, title: '', saving: false, error: null });
       return;
@@ -454,11 +413,7 @@ export function TimeGrid({
               const closed = column.off || column.dayOff === true;
               const free = showFree && !closed ? freeRanges(column.events, column.date) : [];
               const ghost =
-                drag &&
-                dragColumns &&
-                !closed &&
-                (drag.key === column.key ||
-                  (columnIndex >= dragColumns.first && columnIndex <= dragColumns.last))
+                drag && drag.key === column.key
                   ? {
                       start: Math.min(drag.anchor, drag.current),
                       end: Math.max(
@@ -472,9 +427,6 @@ export function TimeGrid({
               return (
                 <div
                   key={column.key}
-                  ref={(element) => {
-                    columnRefs.current[columnIndex] = element;
-                  }}
                   role={onRange ? 'button' : undefined}
                   tabIndex={onRange ? 0 : undefined}
                   aria-label={onRange ? columnLabel?.(column) : undefined}
@@ -499,37 +451,20 @@ export function TimeGrid({
                     event.currentTarget.setPointerCapture(event.pointerId);
                     const at = Math.floor(minutesAt(event) / step) * step;
                     dragMoved.current = false;
-                    setDrag({
-                      key: column.key,
-                      anchor: at,
-                      current: at + clickMinutes,
-                      fromColumn: columnIndex,
-                      toColumn: columnIndex,
-                    });
+                    setDrag({ key: column.key, anchor: at, current: at + clickMinutes });
                   }}
                   onPointerMove={(event) => {
                     if (!drag || drag.key !== column.key) return;
                     const at = snap(minutesAt(event), step);
-                    const toColumn = columnAt(event.clientX, drag.toColumn);
-                    if (Math.abs(at - drag.anchor) >= step || toColumn !== drag.fromColumn)
-                      dragMoved.current = true;
+                    if (Math.abs(at - drag.anchor) >= step) dragMoved.current = true;
                     if (dragMoved.current) {
-                      setDrag({ ...drag, current: at === drag.anchor ? at + step : at, toColumn });
+                      setDrag({ ...drag, current: at === drag.anchor ? at + step : at });
                     }
                   }}
                   onPointerUp={() => {
-                    if (!drag || drag.key !== column.key || !dragColumns) return;
+                    if (!drag || drag.key !== column.key) return;
                     setDrag(null);
-                    const others = columns
-                      .slice(dragColumns.first, dragColumns.last + 1)
-                      .filter(
-                        (other) =>
-                          other.key !== column.key &&
-                          other.personId !== column.personId &&
-                          !other.off &&
-                          other.dayOff !== true,
-                      );
-                    finish(column, drag.anchor, drag.current, others);
+                    finish(column, drag.anchor, drag.current);
                   }}
                   onPointerCancel={() => setDrag(null)}
                   onClick={(event) => {
@@ -744,15 +679,10 @@ export function TimeGrid({
                       className="pointer-events-none absolute inset-x-1 z-[8] border-2 border-main bg-main/15 shadow-(--shadow-raised)"
                       style={{ top: y(ghost.start), height: y(ghost.end) - y(ghost.start) }}
                     >
-                      {drag?.key === column.key && (
-                        <span className="m-1 inline-block bg-main px-1.5 text-[11px] leading-4 font-bold text-white tabular-nums">
-                          {hhmm(ghost.start)}–{hhmm(ghost.end)} ·{' '}
-                          {hoursLabel(ghost.end - ghost.start)}
-                          {dragColumns && dragColumns.last > dragColumns.first && (
-                            <> ・{dragColumns.last - dragColumns.first + 1}人</>
-                          )}
-                        </span>
-                      )}
+                      <span className="m-1 inline-block bg-main px-1.5 text-[11px] leading-4 font-bold text-white tabular-nums">
+                        {hhmm(ghost.start)}–{hhmm(ghost.end)} ·{' '}
+                        {hoursLabel(ghost.end - ghost.start)}
+                      </span>
                     </div>
                   )}
 

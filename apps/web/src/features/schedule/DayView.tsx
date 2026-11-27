@@ -24,14 +24,7 @@ interface DayViewProps {
   /** Clicking an empty slot (snapped to 15 minutes). */
   onSlot?: (personId: string, time: string) => void;
   /** Dragging over empty time: start and end (and, from the type-in box, what was typed). */
-  /** `others`: more people dragged across for the same time (11/27). */
-  onRange?: (
-    personId: string,
-    start: string,
-    end: string,
-    title?: string,
-    others?: string[],
-  ) => void;
+  onRange?: (personId: string, start: string, end: string, title?: string) => void;
   /** Type a plan straight into the grid (11/17). */
   onQuickAdd?: (personId: string, start: string, end: string, title: string) => Promise<unknown>;
   /** Highlight the slot being booked. */
@@ -103,15 +96,8 @@ export function DayView({
         }
         onRange={
           onRange || onSlot
-            ? (column, start, end, title, others) => {
-                if (onRange)
-                  onRange(
-                    column.personId,
-                    start,
-                    end,
-                    title,
-                    others?.map((other) => other.personId),
-                  );
+            ? (column, start, end, title) => {
+                if (onRange) onRange(column.personId, start, end, title);
                 else onSlot?.(column.personId, start);
               }
             : undefined

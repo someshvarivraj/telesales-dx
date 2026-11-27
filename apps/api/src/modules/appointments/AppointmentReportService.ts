@@ -52,7 +52,8 @@ const HEADERS = [
 ] as const;
 
 /** Column widths of today's report (営業訪問表). */
-const WIDTHS = [6, 13.5, 9, 9.25, 9.9, 53.5, 12.1, 12.25, 8.25, 9, 19.75, 8, 60];
+// 訪問者 is wider: the sales rep's full name (request 11/27).
+const WIDTHS = [6, 13.5, 9, 9.25, 9.9, 53.5, 12.1, 12.25, 8.25, 9, 19.75, 14, 60];
 
 export interface ReportFile {
   fileName: string;
@@ -161,7 +162,8 @@ export class AppointmentReportService {
         REPORT_FORMAT[row.format],
         familyName(row.bookedBy.name),
         excelDate(row.startsAt),
-        familyName(row.salesRep.name),
+        // 訪問者: the full name (request 11/27); two reps can share a family name.
+        row.salesRep.name,
         row.listName ?? '',
       ];
       excelRow.getCell(2).numFmt = 'yyyy/m/d';

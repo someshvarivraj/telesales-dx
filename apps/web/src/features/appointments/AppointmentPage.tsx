@@ -57,6 +57,7 @@ import { ResultSection } from './ResultSection';
 import { TimelineSection } from './TimelineSection';
 import { BackBar, BackLink } from '@/components/ui/BackLink';
 import { ExternalLink } from '@/components/ui/ExternalLink';
+import { AddressWithMaps } from '@/components/maps/MapLinks';
 
 type OpenDialog = 'reschedule' | 'cancel' | 'request' | 'edit' | null;
 
@@ -391,9 +392,14 @@ export function AppointmentPage() {
                       {
                         label: '訪問先',
                         value:
-                          appointment.format === 'VISIT'
-                            ? (appointment.visitAddress ?? appointment.company.address)
-                            : meetingFormatLabel(appointment),
+                          appointment.format === 'VISIT' ? (
+                            <AddressWithMaps
+                              address={appointment.visitAddress ?? appointment.company.address}
+                              station={appointment.company.nearestStation}
+                            />
+                          ) : (
+                            meetingFormatLabel(appointment)
+                          ),
                       },
                       {
                         label: '伝達事項（取れたときの状況）',
@@ -440,7 +446,16 @@ export function AppointmentPage() {
                       },
                       { label: '代表TEL', value: appointment.company.phone },
                       { label: '最寄駅', value: appointment.company.nearestStation },
-                      { label: '住所', value: appointment.company.address, wide: true },
+                      {
+                        label: '住所',
+                        value: (
+                          <AddressWithMaps
+                            address={appointment.company.address}
+                            station={appointment.company.nearestStation}
+                          />
+                        ),
+                        wide: true,
+                      },
                       {
                         label: 'URL',
                         value: <ExternalLink value={appointment.company.url} />,

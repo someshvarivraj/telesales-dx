@@ -20,6 +20,7 @@ export function TelemaLayout() {
       count: manages && summary.data?.allocationToConfirm ? 1 : undefined,
     },
     { to: paths.telemaResults, label: '架電実績' },
+    { to: paths.telemaMeetings, label: '社内の予定' },
     { to: paths.telemaPeople, label: 'テレマ情報' },
   ];
   return (

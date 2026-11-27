@@ -30,6 +30,7 @@ import { CompanyPage } from '@/features/calls/CompanyPage';
 import { AvoidListPage } from '@/features/calls/AvoidListPage';
 import { DuplicatesPage } from '@/features/calls/DuplicatesPage';
 import { ImportHistoryPage } from '@/features/calls/ImportHistoryPage';
+import { ListAnalyticsPage } from '@/features/calls/ListAnalyticsPage';
 import { ListImportPage } from '@/features/calls/ListImportPage';
 import { HomePage } from '@/features/home/HomePage';
 import { ActivityPage } from '@/features/notifications/ActivityPage';
@@ -40,6 +41,7 @@ import { SchedulePrintPage } from '@/features/schedule/SchedulePrintPage';
 import { NotFoundPage } from '@/features/system/NotFoundPage';
 import { AllocationPage } from '@/features/telema/AllocationPage';
 import { CallResultsPage } from '@/features/telema/CallResultsPage';
+import { MeetingsPage } from '@/features/telema/MeetingsPage';
 import { PeoplePage } from '@/features/telema/PeoplePage';
 import { ShiftsPage } from '@/features/telema/ShiftsPage';
 import { TelemaLayout } from '@/features/telema/TelemaLayout';
@@ -99,6 +101,13 @@ export const routes: RouteObject[] = [
             element: guard([Permission.ResolveDuplicates], <DuplicatesPage />),
           },
           { path: 'avoid', element: <AvoidListPage /> },
+          {
+            path: 'analytics',
+            element: guard(
+              [Permission.ConfirmAllocation, Permission.Administer],
+              <ListAnalyticsPage />,
+            ),
+          },
         ],
       },
       { path: '/calls/companies/:id', element: guard(view, <CompanyPage />) },
@@ -141,6 +150,7 @@ export const routes: RouteObject[] = [
           { path: 'shifts', element: <ShiftsPage /> },
           { path: 'allocation', element: <AllocationPage /> },
           { path: 'results', element: <CallResultsPage /> },
+          { path: 'meetings', element: <MeetingsPage /> },
           { path: 'people', element: <PeoplePage /> },
         ],
       },

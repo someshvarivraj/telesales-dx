@@ -26,6 +26,11 @@ export function CallsLayout() {
       ? [{ to: paths.callsDuplicates, label: '重複・要確認' }]
       : []),
     { to: paths.callsAvoid, label: '回避企業' },
+    // リスト分析 (11/27): telemarketing leads and admins.
+    ...(permissions.includes(Permission.ConfirmAllocation) ||
+    permissions.includes(Permission.Administer)
+      ? [{ to: paths.callsAnalytics, label: 'リスト分析' }]
+      : []),
   ];
   return (
     <>

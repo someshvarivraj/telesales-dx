@@ -14,6 +14,7 @@ import type {
   CreateCommentRequest,
   CreateOfficeRequest,
   FindRepRequest,
+  ListAnalyticsResponse,
   ListImportDto,
   ListImportPreview,
   ListImportRowDto,
@@ -131,6 +132,14 @@ export function useFindRep() {
   return useMutation({
     mutationFn: (request: FindRepRequest) =>
       apiClient.post<RepSuggestion>('/companies/find-rep', request),
+  });
+}
+
+export function useListAnalytics() {
+  return useQuery({
+    queryKey: [...callsKeys.imports, 'analytics'],
+    queryFn: ({ signal }) =>
+      apiClient.get<ListAnalyticsResponse>('/list-imports/analytics', signal),
   });
 }
 

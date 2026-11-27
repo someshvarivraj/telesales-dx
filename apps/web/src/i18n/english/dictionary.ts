@@ -4,6 +4,43 @@
  * values in it ({0}, {1}, …). Remove this folder together with the language switch.
  */
 export const EXACT: Readonly<Record<string, string>> = {
+  // Requests 11/27 (2)
+  社内の予定: 'Company meetings',
+  社内の予定を入れる: 'Add a company meeting',
+  社内の予定を変更: 'Change company meeting',
+  '営業会議など、営業さん全員（または選んだ人）の予定にまとめて入ります。':
+    "A sales meeting etc. goes on every sales rep's calendar (or the ones chosen) at once.",
+  参加する営業: 'Sales reps attending',
+  変更を保存: 'Save changes',
+  これからの社内の予定: 'Upcoming company meetings',
+  'これからの社内の予定はありません。': 'No upcoming company meetings.',
+  '件名を入れてください。': 'Please enter a title.',
+  '開始より後にしてください。': 'Must be after the start.',
+  '参加する営業を選んでください。': 'Choose the sales reps attending.',
+  '例：営業会議': 'e.g. Sales meeting',
+  '例：本社 3F 会議室／資料は前日までに共有':
+    'e.g. HQ 3F meeting room / share materials the day before',
+  リスト分析: 'List analytics',
+  取り込んだリスト: 'Lists imported',
+  読み込んだ行: 'Rows read',
+  新規に登録: 'Registered as new',
+  '登録済み（重複）': 'Already registered (duplicate)',
+  複数のリストに入った企業: 'Companies on several lists',
+  読めなかった行: 'Rows not read',
+  '新規・重複・その他': 'New / duplicate / other',
+  よく重なるリスト: 'Lists it overlaps most',
+  何度も入ってきた企業: 'Companies that keep coming',
+  '入っていたリスト（古い順）': 'Lists it came on (oldest first)',
+  '2つ以上のリストに入った企業はありません。': 'No company came on more than one list.',
+  'まだリストを取り込んでいません。': 'No lists imported yet.',
+  不備: 'Problem',
+  '回避・電話なし': 'Avoided / no phone',
+  'Yahoo!マップ': 'Yahoo! Map',
+  乗換案内: 'Transit',
+  サイト: 'Site',
+  確認: 'Check',
+  '企業の住所が入っています。訪問先が違うときは書き換えてください（空のときは企業の住所）。':
+    'The company address is filled in. Change it if the visit is elsewhere (empty means the company address).',
   // Schedule requests 11/27
   ほかの営業: 'Other sales reps',
   '同じ打ち合わせに一緒に行く人（同席）': 'Going to the same meeting (attending)',
@@ -2317,4 +2354,7 @@ export const PATTERNS: readonly (readonly [string, string])[] = [
   ['【アポ・{0}】', '[Appt · {0}]'],
   ['テーマ：{0}', 'Theme: {0}'],
   ['全員（{0}人）', 'Everyone ({0})'],
+  ['何度も入ってきた企業（{0}社）', 'Companies that keep coming ({0})'],
+  ['{0}／{1}人・押すと外れます', '{0} / {1} · click to remove'],
+  ['{0}で並べ替え', 'Sort by {0}'],
 ];
