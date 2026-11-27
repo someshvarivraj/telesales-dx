@@ -9,7 +9,7 @@ import {
   type ListRowProblem,
   validateListRow,
 } from '@telesales/shared';
-import { CheckCircle2, ChevronRight, Download, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Download, FileSpreadsheet, Globe, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -314,13 +314,14 @@ export function ImportReview({
           </p>
           <div
             role="row"
-            className="hidden border-b border-line pb-2 text-xs font-bold text-ink-sub md:grid md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_9rem_10rem] md:gap-3"
+            className="hidden border-b border-line pb-2 text-xs font-bold text-ink-sub md:grid md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_9rem_10rem_6.5rem] md:gap-3"
           >
             <span>行</span>
             {EDIT_COLUMNS.map((column) => (
               <span key={column.field}>{column.label}</span>
             ))}
             <span>状態</span>
+            <span>確認</span>
           </div>
           <ul className="scroll-quiet divide-y divide-line md:max-h-[32rem] md:overflow-y-auto">
             {rows.map((row) => {
@@ -330,7 +331,7 @@ export function ImportReview({
                 <li
                   key={row.source.row}
                   className={cn(
-                    'grid gap-2 py-3 md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_9rem_10rem] md:items-start md:gap-3',
+                    'grid gap-2 py-3 md:grid-cols-[4.5rem_minmax(0,1.2fr)_10rem_minmax(0,1.3fr)_9rem_10rem_6.5rem] md:items-start md:gap-3',
                     ok && 'bg-success-soft/40',
                   )}
                 >
@@ -387,6 +388,7 @@ export function ImportReview({
                       </ul>
                     )}
                   </div>
+                  <CheckLinks name={row.values.name} url={siteOf(row.values.url, row.source.raw)} />
                 </li>
               );
             })}
@@ -428,5 +430,48 @@ export function ImportReview({
         </Card>
       )}
     </>
+  );
+}
+
+/** The company's website from the row: the URL column, or any web address in the row. */
+function siteOf(url: string, raw: Record<string, string>): string | null {
+  const candidates = [url, ...Object.values(raw)];
+  for (const value of candidates) {
+    const match = (value ?? '')
+      .normalize('NFKC')
+      .match(/https?:\/\/[^\s"'<>、，]+|www\.[^\s"'<>、，]+/i);
+    if (match) return match[0].startsWith('http') ? match[0] : `https://${match[0]}`;
+  }
+  return null;
+}
+
+/**
+ * 確認 (request 11/27): open the company's site to find the right number or details, then fix
+ * the row here; without a site, a web search for the company.
+ */
+function CheckLinks({ name, url }: { name: string; url: string | null }) {
+  const link =
+    'inline-flex h-8 items-center gap-1 border border-line bg-surface px-2 text-xs font-bold text-link hover:border-main-line hover:bg-main-soft';
+  return (
+    <div className="flex flex-wrap gap-1.5 md:flex-col md:pt-0.5">
+      {url && (
+        <a href={url} target="_blank" rel="noopener noreferrer" title={url} className={link}>
+          <Globe className="size-3.5" aria-hidden="true" />
+          サイト
+        </a>
+      )}
+      {name.trim() && (
+        <a
+          href={`https://www.google.com/search?q=${encodeURIComponent(`${name.trim()} 電話番号`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`「${name.trim()}」を検索`}
+          className={link}
+        >
+          <Search className="size-3.5" aria-hidden="true" />
+          検索
+        </a>
+      )}
+    </div>
   );
 }

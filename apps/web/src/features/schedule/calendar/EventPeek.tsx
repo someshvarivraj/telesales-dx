@@ -1,10 +1,11 @@
-import { CalendarClock, MapPin, StickyNote, UserRound, Users } from 'lucide-react';
+import { CalendarClock, StickyNote, UserRound, Users } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/components/ui/cn';
 import { formatRange } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { type CalendarEvent, EVENT_STYLE } from '../events';
+import { appointmentFacts } from './appointmentFacts';
 import { hoursLabel } from './layout';
 
 export type PeekBinder = (event: CalendarEvent) => {
@@ -87,9 +88,13 @@ export function useEventPeek(): { bind: PeekBinder; layer: ReactNode } {
               {plan.attendees.map((person) => person.name).join('、')}
             </Row>
           )}
-          {plan?.appointment && (
-            <Row icon={<MapPin className="size-4" />}>{plan.appointment.companyName}</Row>
-          )}
+          {plan?.appointment &&
+            appointmentFacts(plan.appointment, 'size-4').map((fact) => (
+              <Row key={fact.key} icon={fact.icon}>
+                <span className="sr-only">{fact.label}：</span>
+                {fact.value}
+              </Row>
+            ))}
           {(plan?.note || event.timeOff?.note) && (
             <Row icon={<StickyNote className="size-4" />}>
               <span className="line-clamp-3 text-ink-sub">{plan?.note ?? event.timeOff?.note}</span>

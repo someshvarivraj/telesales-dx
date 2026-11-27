@@ -19,6 +19,7 @@ import {
   WORK_END,
   WORK_START,
 } from './layout';
+import { appointmentFacts } from './appointmentFacts';
 import { ScrollPager } from './ScrollPager';
 
 export interface GridColumn {
@@ -605,21 +606,43 @@ export function TimeGrid({
                           ) : (
                             <>
                               <span className="block truncate font-bold">{event.title}</span>
-                              <span className="block truncate text-[11px] text-ink-sub tabular-nums">
-                                {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
-                              </span>
-                              {appointment && h > 52 && (
-                                <span className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-sub">
-                                  {appointment.format === 'ONLINE' ? (
-                                    <Video aria-hidden="true" className="size-3" />
-                                  ) : (
-                                    <Building2 aria-hidden="true" className="size-3" />
-                                  )}
-                                  {appointment.format === 'ONLINE'
-                                    ? 'Web'
-                                    : ja.format[appointment.format]}
+                              {/* Time and 訪問/Web on one line, so the details below have room (11/27). */}
+                              <span className="flex min-w-0 items-center gap-1 text-[11px] text-ink-sub tabular-nums">
+                                <span className="shrink-0">
+                                  {formatTime(event.startsAt)}–{formatTime(event.endsAt)}
                                 </span>
-                              )}
+                                {appointment && (
+                                  <span className="flex min-w-0 items-center gap-0.5">
+                                    {appointment.format === 'ONLINE' ? (
+                                      <Video aria-hidden="true" className="size-3 shrink-0" />
+                                    ) : (
+                                      <Building2 aria-hidden="true" className="size-3 shrink-0" />
+                                    )}
+                                    <span className="truncate">
+                                      {appointment.format === 'ONLINE'
+                                        ? 'Web'
+                                        : ja.format[appointment.format]}
+                                    </span>
+                                  </span>
+                                )}
+                              </span>
+                              {/* 住所・最寄駅・部署・訪問先担当者 (11/27): as many lines as fit;
+                                  the rest is in the pop-up on hover and in the details. */}
+                              {appointment &&
+                                appointmentFacts(appointment)
+                                  .slice(0, Math.max(0, Math.floor((h - 40) / 15)))
+                                  .map((fact) => (
+                                    <span
+                                      key={fact.key}
+                                      title={`${fact.label}：${fact.value}`}
+                                      className="flex min-w-0 items-center gap-1 text-[11px] leading-[15px] text-ink-sub"
+                                    >
+                                      <span aria-hidden="true" className="shrink-0">
+                                        {fact.icon}
+                                      </span>
+                                      <span className="truncate">{fact.value}</span>
+                                    </span>
+                                  ))}
                               {event.kind === 'lock' && (
                                 <Lock
                                   aria-hidden="true"

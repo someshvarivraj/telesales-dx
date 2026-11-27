@@ -39,6 +39,8 @@ interface DayTimelineProps {
   pxPerMin?: number;
   colorOrder: string[];
   corner?: ReactNode;
+  /** 9–18 mode (telemarketing, 11/27): these hours only. */
+  fixedHours?: { start: number; end: number };
 }
 
 /**
@@ -59,11 +61,11 @@ export function DayTimeline({
   colorOrder,
   corner,
   maxHeight = 'calc(100dvh - 15rem)',
+  fixedHours,
 }: DayTimelineProps) {
   // 5:00–24:00 (request 11/11), opened scrolled to the morning.
-  const { start: START, end: END } = visibleSpan(
-    people.flatMap((person) => eventsOn(events, date, person.id)),
-  );
+  const { start: START, end: END } =
+    fixedHours ?? visibleSpan(people.flatMap((person) => eventsOn(events, date, person.id)));
   const scale = 1.25 * pxPerMin;
   const width = (END - START) * scale;
   const x = (minutes: number) => (Math.min(Math.max(minutes, START), END) - START) * scale;

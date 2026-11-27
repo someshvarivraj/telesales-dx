@@ -7,7 +7,7 @@ import {
   OptionCategory,
   Permission,
 } from '@telesales/shared';
-import { Building2, CalendarCheck } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Building2, CalendarCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
@@ -22,6 +22,7 @@ import { Table, Td, Th } from '@/components/ui/Table';
 import { formatDate, formatTime } from '@/lib/format';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { useCompanyGroup } from './api';
+import { MapLinks } from '@/components/maps/MapLinks';
 
 function place(company: { office: string | null; department: string | null }): string {
   return [company.office, company.department].filter(Boolean).join(' ') || '（事業所・部署なし）';
@@ -150,12 +151,72 @@ function GroupTable({
   const grades = useOptionList(OptionCategory.CallGrade);
   const results = useOptionList(OptionCategory.CallResult);
   const today = jstDate(new Date());
-  const rows: { item: CompanyListItem; self: boolean; root: boolean }[] = [
+  // Request 11/27: the order stays put when another office is opened (registration order,
+  // or the column chosen); the office on screen is only marked ▶ 表示中.
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({
+    key: 'registered',
+    desc: false,
+  });
+  const unsorted: { item: CompanyListItem; self: boolean; root: boolean }[] = [
     { item: company, self: true, root: false },
     ...members.flatMap((member) =>
       member.row ? [{ item: member.row, self: false, root: member.isGroupRoot }] : [],
     ),
   ];
+  const value = (row: (typeof unsorted)[number]): string | number => {
+    const { item } = row;
+    switch (sort.key) {
+      case 'name':
+        return place(item);
+      case 'phone':
+        return item.phone ?? '';
+      case 'address':
+        return fullAddress(item);
+      case 'station':
+        return item.nearestStation ?? '';
+      case 'grade':
+        return item.lastCall?.grade ?? '';
+      case 'result':
+        return item.lastCall?.resultCode ? results.labelOf(item.lastCall.resultCode) : '';
+      case 'lastCall':
+        return item.lastCall?.calledAt ?? '';
+      case 'count':
+        return item.callCount;
+      case 'telemarketer':
+        return item.lastCall?.telemarketer.name ?? '';
+      case 'appointment':
+        return appointments[item.id]?.startsAt ?? '';
+      case 'list':
+        return item.listName ?? '';
+      default:
+        return item.createdAt;
+    }
+  };
+  const rows = [...unsorted].sort((a, b) => {
+    const x = value(a);
+    const y = value(b);
+    // Empty cells go last either way.
+    if (x === '' && y !== '') return 1;
+    if (y === '' && x !== '') return -1;
+    const order =
+      typeof x === 'number' && typeof y === 'number'
+        ? x - y
+        : String(x).localeCompare(String(y), 'ja', { numeric: true });
+    return (sort.desc ? -order : order) || a.item.createdAt.localeCompare(b.item.createdAt);
+  });
+  const header = (key: SortKey, label: string, className?: string) => (
+    <SortTh
+      label={label}
+      active={sort.key === key}
+      desc={sort.desc}
+      className={className}
+      onClick={() =>
+        setSort((current) =>
+          current.key === key ? { key, desc: !current.desc } : { key, desc: false },
+        )
+      }
+    />
+  );
   // Another office already has an appointment coming up: said in words above the table.
   const elsewhere = rows.filter(({ item, self }) => {
     const appointment = appointments[item.id];
@@ -193,17 +254,17 @@ function GroupTable({
         <Table>
           <thead>
             <tr className="[&>th]:px-2 [&>th]:text-xs">
-              <Th className="pl-3">事業所・部署</Th>
-              <Th>電話番号</Th>
-              <Th>住所</Th>
-              <Th>最寄駅</Th>
-              <Th>判定</Th>
-              <Th>最新テレマ結果</Th>
-              <Th>最新テレマ日</Th>
-              <Th className="text-right">回数</Th>
-              <Th>テレマ担当者</Th>
-              <Th>アポ</Th>
-              <Th className="pr-3">リスト名</Th>
+              {header('name', '事業所・部署', 'pl-3')}
+              {header('phone', '電話番号')}
+              {header('address', '住所')}
+              {header('station', '最寄駅')}
+              {header('grade', '判定')}
+              {header('result', '最新テレマ結果')}
+              {header('lastCall', '最新テレマ日')}
+              {header('count', '回数', 'text-right')}
+              {header('telemarketer', 'テレマ担当者')}
+              {header('appointment', 'アポ')}
+              {header('list', 'リスト名', 'pr-3')}
             </tr>
           </thead>
           <tbody>
@@ -246,8 +307,11 @@ function GroupTable({
                     </span>
                   </Td>
                   <Td className={cn(cell, 'tabular-nums')}>{item.phone}</Td>
-                  <Td className={cn(cell, 'max-w-64 truncate')} title={address || undefined}>
-                    {address}
+                  <Td className={cn(cell, 'max-w-72')} title={address || undefined}>
+                    <span className="flex items-center gap-2">
+                      <span className="min-w-0 truncate">{address}</span>
+                      <MapLinks address={address} station={item.nearestStation} compact />
+                    </span>
                   </Td>
                   <Td className={cell}>{item.nearestStation}</Td>
                   <Td className={cell} title={last ? grades.labelOf(last.grade) : undefined}>
@@ -290,5 +354,52 @@ function GroupTable({
         </Table>
       </div>
     </div>
+  );
+}
+
+type SortKey =
+  | 'registered'
+  | 'name'
+  | 'phone'
+  | 'address'
+  | 'station'
+  | 'grade'
+  | 'result'
+  | 'lastCall'
+  | 'count'
+  | 'telemarketer'
+  | 'appointment'
+  | 'list';
+
+/** A column header that sorts the table (click again to reverse). */
+function SortTh({
+  label,
+  active,
+  desc,
+  className,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  desc: boolean;
+  className?: string;
+  onClick: () => void;
+}) {
+  const Icon = !active ? ArrowUpDown : desc ? ArrowDown : ArrowUp;
+  return (
+    <Th className={className} aria-sort={active ? (desc ? 'descending' : 'ascending') : undefined}>
+      <button
+        type="button"
+        onClick={onClick}
+        title={`${label}で並べ替え`}
+        className={cn(
+          'inline-flex cursor-pointer items-center gap-1 whitespace-nowrap hover:text-main',
+          active && 'text-main',
+        )}
+      >
+        {label}
+        <Icon aria-hidden="true" className={cn('size-3.5', !active && 'opacity-40')} />
+      </button>
+    </Th>
   );
 }

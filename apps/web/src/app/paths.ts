@@ -9,6 +9,7 @@ export const paths = {
   callsImports: '/calls/imports',
   callsDuplicates: '/calls/duplicates',
   callsAvoid: '/calls/avoid',
+  callsAnalytics: '/calls/analytics',
   company: (id: string) => `/calls/companies/${id}`,
   schedule: '/schedule',
   book: '/schedule/book',
@@ -25,6 +26,7 @@ export const paths = {
   telemaAllocation: '/telema/allocation',
   telemaPeople: '/telema/people',
   telemaResults: '/telema/results',
+  telemaMeetings: '/telema/meetings',
   admin: {
     root: '/admin',
     users: '/admin/users',

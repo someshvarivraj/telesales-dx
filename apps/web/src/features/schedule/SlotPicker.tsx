@@ -18,6 +18,7 @@ import { usePeople } from '@/features/reference/useReference';
 import { defaultEndTime, formatDate, formatRange, toInstant } from '@/lib/format';
 import { useSchedule, useSlotCheck } from './api';
 import { DayView } from './DayView';
+import { useTelemaHours, WORK_HOURS_GRID } from './telemaHours';
 import { buildEvents } from './events';
 import { ScheduleLegend } from './ScheduleLegend';
 import { slotProblemText } from './slotProblems';
@@ -49,6 +50,8 @@ interface SlotPickerProps {
   repLocked?: boolean;
   /** The rep's own appointment: their テレマアポ停止 time is open to them. */
   salesBooked?: boolean;
+  /** Height of the day view (a big dialog gives it the room it has, 11/27). */
+  dayHeight?: string;
 }
 
 /** The rep's day and the availability check for a slot (shared by the picker's parts). */
@@ -212,6 +215,7 @@ export function SlotDay({
   /** The candidate's time on `viewDate`, highlighted like the slot. */
   viewRange?: { start: string; end: string };
 }) {
+  const telemaHours = useTelemaHours();
   if (!slot.repId) return null;
   const date = viewDate ?? slot.date;
   const ownDay = date === slot.date;
@@ -239,6 +243,7 @@ export function SlotDay({
               : null
         }
         maxHeight={maxHeight}
+        {...(telemaHours ? WORK_HOURS_GRID : {})}
         step={BOOKING_STEP_MINUTES}
         clickMinutes={DEFAULT_APPOINTMENT_MINUTES}
         bufferMinutes={data.schedule?.travelBufferMinutes}
@@ -299,6 +304,7 @@ export function SlotPicker({
   appointmentId,
   repLocked = false,
   salesBooked = false,
+  dayHeight,
 }: SlotPickerProps) {
   const held = lock.status === 'held';
   const data = useSlotData(slot, appointmentId, salesBooked);
@@ -307,7 +313,7 @@ export function SlotPicker({
   return (
     <div className="flex flex-col gap-4">
       <SlotInputs slot={slot} onChange={onChange} held={held} repLocked={repLocked} />
-      <SlotDay slot={slot} onChange={onChange} held={held} data={data} />
+      <SlotDay slot={slot} onChange={onChange} held={held} data={data} maxHeight={dayHeight} />
       <SlotProblems data={data} held={held} />
 
       <div className="flex flex-wrap items-center gap-3 rounded-(--radius-control) border border-line bg-canvas px-4 py-3">

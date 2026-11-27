@@ -102,3 +102,59 @@ describe('Allocator.allocateDayBefore', () => {
     expect(assignment.get('own')).toBe('manager');
   });
 });
+
+describe('Allocator.allocateCalls: 本社・支社・工場・その他 spread evenly (request 11/27)', () => {
+  const people = [
+    { userId: 'a', workingMinutes: 480 },
+    { userId: 'b', workingMinutes: 480 },
+  ];
+  const kindsOf = (
+    assignment: Map<string, string>,
+    userId: string,
+    items: { id: string; kind: string }[],
+  ) =>
+    items
+      .filter((item) => assignment.get(item.id) === userId)
+      .reduce<Record<string, number>>((acc, item) => {
+        acc[item.kind] = (acc[item.kind] ?? 0) + 1;
+        return acc;
+      }, {});
+
+  it('gives each person half of every kind, even when the list is sorted by kind', () => {
+    // A list where the 本社 rows come first would otherwise go mostly to one person.
+    const items = [
+      ...Array.from({ length: 4 }, (_, i) => ({ id: `h${i}`, kind: 'HEAD' as const })),
+      ...Array.from({ length: 2 }, (_, i) => ({ id: `f${i}`, kind: 'FACTORY' as const })),
+      ...Array.from({ length: 6 }, (_, i) => ({ id: `b${i}`, kind: 'BRANCH' as const })),
+      ...Array.from({ length: 2 }, (_, i) => ({ id: `o${i}`, kind: 'OTHER' as const })),
+    ];
+    const assignment = new Allocator(people).allocateCalls(
+      items.map((item) => ({ id: item.id, groupKey: item.id, kind: item.kind })),
+    );
+    expect(kindsOf(assignment, 'a', items)).toEqual({ HEAD: 2, FACTORY: 1, BRANCH: 3, OTHER: 1 });
+    expect(kindsOf(assignment, 'b', items)).toEqual({ HEAD: 2, FACTORY: 1, BRANCH: 3, OTHER: 1 });
+  });
+
+  it('still follows working hours and keeps same-name companies together', () => {
+    const items = [
+      { id: 'x本社', groupKey: 'x', kind: 'HEAD' as const },
+      { id: 'x工場', groupKey: 'x', kind: 'FACTORY' as const },
+      ...Array.from({ length: 6 }, (_, i) => ({
+        id: `h${i}`,
+        groupKey: `h${i}`,
+        kind: 'HEAD' as const,
+      })),
+    ];
+    const assignment = new Allocator([
+      { userId: 'a', workingMinutes: 600 },
+      { userId: 'b', workingMinutes: 200 },
+    ]).allocateCalls(items);
+    expect(assignment.get('x本社')).toBe(assignment.get('x工場'));
+    expect(countBy(assignment)).toEqual(
+      new Map([
+        ['a', 6],
+        ['b', 2],
+      ]),
+    );
+  });
+});

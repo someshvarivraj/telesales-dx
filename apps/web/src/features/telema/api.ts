@@ -5,7 +5,9 @@ import type {
   CallResultsResponse,
   FillShiftsRequest,
   FillShiftsResponse,
+  InternalMeetingRequest,
   MyAssignmentsResponse,
+  PlanDto,
   ShiftDto,
   ShiftMonthResponse,
   ShiftRequest,
@@ -142,3 +144,38 @@ export const useConfirmAllocation = () =>
     (date: string) => apiClient.post<undefined>('/telema/allocations/confirm', { date }),
     [['appointments', 'day-before']],
   );
+
+/** 社内の予定 (request 11/27): company meetings on sales reps' calendars. */
+export const meetingKeys = { all: ['meetings'] as const };
+
+export function useMeetings() {
+  return useQuery({
+    queryKey: meetingKeys.all,
+    queryFn: ({ signal }) => apiClient.get<PlanDto[]>('/meetings', signal),
+  });
+}
+
+export function useSaveMeeting() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, request }: { id?: string; request: InternalMeetingRequest }) =>
+      id
+        ? apiClient.put<PlanDto>(`/meetings/${id}`, request)
+        : apiClient.post<PlanDto>('/meetings', request),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: meetingKeys.all });
+      void client.invalidateQueries({ queryKey: ['schedule'] });
+    },
+  });
+}
+
+export function useDeleteMeeting() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete<null>(`/meetings/${id}`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: meetingKeys.all });
+      void client.invalidateQueries({ queryKey: ['schedule'] });
+    },
+  });
+}

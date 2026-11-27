@@ -53,6 +53,7 @@ import { MemberMenu, PAGE_SIZE } from './calendar/MemberMenu';
 import type { SavedGroup } from './calendar/MemberPicker';
 import { MiniMonth } from './calendar/MiniMonth';
 import { TimeGrid, useNow } from './calendar/TimeGrid';
+import { useTelemaHours } from './telemaHours';
 import { DayView } from './DayView';
 import { EventDetailDialog } from './EventDetailDialog';
 import {
@@ -219,7 +220,9 @@ export function SchedulePage() {
   const [zoom, setZoom] = usePref('zoom', 1);
   const [showFree, setShowFree] = usePref('free', false);
   // 9:00〜18:00 only, with taller hours filling the view (テレマ 11/18).
-  const [workHours, setWorkHours] = usePref('workHours', false);
+  // Telemarketing starts in 9–18 (request 11/27); anyone can switch it.
+  const telemaHours = useTelemaHours();
+  const [workHours, setWorkHours] = usePref('workHours', telemaHours);
   const gridHours = workHours ? { dayStart: WORK_START, dayEnd: WORK_END, fit: true } : {};
   const [hidden, setHidden] = usePref<EventKind[]>('hiddenKinds', []);
   const [railOpen, setRailOpen] = usePref('rail', true);
@@ -917,6 +920,7 @@ export function SchedulePage() {
                           ? (ownerId, start, end) => openRange(ownerId, date, start, end)
                           : undefined
                       }
+                      fixedHours={workHours ? { start: WORK_START, end: WORK_END } : undefined}
                     />
                   );
                 }

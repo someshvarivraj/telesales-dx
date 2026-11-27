@@ -1086,6 +1086,7 @@ export class CompanyService {
     return {
       id: row.id,
       name: row.name,
+      createdAt: iso(row.createdAt),
       office: row.office,
       telemaIdNo: row.telemaIdNo,
       department: row.department,

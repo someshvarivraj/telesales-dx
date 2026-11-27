@@ -277,6 +277,8 @@ export interface CompanySearchIdsResponse {
 export interface CompanyListItem {
   id: string;
   name: string;
+  /** When it was registered: the office table keeps this order (request 11/27). */
+  createdAt: string;
   office: string | null;
   /** テレマIDNo., 部署, 住所, 最寄駅: shown in the 架電用 list (テレマ 11/18, 資料A). */
   telemaIdNo: string | null;
@@ -567,4 +569,49 @@ export interface RepSuggestion {
   ruleId: string | null;
   /** Human-readable reason, e.g. 「大阪府 大阪市 ／ 現取以外」. */
   matchedBy: string | null;
+}
+
+/**
+ * リスト分析 (request 11/27, telemarketing leads): the purchased lists side by side — how much
+ * of each was new, how much the company already had, which lists repeat each other, and which
+ * companies keep coming back.
+ */
+export interface ListAnalyticsList {
+  id: string;
+  listName: string;
+  importedAt: string;
+  purpose: ListImportPurpose;
+  rows: number;
+  /** New companies registered from this list. */
+  created: number;
+  /** Already registered (same phone number), on this list again. */
+  duplicates: number;
+  /** Same name, needs a look. */
+  needsCheck: number;
+  /** Rows that could not be read (wrong phone, no name …). */
+  problems: number;
+  avoided: number;
+  noPhone: number;
+  /** Companies from this list with an appointment booked after it came in. */
+  appointments: number;
+  /** Earlier lists it shares the most companies with. */
+  overlaps: { listImportId: string; listName: string; shared: number }[];
+}
+
+export interface ListAnalyticsResponse {
+  totals: {
+    lists: number;
+    rows: number;
+    created: number;
+    duplicates: number;
+    problems: number;
+    /** Companies that came on two lists or more. */
+    repeatedCompanies: number;
+  };
+  lists: ListAnalyticsList[];
+  /** Companies on the most lists, most first. */
+  repeated: {
+    company: { id: string; name: string; phone: string | null };
+    lists: { listImportId: string; listName: string; importedAt: string }[];
+  }[];
 }

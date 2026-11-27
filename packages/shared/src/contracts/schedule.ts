@@ -53,6 +53,20 @@ export const planRequestSchema = z.object({
 });
 export type PlanRequest = z.input<typeof planRequestSchema>;
 
+/**
+ * 社内の予定 (request 11/27): a company meeting telemarketing puts on sales reps' calendars
+ * at once. One 社内 plan; the chosen reps are on it (all of them by default).
+ */
+export const internalMeetingRequestSchema = z.object({
+  title: requiredText(200),
+  startsAt: instantString,
+  endsAt: instantString,
+  allDay: z.boolean().default(false),
+  note: optionalText(2000),
+  salesIds: z.array(z.uuid()).min(1).max(200),
+});
+export type InternalMeetingRequest = z.input<typeof internalMeetingRequestSchema>;
+
 export const timeOffRequestSchema = z.object({
   userId: z.uuid(),
   kind: z.enum(['DAY_OFF', 'LATE_START', 'EARLY_LEAVE', 'PARTIAL', 'TELEMA_STOP']),
@@ -96,6 +110,11 @@ export interface PlanDto {
     isTelema: boolean;
     /** The online meeting's URL, for the calendar's 「参加」 button (11/17). */
     meetingUrl: string | null;
+    /** Shown on the calendar (request 11/27): where to go and whom to ask for. */
+    address: string | null;
+    nearestStation: string | null;
+    department: string | null;
+    contactName: string | null;
   } | null;
   canEdit: boolean;
   /** A tentative plan (or tentative appointment) this user may confirm. */

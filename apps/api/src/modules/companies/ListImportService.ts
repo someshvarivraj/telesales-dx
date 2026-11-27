@@ -234,6 +234,9 @@ export class ListImportService {
             })),
             ...skipped.map((row) => ({
               listImportId: listImport.id,
+              // The company already registered: this list's name joins its list history
+              // (request 11/27: one company, every list it came on).
+              companyId: row.matchId,
               rowNumber: row.row,
               rawData: row.raw,
               status: ListImportRowStatus.Duplicate,

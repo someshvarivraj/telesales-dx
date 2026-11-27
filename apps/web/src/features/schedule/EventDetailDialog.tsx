@@ -1,5 +1,5 @@
 import { OptionCategory, Permission } from '@telesales/shared';
-import { Video } from 'lucide-react';
+import { CalendarClock, Pencil, Video } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { paths } from '@/app/paths';
@@ -9,12 +9,17 @@ import { Button } from '@/components/ui/Button';
 import { DescriptionList } from '@/components/ui/DescriptionList';
 import { Dialog } from '@/components/ui/Dialog';
 import { useCurrentUser } from '@/features/auth/hooks/useSession';
+import { useAppointment } from '@/features/appointments/api';
+import { EditDetailsDialog, RescheduleDialog } from '@/features/appointments/AppointmentDialogs';
 import { useOptionList } from '@/features/reference/useReference';
 import { errorMessageOf } from '@/lib/api/errorMessage';
 import { formatRange } from '@/lib/format';
 import { ja } from '@/i18n/ja';
 import { useConfirmCandidate, useDeletePlan, useDeleteTimeOff } from './api';
 import { type CalendarEvent, EVENT_STYLE } from './events';
+import { appointmentFacts } from './calendar/appointmentFacts';
+import { useTelemaHours } from './telemaHours';
+import { AddressWithMaps } from '@/components/maps/MapLinks';
 
 interface EventDetailDialogProps {
   event: CalendarEvent | null;
@@ -29,7 +34,24 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
   const deleteTimeOff = useDeleteTimeOff();
   const confirm = useConfirmCandidate();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Telemarketing edits its appointments right here, without opening the アポ page (11/27).
+  const telema = useTelemaHours();
+  const appointmentId = telema ? (event?.plan?.appointment?.id ?? '') : '';
+  const appointment = useAppointment(appointmentId);
+  const [appointmentDialog, setAppointmentDialog] = useState<'reschedule' | 'edit' | null>(null);
   if (!event) return null;
+  const abilities = appointment.data?.abilities;
+  if (appointmentDialog && appointment.data) {
+    const done = () => {
+      setAppointmentDialog(null);
+      onClose();
+    };
+    return appointmentDialog === 'reschedule' ? (
+      <RescheduleDialog appointment={appointment.data} onClose={done} />
+    ) : (
+      <EditDetailsDialog appointment={appointment.data} onClose={done} />
+    );
+  }
 
   const plan = event.plan;
   const error = deletePlan.error ?? deleteTimeOff.error ?? confirm.error;
@@ -61,6 +83,24 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
               <Video aria-hidden="true" className="size-4" />
               参加
             </a>
+          )}
+          {abilities?.reschedule && (
+            <Button
+              variant="secondary"
+              icon={<CalendarClock className="size-4" aria-hidden="true" />}
+              onClick={() => setAppointmentDialog('reschedule')}
+            >
+              日時・担当を変更
+            </Button>
+          )}
+          {abilities?.editDetails && (
+            <Button
+              variant="secondary"
+              icon={<Pencil className="size-4" aria-hidden="true" />}
+              onClick={() => setAppointmentDialog('edit')}
+            >
+              内容を編集
+            </Button>
           )}
           {plan?.appointment && (
             <Link
@@ -144,6 +184,22 @@ export function EventDetailDialog({ event, onClose, onEdit }: EventDetailDialogP
                 : []),
               ...(plan.title !== plan.companyName
                 ? [{ label: '件名', value: plan.title, wide: true }]
+                : []),
+              // 住所・最寄駅・部署・訪問先担当者 (11/27).
+              ...(plan.appointment
+                ? appointmentFacts(plan.appointment).map((fact) => ({
+                    label: fact.label,
+                    value:
+                      fact.key === 'address' && plan.appointment ? (
+                        <AddressWithMaps
+                          address={fact.value}
+                          station={plan.appointment.nearestStation}
+                        />
+                      ) : (
+                        fact.value
+                      ),
+                    wide: fact.key === 'address',
+                  }))
                 : []),
               {
                 label: '日時',

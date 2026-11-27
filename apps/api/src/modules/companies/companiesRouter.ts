@@ -29,6 +29,7 @@ import type { CallRecordExportService } from '../callRecords/CallRecordExportSer
 import type { CallRecordService } from '../callRecords/CallRecordService.js';
 import type { CommentService } from '../comments/CommentService.js';
 import type { FileService } from '../files/FileService.js';
+import type { ListAnalyticsService } from './ListAnalyticsService.js';
 import type { AvoidListService } from './AvoidListService.js';
 import type { CompanyService } from './CompanyService.js';
 import type { ListImportService } from './ListImportService.js';
@@ -43,6 +44,7 @@ export interface CompaniesDeps {
   comments: CommentService;
   area: AreaTableService;
   files: FileService;
+  analytics: ListAnalyticsService;
 }
 
 const callExportQuery = z.object({
@@ -268,6 +270,14 @@ export function createCompaniesRouter(deps: CompaniesDeps): Router {
             parseWith(commitListImportRequestSchema, req.body),
           ),
         );
+    },
+  );
+  // リスト分析 (request 11/27): telemarketing leads and admins.
+  router.get(
+    '/list-imports/analytics',
+    auth.requireAnyPermission(Permission.ConfirmAllocation, Permission.Administer),
+    async (_req, res) => {
+      res.json(await deps.analytics.analyse());
     },
   );
   router.delete(

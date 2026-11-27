@@ -11,6 +11,7 @@ import {
   jstDate,
   type MyAssignmentsResponse,
   NoticeCode,
+  officeKindOf,
   ShiftKind,
   type UserRef,
 } from '@telesales/shared';
@@ -155,7 +156,11 @@ export class AllocationService {
 
     const companies = await this.callListOn(date, participants.fixedTerritory);
     const calls = allocator.allocateCalls(
-      companies.map((company) => ({ id: company.id, groupKey: company.nameKey || company.id })),
+      companies.map((company) => ({
+        id: company.id,
+        groupKey: company.nameKey || company.id,
+        kind: officeKindOf(company.office),
+      })),
     );
 
     const { first, last } = calendar.checkWindow(date);
@@ -416,10 +421,12 @@ export class AllocationService {
   private async callListOn(
     date: string,
     fixedTerritory: string[],
-  ): Promise<{ id: string; nameKey: string }[]> {
+  ): Promise<{ id: string; nameKey: string; office: string | null }[]> {
     const territory = fixedTerritory.length > 0 ? fixedTerritory : [''];
-    return this.prisma.$queryRaw<{ id: string; nameKey: string }[]>(Prisma.sql`
-      SELECT c.id, c.name_key AS "nameKey"
+    return this.prisma.$queryRaw<
+      { id: string; nameKey: string; office: string | null }[]
+    >(Prisma.sql`
+      SELECT c.id, c.name_key AS "nameKey", c.office
       FROM companies c
       LEFT JOIN LATERAL (
         SELECT r.next_call_date, r.avoid_until

@@ -148,6 +148,8 @@ function initialValues(
     contactDepartment: company?.department ?? '',
     // The number just called (11/18): filled in, and can be changed for a direct line.
     contactPhone: company?.phone ?? '',
+    // 訪問先住所 (11/27): the company's address, ready when 訪問 is chosen; can be changed.
+    visitAddress: company?.address ?? '',
     handoverNotes: [latest?.resultDetail, latest?.notes].filter(Boolean).join('\n'),
     isNewAppointment: source === AppointmentSource.CallStatus,
   };

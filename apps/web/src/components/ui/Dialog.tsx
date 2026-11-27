@@ -8,7 +8,8 @@ interface DialogProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'md' | 'lg';
+  /** xl: a working screen in a dialog, e.g. a calendar to pick from (11/27). */
+  size?: 'md' | 'lg' | 'xl';
   /**
    * Drag it by the title bar, like a window, and keep the page behind it in view (a light
    * backdrop): for forms filled in while looking at the schedule (request 11/11).
@@ -150,7 +151,7 @@ export function Dialog({
       className={cn(
         'm-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] rounded-(--radius-card) border border-line bg-surface p-0 text-ink shadow-(--shadow-raised)',
         movable ? 'backdrop:bg-ink/10' : 'backdrop:bg-ink/40',
-        size === 'lg' ? 'max-w-3xl' : 'max-w-lg',
+        size === 'xl' ? 'max-w-6xl' : size === 'lg' ? 'max-w-3xl' : 'max-w-lg',
       )}
       style={
         movable && (offset.x || offset.y)

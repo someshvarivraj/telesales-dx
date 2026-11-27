@@ -1,6 +1,7 @@
 import {
   instantString,
   Permission,
+  internalMeetingRequestSchema,
   planRequestSchema,
   scheduleQuerySchema,
   slotLockRequestSchema,
@@ -92,6 +93,34 @@ export function createScheduleRouter(deps: ScheduleDeps): Router {
   });
   router.post('/plans/:id/confirm-candidate', writePlans, async (req, res) => {
     res.json(await deps.schedule.confirmCandidate(currentUserOf(req), idParam(req)));
+  });
+
+  // 社内の予定 (request 11/27): telemarketing puts a company meeting on sales reps' calendars.
+  router.get('/meetings', view, async (req, res) => {
+    res.json(await deps.schedule.listMeetings(currentUserOf(req)));
+  });
+  router.post('/meetings', view, async (req, res) => {
+    res
+      .status(201)
+      .json(
+        await deps.schedule.createMeeting(
+          currentUserOf(req),
+          parseWith(internalMeetingRequestSchema, req.body),
+        ),
+      );
+  });
+  router.put('/meetings/:id', view, async (req, res) => {
+    res.json(
+      await deps.schedule.updateMeeting(
+        currentUserOf(req),
+        idParam(req),
+        parseWith(internalMeetingRequestSchema, req.body),
+      ),
+    );
+  });
+  router.delete('/meetings/:id', view, async (req, res) => {
+    await deps.schedule.deleteMeeting(currentUserOf(req), idParam(req));
+    res.status(204).end();
   });
 
   router.post('/time-off', writeTimeOff, async (req, res) => {

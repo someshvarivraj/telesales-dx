@@ -106,7 +106,7 @@ export function RescheduleDialog({
     <Dialog
       open
       onClose={close}
-      size="lg"
+      size="xl"
       title="日時・担当営業の変更"
       footer={
         <>
@@ -142,6 +142,8 @@ export function RescheduleDialog({
             )
           }
           onUnlock={() => void lock.release()}
+          // Wide and tall (11/27): the whole working day is in view without scrolling the dialog.
+          dayHeight="max(22rem, calc(100dvh - 27rem))"
         />
         <fieldset>
           <legend className="mb-1 text-sm font-bold">理由</legend>

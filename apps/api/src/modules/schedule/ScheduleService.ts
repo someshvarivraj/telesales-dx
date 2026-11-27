@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { planRequestSchema } from '@telesales/shared';
+import type { internalMeetingRequestSchema, planRequestSchema } from '@telesales/shared';
 import {
   addDays,
   APP_KEY,
@@ -8,11 +8,13 @@ import {
   jstDate,
   NoticeCode,
   OptionCategory,
+  Permission,
   PLAN_TYPES_WITH_COMPANY,
   type PlanDto,
   planLabel,
   PlanStatus,
   Role,
+  startOfJstDay,
   type ScheduleResponse,
   type SlotCheckResult,
   type TimeOffDto,
@@ -43,6 +45,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 type PlanCommand = z.output<typeof planRequestSchema>;
 
 const WEEK_MS = 7 * 24 * 60 * 60_000;
+/** 社内の予定 are 社内 plans (plan type option INTERNAL). */
+const MEETING_TYPE = 'INTERNAL';
+type InternalMeetingCommand = z.output<typeof internalMeetingRequestSchema>;
 
 const planInclude = {
   owner: userRefSelect,
@@ -55,7 +60,10 @@ const planInclude = {
       status: true,
       source: true,
       meetingUrl: true,
-      company: { select: { name: true } },
+      visitAddress: true,
+      contactName: true,
+      contactDepartment: true,
+      company: { select: { name: true, address: true, nearestStation: true, department: true } },
     },
   },
 } satisfies Prisma.SchedulePlanInclude;
@@ -377,6 +385,148 @@ export class ScheduleService {
     await this.notifyPlanChange(actor, plan, 'deleted', []);
   }
 
+  // ---- 社内の予定 (request 11/27): telemarketing puts one meeting on sales reps' calendars ----
+
+  private assertCanArrangeMeetings(actor: Actor): void {
+    if (!actor.can(Permission.ManageTelemaAppointments) && !this.policy.isAdmin(actor)) {
+      throw new ForbiddenError();
+    }
+  }
+
+  private async meetingRow(actor: Actor, id: string): Promise<PlanRow> {
+    this.assertCanArrangeMeetings(actor);
+    const plan = await this.prisma.schedulePlan.findFirst({
+      where: { id, deletedAt: null, type: MEETING_TYPE, appointmentId: null },
+      include: planInclude,
+    });
+    if (!plan) {
+      throw new NotFoundError();
+    }
+    return plan;
+  }
+
+  /** Meetings from today on, soonest first. */
+  async listMeetings(actor: Actor): Promise<PlanDto[]> {
+    this.assertCanArrangeMeetings(actor);
+    const rows = await this.prisma.schedulePlan.findMany({
+      where: {
+        deletedAt: null,
+        type: MEETING_TYPE,
+        appointmentId: null,
+        endsAt: { gte: startOfJstDay(new Date()) },
+        attendees: { some: {} },
+      },
+      include: planInclude,
+      orderBy: { startsAt: 'asc' },
+      take: 200,
+    });
+    return rows.map((row) => this.toPlanDto(actor, row));
+  }
+
+  async createMeeting(actor: Actor, input: InternalMeetingCommand): Promise<PlanDto> {
+    this.assertCanArrangeMeetings(actor);
+    await this.assertPlanType(MEETING_TYPE);
+    const salesIds = [...new Set(input.salesIds)].filter((id) => id !== actor.id);
+    const row = await this.prisma.schedulePlan.create({
+      data: {
+        ownerId: actor.id,
+        createdById: actor.id,
+        type: MEETING_TYPE,
+        title: input.title,
+        startsAt: new Date(input.startsAt),
+        endsAt: new Date(input.endsAt),
+        allDay: input.allDay,
+        status: PlanStatus.Fixed,
+        note: input.note ?? null,
+        attendees: { create: salesIds.map((userId) => ({ userId })) },
+      },
+      include: planInclude,
+    });
+    await this.audit.record({
+      action: AuditAction.PlanCreated,
+      actorUserId: actor.id,
+      targetType: 'plan',
+      targetId: row.id,
+      after: { ...planAudit(row), attendeeIds: salesIds, meeting: true },
+    });
+    await this.notifyPlanChange(actor, row, 'added', salesIds);
+    return this.toPlanDto(actor, row);
+  }
+
+  async updateMeeting(actor: Actor, id: string, input: InternalMeetingCommand): Promise<PlanDto> {
+    const before = await this.meetingRow(actor, id);
+    const salesIds = [...new Set(input.salesIds)].filter((userId) => userId !== before.ownerId);
+    const had = new Set(before.attendees.map((attendee) => attendee.userId));
+    const row = await this.prisma.schedulePlan.update({
+      where: { id },
+      data: {
+        title: input.title,
+        startsAt: new Date(input.startsAt),
+        endsAt: new Date(input.endsAt),
+        allDay: input.allDay,
+        note: input.note ?? null,
+        attendees: { deleteMany: {}, create: salesIds.map((userId) => ({ userId })) },
+      },
+      include: planInclude,
+    });
+    await this.audit.record({
+      action: AuditAction.PlanUpdated,
+      actorUserId: actor.id,
+      targetType: 'plan',
+      targetId: id,
+      before: { ...planAudit(before), attendeeIds: [...had] },
+      after: { ...planAudit(row), attendeeIds: salesIds },
+    });
+    await this.notifyPlanChange(
+      actor,
+      row,
+      'changed',
+      salesIds.filter((userId) => !had.has(userId)),
+    );
+    await this.notifyMeetingPeople(
+      actor,
+      row,
+      '変更',
+      salesIds.filter((userId) => had.has(userId)),
+    );
+    return this.toPlanDto(actor, row);
+  }
+
+  /** The reps already on a meeting hear when it moves or is called off. */
+  private async notifyMeetingPeople(
+    actor: Actor,
+    plan: PlanRow,
+    label: '変更' | '削除',
+    userIds: string[],
+  ) {
+    if (userIds.length === 0) return;
+    await this.notifications.notifyUsers(userIds, {
+      code: NoticeCode.PlanChangedByOther,
+      title: `社内の予定が${label}されました：${planLabel(plan)}（${formatJstDateTime(plan.startsAt)}）`,
+      linkPath: `/schedule?date=${jstDate(plan.startsAt)}`,
+      actorId: actor.id,
+    });
+  }
+
+  async deleteMeeting(actor: Actor, id: string): Promise<void> {
+    const plan = await this.meetingRow(actor, id);
+    await this.prisma.schedulePlan.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.audit.record({
+      action: AuditAction.PlanDeleted,
+      actorUserId: actor.id,
+      targetType: 'plan',
+      targetId: id,
+      before: planAudit(plan),
+      metadata: { meeting: true },
+    });
+    await this.notifyMeetingPeople(
+      actor,
+      plan,
+      '削除',
+      plan.attendees.map((attendee) => attendee.userId),
+    );
+  }
+
   /** Confirm one tentative candidate; the other candidates of the group are removed. */
   async confirmCandidate(actor: Actor, planId: string): Promise<PlanDto> {
     const plan = await this.prisma.schedulePlan.findFirst({
@@ -587,6 +737,11 @@ export class ScheduleService {
             status: row.appointment.status,
             isTelema: isTelemaSource(row.appointment.source),
             meetingUrl: row.appointment.meetingUrl,
+            // The visit's own details first, then what the company register holds.
+            address: row.appointment.visitAddress ?? row.appointment.company.address,
+            nearestStation: row.appointment.company.nearestStation,
+            department: row.appointment.contactDepartment ?? row.appointment.company.department,
+            contactName: row.appointment.contactName,
           }
         : null,
       canEdit: this.policy.canEditPlan(actor, row),

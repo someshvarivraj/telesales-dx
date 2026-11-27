@@ -42,6 +42,7 @@ import { useSalesPanel } from './SalesPanel';
 import { OfficeCreatedNotice, OfficeDialog } from './OfficeDialog';
 import { BackBar, BackLink } from '@/components/ui/BackLink';
 import { ExternalLink } from '@/components/ui/ExternalLink';
+import { AddressWithMaps } from '@/components/maps/MapLinks';
 
 function CallRecordItem({ record, companyId }: { record: CallRecordDto; companyId: string }) {
   const [editing, setEditing] = useState(false);
@@ -310,7 +311,13 @@ export function CompanyPage() {
                         wide: true,
                       },
                       { label: '郵便番号', value: data.postalCode },
-                      { label: '住所', value: data.address, wide: true },
+                      {
+                        label: '住所',
+                        value: (
+                          <AddressWithMaps address={data.address} station={data.nearestStation} />
+                        ),
+                        wide: true,
+                      },
                       { label: '事業所', value: data.office },
                       { label: '部署', value: data.department },
                       {
